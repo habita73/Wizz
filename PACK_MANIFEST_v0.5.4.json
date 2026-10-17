@@ -1,0 +1,34 @@
+{
+  "package": "Vent au comptoir Documentation Pack",
+  "version": "0.5.4",
+  "date": "2026-10-16",
+  "status": "DOCUMENTATION_CLOSED_EXECUTION_NOT_AUTHORIZED",
+  "execution_authorized": false,
+  "active_files": [
+    "README.md",
+    "PROJECT_RULES.md",
+    "AGENTS.md",
+    "docs/PRODUCT_MASTER.md",
+    "docs/MVP_AND_ACCEPTANCE.md",
+    "docs/TECHNICAL_AND_SAFETY_RULES.md",
+    "docs/DECISIONS_AND_OPEN_GATES.md",
+    "docs/ARCHIVE_INDEX.md",
+    "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md"
+  ],
+  "archive_file_count": 56,
+  "archive_policy": "Archive files are historical, non-active references; do not load all archive files for routine tasks.",
+  "preservation_note": "Previous detailed documents are preserved in archive/original-detailed-docs and related archive subfolders. v0.5.3 retained as prior baseline; v0.5.4 adds a consolidated closeout/handoff record.",
+  "mvp_status": "APPROVED",
+  "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains false.",
+  "change_summary": [
+    "Added a consolidated closeout and developer handoff record to prevent repeated documentation cycles.",
+    "Recorded architecture items as approved direction versus proposals; Blazor Web App local-hosting details remain proposed pending validation.",
+    "Consolidated budget and schedule as estimates, legal gates as NEEDS-VALIDATION, and hardware/acceptance tests as not yet verified.",
+    "Explicitly closed the documentation phase while keeping implementation unauthorized."
+  ],
+  "review_findings": [
+    "No implementation or runtime tests were performed in this documentation update.",
+    "Legal compliance and physical device compatibility remain unverified.",
+    "The budget and timeline are planning estimates, not verified market quotes."
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "package": "Vent au comptoir Documentation Pack",
+  "version": "0.5.0",
+  "active_files": [
+    "README.md",
+    "PROJECT_RULES.md",
+    "AGENTS.md",
+    "docs/PRODUCT_MASTER.md",
+    "docs/MVP_AND_ACCEPTANCE.md",
+    "docs/TECHNICAL_AND_SAFETY_RULES.md",
+    "docs/DECISIONS_AND_OPEN_GATES.md",
+    "docs/ARCHIVE_INDEX.md"
+  ],
+  "file_count_excluding_summary_manifest": 64,
+  "archive_file_count": 55,
+  "manifest": "MANIFEST.json",
+  "execution_authorized": false
+}

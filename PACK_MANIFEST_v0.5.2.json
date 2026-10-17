@@ -1,0 +1,28 @@
+{
+  "package": "Vent au comptoir Documentation Pack",
+  "version": "0.5.2",
+  "date": "2026-10-16",
+  "status": "MVP_DECISION_BASELINE_PENDING_OWNER_APPROVAL",
+  "execution_authorized": false,
+  "active_files": [
+    "README.md",
+    "PROJECT_RULES.md",
+    "AGENTS.md",
+    "docs/PRODUCT_MASTER.md",
+    "docs/MVP_AND_ACCEPTANCE.md",
+    "docs/TECHNICAL_AND_SAFETY_RULES.md",
+    "docs/DECISIONS_AND_OPEN_GATES.md",
+    "docs/ARCHIVE_INDEX.md"
+  ],
+  "archive_file_count": 56,
+  "archive_policy": "Archive files are historical, non-active references; do not load all archive files for routine tasks.",
+  "preservation_note": "Previous detailed documents are preserved in archive/original-detailed-docs and related archive subfolders.",
+  "mvp_status": "PENDING-OWNER-APPROVAL",
+  "mvp_baseline": "Local-first Windows sales core P0; optional P1 modules; deferred scope explicitly listed.",
+  "change_summary": [
+    "Narrowed MVP to a local-first Windows sales core.",
+    "Separated mandatory P0 acceptance tests from optional P1 modules.",
+    "Clarified AI action boundaries, legal-document caveat, device compatibility, and pilot gates.",
+    "Execution remains not authorized."
+  ]
+}

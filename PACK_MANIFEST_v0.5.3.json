@@ -1,0 +1,33 @@
+{
+  "package": "Vent au comptoir Documentation Pack",
+  "version": "0.5.3",
+  "date": "2026-10-16",
+  "status": "MVP_APPROVED_EXECUTION_NOT_AUTHORIZED",
+  "execution_authorized": false,
+  "active_files": [
+    "README.md",
+    "PROJECT_RULES.md",
+    "AGENTS.md",
+    "docs/PRODUCT_MASTER.md",
+    "docs/MVP_AND_ACCEPTANCE.md",
+    "docs/TECHNICAL_AND_SAFETY_RULES.md",
+    "docs/DECISIONS_AND_OPEN_GATES.md",
+    "docs/ARCHIVE_INDEX.md"
+  ],
+  "archive_file_count": 56,
+  "archive_policy": "Archive files are historical, non-active references; do not load all archive files for routine tasks.",
+  "preservation_note": "Previous detailed documents are preserved in archive/original-detailed-docs and related archive subfolders.",
+  "mvp_status": "APPROVED",
+  "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains false.",
+  "change_summary": [
+    "Reviewed v0.5.2 for consistency before execution.",
+    "Recorded explicit owner approval of the MVP baseline (P0 mandatory, P1 optional).",
+    "Corrected stale pending-approval states across active references.",
+    "Execution, technical tests, and field pilot remain unauthorized/not performed."
+  ],
+  "review_findings": [
+    "v0.5.2 contained stale PENDING-OWNER-APPROVAL states after the owner's explicit approval in conversation.",
+    "Product master version metadata lagged behind the package version.",
+    "Technical, device, legal, AI-provider, cost, and pilot details remain open gates; they do not invalidate the approved scope baseline."
+  ]
+}

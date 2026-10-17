@@ -1,0 +1,30 @@
+# .NET build and test output
+[Bb]in/
+[Oo]bj/
+[Tt]est[Rr]esult*/
+artifacts/
+
+# Local secrets and certificates
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Local databases and generated data
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# User-specific IDE state
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.rsuser
