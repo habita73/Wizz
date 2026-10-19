@@ -1,0 +1,113 @@
+name: 🐛 Bug Report
+description: الإبلاغ عن خطأ أو سلوك غير متوقع
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        شكراً للإبلاغ عن خطأ! يرجى ملء المعلومات أدناه لمساعدتنا في فهم المشكلة وإصلاحها.
+
+  - type: input
+    id: version
+    attributes:
+      label: إصدار Wizz
+      description: ما هو الإصدار الذي تستخدمه؟ (مثال: v1.0.0، أو commit hash)
+      placeholder: v1.0.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: نظام التشغيل
+      description: على أي نظام يعمل التطبيق؟
+      options:
+        - Windows 10
+        - Windows 11
+        - Windows Server 2019/2022
+        - آخر (حدد في الوصف)
+    validations:
+      required: true
+
+  - type: input
+    id: dotnet-version
+    attributes:
+      label: إصدار .NET Runtime
+      description: إصدار .NET المثبت (يمكنك معرفة ذلك بـ `dotnet --version`)
+      placeholder: 10.0.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: وصف الخطأ
+      description: وصف واضح ومختصر للمشكلة. ماذا حدث؟ ماذا كنت تتوقع أن يحدث؟
+      placeholder: عند النقر على زر "حفظ" في شاشة إعدادات المتجر، يظهر خطأ "Object reference not set to an instance of an object" ويتوقف التطبيق.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: خطوات إعادة الإنتاج
+      description: خطوات واضحة لإعادة إنتاج الخطأ (خطوة بخطوة)
+      placeholder: |
+        1. افتح التطبيق
+        2. اذهب إلى الإعدادات > المتجر
+        3. عدّل الاسم
+        4. اضغط حفظ
+        5. يظهر الخطأ
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: السلوك المتوقع
+      description: ماذا كان يجب أن يحدث بدلاً من الخطأ؟
+      placeholder: يجب أن يتم حفظ الإعدادات وعرض رسالة نجاح.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: السجلات/الأخطاء (Logs/Stack Trace)
+      description: إن وجد، ألصق هنا نص الخطأ الكامل أو سجلات التطبيق
+      render: text
+      placeholder: |
+        System.NullReferenceException: Object reference not set to an instance of an object.
+           at Wizz.Presentation.Pages.StoreSettings.OnSaveClick() in ...
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: لقطات شاشة (اختياري)
+      description: إذا كان الخطأ بصرياً، أضف لقطات شاشة هنا
+      placeholder: اسحب وأفلِت الصور هنا، أو الصق من الحافظة
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: الخطورة
+      options:
+        - حرجة (Critical) - التطبيق لا يعمل، فقدان بيانات
+        - عالية (High) - ميزة أساسية معطلة
+        - متوسطة (Medium) - ميزة ثانوية معطلة، يوجد حل بديل
+        - منخفضة (Low) - مشكلة تجميلية، خطأ إملائي، تحسين
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: قائمة التحقق
+      options:
+        - label: بحثت في Issues الموجودة ولم أجد تقريراً مشابهاً
+          required: true
+        - label: أستطيع إعادة إنتاج الخطأ بشكل ثابت
+          required: false
+        - label: الخطأ يحدث في بيئة تطوير/اختبار وليس إنتاج
+          required: false

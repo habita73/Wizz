@@ -1,0 +1,34 @@
+# مالكو الكود للمراجعة التلقائية
+# يتم طلب مراجعة من هؤلاء تلقائياً عند فتح PR يلمس ملفاتهم
+
+# المالك الرئيسي للمشروع
+* @YOUR_GITHUB_USERNAME
+
+# طبقة Domain (النواة المالية، كيانات المجال)
+/src/Wizz.Domain/ @YOUR_GITHUB_USERNAME
+
+# طبقة Application (حالات الاستخدام، DTOs، واجهات)
+/src/Wizz.Application/ @YOUR_GITHUB_USERNAME
+
+# طبقة Infrastructure (EF Core، مستودعات، أجهزة، AI، خدمات)
+/src/Wizz.Infrastructure/ @YOUR_GITHUB_USERNAME
+
+# طبقة Presentation (Blazor، UI، Pages، Components)
+/src/Wizz.Presentation/ @YOUR_GITHUB_USERNAME
+
+# الاختبارات
+/tests/ @YOUR_GITHUB_USERNAME
+
+# التكوين والبناء
+/Directory.Build.props @YOUR_GITHUB_USERNAME
+/Directory.Packages.props @YOUR_GITHUB_USERNAME
+/global.json @YOUR_GITHUB_USERNAME
+/Wizz.sln @YOUR_GITHUB_USERNAME
+
+# CI/CD و GitHub Actions
+/.github/workflows/ @YOUR_GITHUB_USERNAME
+
+# التوثيق
+/docs/ @YOUR_GITHUB_USERNAME
+/README.md @YOUR_GITHUB_USERNAME
+/CHANGELOG.md @YOUR_GITHUB_USERNAME

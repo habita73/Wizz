@@ -1,0 +1,58 @@
+# Dependabot configuration for automatic dependency updates
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuring-dependabot-version-updates
+
+version: 2
+updates:
+  # .NET packages (NuGet)
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Africa/Algiers"
+    labels:
+      - "dependencies"
+      - "nuget"
+    commit-message:
+      prefix: "chore(deps):"
+      include: "scope"
+    open-pull-requests-limit: 10
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+    ignore:
+      # تجاهل التحديثات الرئيسية (Major) للحزم الحساسة
+      - dependency-name: "Microsoft.EntityFrameworkCore*"
+        update-type: "version-update:semver-major"
+      - dependency-name: "OllamaSharp"
+        update-type: "version-update:semver-major"
+      - dependency-name: "xunit*"
+        update-type: "version-update:semver-major"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:30"
+      timezone: "Africa/Algiers"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(deps):"
+      include: "scope"
+
+  # Docker (إذا كان هناك Dockerfile)
+  - package-ecosystem: "docker"
+    directory: "/src/Wizz.Presentation/Wizz.Presentation"
+    schedule:
+      interval: "monthly"
+      day: "first monday"
+      time: "07:00"
+      timezone: "Africa/Algiers"
+    labels:
+      - "dependencies"
+      - "docker"

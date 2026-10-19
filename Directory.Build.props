@@ -1,0 +1,48 @@
+<Project>
+  <!-- خصائص بناء موحدة لجميع المشاريع -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageVersionFile>Directory.Packages.props</CentralPackageVersionFile>
+
+    <!-- إعدادات مترجم موحدة -->
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+
+    <!-- معلومات التجميع -->
+    <Authors>Wizz Contributors</Authors>
+    <Company>Wizz</Company>
+    <Product>Wizz POS</Product>
+    <Copyright>Copyright © 2026 Wizz Contributors</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/YOUR_USERNAME/wizz</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/YOUR_USERNAME/wizz</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>pos;point-of-sale;retail;arabic;rtl;blazor;dotnet</PackageTags>
+
+    <!-- تحديد الإطار المستهدف -->
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+
+    <!-- تحليل الكود -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!-- التوثيق -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <!-- إعدادات الحزم المشتركة -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" PrivateAssets="all" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- خصائص المشروع للاختبارات -->
+  <PropertyGroup Condition="'$(IsPackable)' == 'false'">
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,65 @@
+name: ✨ Feature Request
+description: طلب ميزة جديدة أو تحسين
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        شكراً لاقتراح ميزة جديدة! يرجى وصف الفكرة بالتفصيل.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: المشكلة/الحاجة
+      description: ما هي المشكلة التي تحلها هذه الميزة؟ لماذا نحتاجها؟
+      placeholder: حالياً لا يمكن طباعة الإيصالات على طابعات حرارية عربية RTL، مما يصعب على التجار في الجزائر استخدام أجهزة محلية.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: الحل المقترح
+      description: كيف تتخيل الحل؟ صف الميزة بالتفصيل.
+      placeholder: إضافة دعم للطابعات الحرارية ESC/POS مع معالجة صحيحة للنص العربي RTL، مع محاكاة للاختبار.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: البدائل المعتبرة
+      description: هل فكرت في حلول أخرى؟ لماذا تم رفضها؟
+      placeholder: فكرنا في استخدام مكتبة خارجية للطباعة، لكن opted للتنفيذ المباشر للتحكم الكامل.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: سياق إضافي
+      description: أي معلومات إضافية، رسوم توضيحية، مراجع، أو أمثلة من تطبيقات أخرى
+      placeholder: مرجع: ESC/POS commands for Arabic: https://...
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: الأولوية
+      options:
+        - عالية (High) - مطلوبة لـ MVP
+        - متوسطة (Medium) - مطلوبة للإصدار الأول بعد MVP
+        - منخفضة (Low) - تحسين مستقبلي
+        - مجرد فكرة (Idea) - للاستكشاف لاحقاً
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: قائمة التحقق
+      options:
+        - label: الميزة تتماشى مع رؤية المنتج (Local-first، عربي RTL، AI محلي، وحدات)
+          required: true
+        - label: لا تتطلب تغييرات جوهرية في المعمارية (أو موثقة كـ Breaking Change)
+          required: false
+        - label: يمكن تنفيذها واختبارها بشكل مستقل
+          required: false

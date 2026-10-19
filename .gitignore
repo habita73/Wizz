@@ -1,30 +1,92 @@
-# .NET build and test output
-[Bb]in/
-[Oo]bj/
-[Tt]est[Rr]esult*/
-artifacts/
+# Build outputs
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
 
-# Local secrets and certificates
-.env
-.env.*
-!.env.example
-*.pem
-*.key
-*.pfx
-*.p12
+# Test results
+TestResults/
+*.trx
+coverage/
 
-# Local databases and generated data
+# IDE
+.vs/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# User secrets
+**/secrets.json
+**/appsettings.Development.json
+**/appsettings.Local.json
+
+# Logs
+*.log
+logs/
+
+# NuGet
+packages/
+*.nupkg
+*.snupkg
+
+# Database
 *.db
-*.db-shm
-*.db-wal
+*.db-journal
 *.sqlite
 *.sqlite3
+Backups/
 
-# User-specific IDE state
-.vs/
-.vscode/
-*.user
-*.suo
-*.userosscache
-*.sln.docstates
-*.rsuser
+# Blazor
+wwwroot/dist/
+
+# Publish
+publish/
+
+# Profiling
+*.prof
+*.vsps
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# Rider
+.idea/
+*.sln.iml
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+
+# GitHub Actions
+.github/workflows/*.yml.bak
+
+# Dependabot
+.github/dependabot.yml.bak
+
+# Local development
+*.local.*
+local.settings.json
+
+# BenchmarkDotNet
+BenchmarkDotNet.Artifacts/
+
+# Coverage
+coverage.info
+coverage.lcov
+*.cobertura.xml
+*.opencover.xml
+
+# OS specific
+*.orig
+*.bak

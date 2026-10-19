@@ -1,0 +1,50 @@
+name: ❓ Question / Support
+description: طرح سؤال أو طلب مساعدة
+title: "[Question]: "
+labels: ["question", "support"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        مرحباً! هذا القسم للأسئلة العامة، طلب توضيح، أو مساعدة في الاستخدام/التطوير.
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: فئة السؤال
+      options:
+        - استخدام التطبيق (Usage)
+        - التطوير والمساهمة (Development)
+        - النشر والإعداد (Deployment/Setup)
+        - الذكاء الاصطناعي (AI/Ollama)
+        - قاعدة البيانات (Database)
+        - الترجمة/التعريب (Localization)
+        - آخر
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: سؤالك
+      description: اطرح سؤالك بوضوح. أضف سياقاً كافياً لفهم سؤالك.
+      placeholder: كيف يمكنني إضافة طابعة حرارية جديدة غير مدعومة؟ ما هي الواجهات التي يجب تنفيذها؟
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: السياق (اختياري)
+      description: أي معلومات إضافية تساعد في الإجابة (إصدار، بيئة، ما جربته، إلخ)
+      placeholder: الإصدار: v1.0.0، Windows 11، .NET 10
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: قبل السؤال
+      options:
+        - label: قرأت الـ README والوثائق المتاحة
+          required: true
+        - label: بحثت في Issues و Discussions الموجودة
+          required: true

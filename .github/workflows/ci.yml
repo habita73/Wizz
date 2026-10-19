@@ -1,0 +1,262 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  release:
+    types: [ published ]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  SOLUTION_FILE: 'Wizz.sln'
+  CONFIGURATION: 'Release'
+
+jobs:
+  # ==========================================
+  # بناء واختبار
+  # ==========================================
+  build-and-test:
+    name: Build & Test (.NET ${{ env.DOTNET_VERSION }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔧 Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+
+      - name: 📦 Restore dependencies
+        run: dotnet restore ${{ env.SOLUTION_FILE }} --locked-mode
+
+      - name: 🏗️ Build solution
+        run: dotnet build ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} --no-restore --nologo
+
+      - name: 🧪 Run tests
+        run: dotnet test ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} --no-build --nologo --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage" --results-directory ./TestResults
+
+      - name: 📊 Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: TestResults/
+          retention-days: 30
+
+      - name: 📈 Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: '**/coverage.cobertura.xml'
+          retention-days: 30
+
+      - name: 📋 Test summary
+        if: always()
+        run: |
+          echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Project | Passed | Failed | Skipped |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|--------|---------|" >> $GITHUB_STEP_SUMMARY
+          for file in TestResults/*.trx; do
+            if [ -f "$file" ]; then
+              project=$(basename "$file" .trx)
+              passed=$(grep -c '<Result outcome="Passed"' "$file" || echo 0)
+              failed=$(grep -c '<Result outcome="Failed"' "$file" || echo 0)
+              skipped=$(grep -c '<Result outcome="Skipped"' "$file" || echo 0)
+              echo "| $project | $passed | $failed | $skipped |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+  # ==========================================
+  # تحليل الكود الثابت
+  # ==========================================
+  code-analysis:
+    name: Code Analysis (StyleCop, Sonar)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: build-and-test
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔧 Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+
+      - name: 📦 Restore
+        run: dotnet restore ${{ env.SOLUTION_FILE }} --locked-mode
+
+      - name: 🔍 Run StyleCop Analyzers
+        run: dotnet build ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} --no-restore /p:StyleCopTreatErrorsAsWarnings=false /p:TreatWarningsAsErrors=true 2>&1 | tee stylecop.log
+
+      - name: 📋 StyleCop Summary
+        if: always()
+        run: |
+          if [ -f stylecop.log ]; then
+            warnings=$(grep -c "warning SA" stylecop.log || echo 0)
+            errors=$(grep -c "error SA" stylecop.log || echo 0)
+            echo "## StyleCop Analysis" >> $GITHUB_STEP_SUMMARY
+            echo "- Warnings: $warnings" >> $GITHUB_STEP_SUMMARY
+            echo "- Errors: $errors" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: 📤 Upload StyleCop log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stylecop-log
+          path: stylecop.log
+          retention-days: 7
+
+  # ==========================================
+  # فحص الأمان (Security Scan)
+  # ==========================================
+  security-scan:
+    name: Security Scan (NuGet, Dependabot)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: build-and-test
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+
+      - name: 🔍 Check for vulnerable packages
+        run: dotnet list ${{ env.SOLUTION_FILE }} package --vulnerable --include-transitive
+
+      - name: 📦 Check outdated packages
+        run: dotnet list ${{ env.SOLUTION_FILE }} package --outdated --include-transitive
+
+      - name: 📋 Security Summary
+        run: |
+          echo "## Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "Vulnerable and outdated package check completed." >> $GITHUB_STEP_SUMMARY
+
+  # ==========================================
+  # بناء صورة Docker (اختياري)
+  # ==========================================
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: build-and-test
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🏷️ Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/wizz
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+
+      - name: 🏗️ Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: src/Wizz.Presentation/Wizz.Presentation/Dockerfile
+          push: ${{ github.event_name == 'release' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ==========================================
+  # إنشاء الإصدار (Release)
+  # ==========================================
+  create-release:
+    name: Create Release Assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [build-and-test, code-analysis, security-scan]
+    if: github.event_name == 'release' && github.event.action == 'published'
+    permissions:
+      contents: write
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+
+      - name: 📦 Restore
+        run: dotnet restore ${{ env.SOLUTION_FILE }} --locked-mode
+
+      - name: 🏗️ Publish Presentation (Windows x64)
+        run: |
+          dotnet publish src/Wizz.Presentation/Wizz.Presentation/Wizz.Presentation.csproj \
+            --configuration ${{ env.CONFIGURATION }} \
+            --runtime win-x64 \
+            --self-contained true \
+            --output ./publish/win-x64 \
+            -p:PublishSingleFile=true \
+            -p:PublishTrimmed=true \
+            -p:TrimMode=partial \
+            -p:IncludeNativeLibrariesForSelfExtract=true
+
+      - name: 📦 Create release archive
+        run: |
+          cd ./publish/win-x64
+          zip -r ../../wizz-win-x64-${{ github.event.release.tag_name }}.zip .
+
+      - name: 🚀 Upload release asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: wizz-win-x64-${{ github.event.release.tag_name }}.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ==========================================
+  # تحديث Dependabot (إذا كان هناك PR)
+  # ==========================================
+  dependabot-auto-merge:
+    name: Auto-merge Dependabot PRs
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]' && github.event_name == 'pull_request'
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: 🤖 Auto-approve & merge
+        uses: ahmadnassri/action-dependabot-auto-merge@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          target: minor
+          merge-method: squash
