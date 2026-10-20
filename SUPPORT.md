@@ -17,12 +17,12 @@
 - **الأسئلة العامة**: كيف أفعل كذا؟ ما هو الأفضل؟
 - **الأفكار/المقترحات**: ميزة جديدة، تحسين
 - **العرض/المشاركة**: مشروعك المبني على Wizz
-- **الرابط**: [GitHub Discussions](https://github.com/YOUR_USERNAME/wizz/discussions)
+- **الرابط**: [GitHub Discussions](https://github.com/habita73/wizz/discussions)
 
 ### GitHub Issues (للمشاكل المحددة)
 - **Bug Reports**: خطأ قابل لإعادة الإنتاج
 - **Feature Requests**: طلب ميزة جديدة موثقة
-- **الرابط**: [GitHub Issues](https://github.com/YOUR_USERNAME/wizz/issues)
+- **الرابط**: [GitHub Issues](https://github.com/habita73/wizz/issues)
 
 > **قبل فتح Issue**: ابحث في Issues و Discussions الموجودة — قد يكون سؤالك مطروحاً مسبقاً.
 
@@ -84,4 +84,4 @@
 
 ---
 
-**لم تجد إجابتك؟** افتح [Discussion](https://github.com/YOUR_USERNAME/wizz/discussions) أو [Issue](https://github.com/YOUR_USERNAME/wizz/issues/new/choose).
+**لم تجد إجابتك؟** افتح [Discussion](https://github.com/habita73/wizz/discussions) أو [Issue](https://github.com/habita73/wizz/issues/new/choose).

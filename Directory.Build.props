@@ -16,8 +16,8 @@
     <Product>Wizz POS</Product>
     <Copyright>Copyright © 2026 Wizz Contributors</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/YOUR_USERNAME/wizz</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/YOUR_USERNAME/wizz</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/habita73/wizz</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/habita73/wizz</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>pos;point-of-sale;retail;arabic;rtl;blazor;dotnet</PackageTags>
 
@@ -37,8 +37,8 @@
 
   <!-- إعدادات الحزم المشتركة -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" PrivateAssets="all" />
-    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" PrivateAssets="all" />
+    <PackageReference Include="StyleCop.Analyzers" PrivateAssets="all" />
   </ItemGroup>
 
   <!-- خصائص المشروع للاختبارات -->

@@ -12,7 +12,7 @@
 ### إعداد البيئة المحلية
 ```bash
 # 1. استنساخ المستودع
-git clone https://github.com/YOUR_USERNAME/wizz.git
+git clone https://github.com/habita73/wizz.git
 cd wizz
 
 # 2. استعادة الحزم

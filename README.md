@@ -5,12 +5,12 @@
 **نظام POS حديث، محلي أولاً، عربي RTL، مع مساعد AI — مصمم للتجار في الجزائر والعالم العربي**
 
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/download/dotnet/10.0)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/YOUR_USERNAME/wizz/ci.yml?branch=main&logo=github-actions&logoColor=white)](https://github.com/YOUR_USERNAME/wizz/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-24%2F24%20passing-brightgreen?logo=xunit&logoColor=white)](https://github.com/YOUR_USERNAME/wizz/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/badge/coverage-coming%20soon-yellow)](https://github.com/YOUR_USERNAME/wizz/actions)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/habita73/wizz/ci.yml?branch=main&logo=github-actions&logoColor=white)](https://github.com/habita73/wizz/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-31%2F31%20passing-brightgreen?logo=xunit&logoColor=white)](https://github.com/habita73/wizz/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-coming%20soon-yellow)](https://github.com/habita73/wizz/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?logo=opensourceinitiative&logoColor=white)](LICENSE)
-[![GitHub Stars](https://img.shields.io/github/stars/YOUR_USERNAME/wizz?style=social)](https://github.com/YOUR_USERNAME/wizz/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/YOUR_USERNAME/wizz?style=social)](https://github.com/YOUR_USERNAME/wizz/network/members)
+[![GitHub Stars](https://img.shields.io/github/stars/habita73/wizz?style=social)](https://github.com/habita73/wizz/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/habita73/wizz?style=social)](https://github.com/habita73/wizz/network/members)
 
 [![Arabic RTL](https://img.shields.io/badge/RTL-العربية-green?logo=googletranslate&logoColor=white)](#-العربية-rtl-أصيل)
 [![Local First](https://img.shields.io/badge/Local--First-نعم-orange?logo=databricks&logoColor=white)](#-local-first-العمل-بدون-إنترنت)
@@ -50,7 +50,7 @@
 ### التثبيت للمطورين
 ```bash
 # 1. استنساخ
-git clone https://github.com/YOUR_USERNAME/wizz.git
+git clone https://github.com/habita73/wizz.git
 cd wizz
 
 # 2. استعادة الحزم والبناء
@@ -92,7 +92,8 @@ Wizz.sln
 │       ├── Components (RTL Layout, Arabic Inputs)
 │       └── wwwroot (Assets, JS Interop)
 └── tests/
-    └── Wizz.Domain.Tests/        ✅ 24 اختبار للنواة المالية
+    ├── Wizz.Domain.Tests/        ✅ 24 اختبار للنواة المالية
+    └── Wizz.Integration.Tests/   ✅ 7 اختبارات تكامل (بيع، آجل، إيصال، SQLite)
 ```
 
 ### المبادئ المعمارية
@@ -185,8 +186,8 @@ Wizz.sln
 
 | القناة | الوصف |
 |---|---|
-| [GitHub Issues](https://github.com/YOUR_USERNAME/wizz/issues) | أخطاء، طلبات ميزات |
-| [GitHub Discussions](https://github.com/YOUR_USERNAME/wizz/discussions) | أسئلة، نقاشات، أفكار |
+| [GitHub Issues](https://github.com/habita73/wizz/issues) | أخطاء، طلبات ميزات |
+| [GitHub Discussions](https://github.com/habita73/wizz/discussions) | أسئلة، نقاشات، أفكار |
 | [Security Policy](SECURITY.md) | الإبلاغ عن ثغرات أمنية |
 | [Support](SUPPORT.md) | قنوات الدعم الكاملة |
 

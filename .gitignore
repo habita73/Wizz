@@ -38,9 +38,15 @@ packages/
 # Database
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
 *.sqlite
 *.sqlite3
 Backups/
+
+# IDE user files
+*.csproj.user
+*.suo
 
 # Blazor
 wwwroot/dist/
