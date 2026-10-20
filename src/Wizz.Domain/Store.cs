@@ -1,37 +1,77 @@
 namespace Wizz.Domain;
 
+/// <summary>المتجر — بيانات النشاط التجاري والإعدادات المحلية.</summary>
 public sealed class Store
 {
-    public Guid Id { get; init; }
-    public string Name { get; init; } = default!;
-    public string? Address { get; init; }
-    public string? Phone { get; init; }
-    public string? TaxNumber { get; init; }
-    public string? CommercialRegister { get; init; }
-    public bool AllowCreditSales { get; init; }
-    public string Currency { get; init; } = "DZD";
-    public string TimeZone { get; init; } = "Africa/Algiers";
-    public DateTime CreatedAt { get; init; }
-    public DateTime? UpdatedAt { get; init; }
+    public Guid Id { get; private set; }
+    public string Name { get; private set; } = default!;
+    public string? Address { get; private set; }
+    public string? Phone { get; private set; }
+    public string? TaxNumber { get; private set; }
+    public string? CommercialRegister { get; private set; }
+    public bool AllowCreditSales { get; private set; }
+    public string Currency { get; private set; } = "DZD";
+    public string TimeZone { get; private set; } = "Africa/Algiers";
+    public DateTime CreatedAt { get; private set; }
+    public DateTime? UpdatedAt { get; private set; }
 
-    private Store() { }
+    private Store() { } // EF Core
 
-    public Store(string name, string? address = null, string? phone = null, string? taxNumber = null, string? commercialRegister = null, bool allowCreditSales = false)
+    public Store(
+        string name,
+        string? address = null,
+        string? phone = null,
+        string? taxNumber = null,
+        string? commercialRegister = null,
+        bool allowCreditSales = false,
+        string currency = "DZD")
     {
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("اسم المتجر مطلوب", nameof(name));
+        if (string.IsNullOrWhiteSpace(currency)) throw new ArgumentException("العملة مطلوبة", nameof(currency));
 
         Id = Guid.NewGuid();
         Name = name.Trim();
-        Address = string.IsNullOrWhiteSpace(address) ? null : address.Trim();
-        Phone = string.IsNullOrWhiteSpace(phone) ? null : phone.Trim();
-        TaxNumber = string.IsNullOrWhiteSpace(taxNumber) ? null : taxNumber.Trim();
-        CommercialRegister = string.IsNullOrWhiteSpace(commercialRegister) ? null : commercialRegister.Trim();
+        Address = Normalize(address);
+        Phone = Normalize(phone);
+        TaxNumber = Normalize(taxNumber);
+        CommercialRegister = Normalize(commercialRegister);
         AllowCreditSales = allowCreditSales;
+        Currency = currency.Trim().ToUpperInvariant();
         CreatedAt = DateTime.UtcNow;
     }
 
-    public void UpdateSettings(string name, string? address, string? phone, string? taxNumber, string? commercialRegister, bool allowCreditSales)
+    /// <summary>تحديث إعدادات المتجر القابلة للتغيير.</summary>
+    public void UpdateSettings(
+        string name,
+        string? address,
+        string? phone,
+        string? taxNumber,
+        string? commercialRegister,
+        bool allowCreditSales,
+        string? currency = null,
+        string? timeZone = null)
     {
-        // With init-only properties, updates would need a different approach
+        if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("اسم المتجر مطلوب", nameof(name));
+
+        Name = name.Trim();
+        Address = Normalize(address);
+        Phone = Normalize(phone);
+        TaxNumber = Normalize(taxNumber);
+        CommercialRegister = Normalize(commercialRegister);
+        AllowCreditSales = allowCreditSales;
+
+        if (!string.IsNullOrWhiteSpace(currency))
+        {
+            Currency = currency.Trim().ToUpperInvariant();
+        }
+
+        if (!string.IsNullOrWhiteSpace(timeZone))
+        {
+            TimeZone = timeZone.Trim();
+        }
+
+        UpdatedAt = DateTime.UtcNow;
     }
+
+    private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

@@ -48,6 +48,16 @@ public sealed class SaleItem
         LineTotal = Money.Round(Quantity * UnitPrice);
     }
 
+    /// <summary>ربط الصنف بعملية البيع (يُستخدم من داخل الكيان فقط).</summary>
+    internal void AttachToSale(Guid saleId) => SaleId = saleId;
+
+    /// <summary>ربط بيانات الكتالوج لعرض الاسم والوحدة في الإيصال والتقارير.</summary>
+    public void SetCatalog(Product product, UnitOfMeasure unit)
+    {
+        Product = product ?? throw new ArgumentNullException(nameof(product));
+        Unit = unit ?? throw new ArgumentNullException(nameof(unit));
+    }
+
     /// <summary>تحويل لخط النواة المالية للحساب.</summary>
     public SaleLine ToCalculationLine() => new(UnitPrice, Quantity);
 }

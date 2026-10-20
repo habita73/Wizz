@@ -1,0 +1,336 @@
+@page "/sales/history"
+@layout MainLayout
+@inject Wizz.Application.Abstractions.ISaleRepository SaleRepo
+@inject Wizz.Application.Abstractions.IUserRepository UserRepo
+@inject Wizz.Application.Abstractions.IPrinter Printer
+@inject Wizz.Application.UseCases.Sales.CorrectSaleUseCase CorrectSaleUseCase
+@inject Wizz.Application.UseCases.Sales.CancelSaleUseCase CancelSaleUseCase
+@inject Wizz.Application.UseCases.Receipt.GenerateReceiptUseCase GenerateReceiptUseCase
+@inject IJSRuntime JS
+
+<h2>📋 سجل المبيعات</h2>
+
+<div class="row mb-3 g-2">
+    <div class="col-md-3">
+        <label class="form-label small mb-1">من تاريخ</label>
+        <input type="date" class="form-control" @bind="fromDate" @bind:after="Reload" />
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small mb-1">إلى تاريخ</label>
+        <input type="date" class="form-control" @bind="toDate" @bind:after="Reload" />
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small mb-1">الحالة</label>
+        <select class="form-select" @bind="statusFilter" @bind:after="Reload">
+            <option value="">كل الحالات</option>
+            <option value="0">قيد الإنشاء</option>
+            <option value="1">مكتملة</option>
+            <option value="2">مصححة</option>
+            <option value="3">ملغية</option>
+        </select>
+    </div>
+    <div class="col-md-3 d-flex align-items-end">
+        <button class="btn btn-primary w-100" @onclick="Reload">🔍 تحديث</button>
+    </div>
+</div>
+
+@if (sales.Count == 0)
+{
+    <div class="alert alert-info">لا توجد مبيعات في الفترة المحددة.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>الرقم</th>
+                    <th>التاريخ</th>
+                    <th>الحالة</th>
+                    <th class="text-center">الأصناف</th>
+                    <th class="text-end">الإجمالي</th>
+                    <th class="text-end">المدفوع</th>
+                    <th class="text-end">المتبقي</th>
+                    <th>طريقة الدفع</th>
+                    <th>الكاشير</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var sale in sales)
+                {
+                    <tr class="@(sale.Status == SaleStatus.Cancelled ? "table-danger" : sale.Status == SaleStatus.Corrected ? "table-warning" : "")">
+                        <td class="font-monospace">@sale.Id.ToString("N")[..8].ToUpperInvariant()</td>
+                        <td>@sale.SaleDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>
+                            <span class="badge @GetStatusBadge(sale.Status)">@GetStatusText(sale.Status)</span>
+                        </td>
+                        <td class="text-center">@sale.Items.Count</td>
+                        <td class="text-end fw-bold">@sale.Total.ToString("N2") د.ج</td>
+                        <td class="text-end">@sale.Paid.ToString("N2") د.ج</td>
+                        <td class="text-end @(sale.Remaining > 0 ? "text-danger" : "text-success") fw-bold">@sale.Remaining.ToString("N2") د.ج</td>
+                        <td>@GetPaymentMethodText(sale.PaymentMethod)</td>
+                        <td>@GetCashierName(sale.CashierId)</td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary" @onclick="() => ViewReceipt(sale.Id)" title="عرض الإيصال">👁️</button>
+                                <button class="btn btn-outline-secondary" @onclick="() => PrintReceipt(sale.Id)" title="طباعة">🖨️</button>
+                                @if (sale.Status == SaleStatus.Completed && !sale.IsCorrected)
+                                {
+                                    <button class="btn btn-outline-warning" @onclick="() => CorrectSale(sale.Id)" title="تصحيح">✏️</button>
+                                    <button class="btn btn-outline-danger" @onclick="() => CancelSale(sale.Id)" title="إلغاء">❌</button>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <nav aria-label="صفحات">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a class="page-link" href="#" @onclick="() => ChangePage(currentPage - 1)">السابق</a>
+            </li>
+            <li class="page-item disabled"><span class="page-link">صفحة @currentPage من @totalPages</span></li>
+            <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                <a class="page-link" href="#" @onclick="() => ChangePage(currentPage + 1)">التالي</a>
+            </li>
+        </ul>
+    </nav>
+}
+
+@if (receipt != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">إيصال @receipt.SaleNumber</h5>
+                    <button type="button" class="btn-close" @onclick="() => receipt = null"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-2">
+                        <strong>@receipt.Store.Name</strong><br />
+                        <small class="text-muted">@receipt.Store.Address</small><br />
+                        <small class="text-muted">@receipt.Store.Phone</small>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted">
+                        <span>@receipt.SaleDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
+                        <span>@GetPaymentMethodText((Wizz.Domain.PaymentMethod)receipt.PaymentMethod)</span>
+                    </div>
+                    <hr />
+                    <table class="table table-sm">
+                        <tbody>
+                            @foreach (var line in receipt.Lines)
+                            {
+                                <tr>
+                                    <td>@line.ProductName</td>
+                                    <td class="text-center">@line.Quantity.ToString("0.###") @line.UnitSymbol</td>
+                                    <td class="text-end">@line.LineTotal.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <hr />
+                    <div class="d-flex justify-content-between"><span>المجموع</span><span>@receipt.Subtotal.ToString("N2") د.ج</span></div>
+                    <div class="d-flex justify-content-between text-success"><span>الخصم</span><span>@receipt.Discount.ToString("N2") د.ج</span></div>
+                    <div class="d-flex justify-content-between fw-bold"><span>الإجمالي</span><span>@receipt.Total.ToString("N2") د.ج</span></div>
+                    <div class="d-flex justify-content-between"><span>المدفوع</span><span>@receipt.Paid.ToString("N2") د.ج</span></div>
+                    @if (receipt.Remaining > 0)
+                    {
+                        <div class="d-flex justify-content-between text-danger fw-bold"><span>المتبقي</span><span>@receipt.Remaining.ToString("N2") د.ج</span></div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => receipt = null">إغلاق</button>
+                    <button class="btn btn-primary" @onclick="() => PrintReceipt(receipt.SaleId)">🖨️ طباعة</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private DateTime fromDate = DateTime.Today.AddDays(-30);
+    private DateTime toDate = DateTime.Today;
+    private string statusFilter = "";
+    private List<Sale> sales = new();
+    private Dictionary<Guid, string> cashierNames = new();
+    private Wizz.Application.DTOs.ReceiptDto? receipt;
+    private int currentPage = 1;
+    private int pageSize = 20;
+    private int totalPages = 1;
+    private Guid? currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var users = await UserRepo.GetAllAsync();
+        cashierNames = users.ToDictionary(u => u.Id, u => u.FullName);
+        currentUserId = users.FirstOrDefault(u => u.IsActive && u.Role == UserRole.Admin)?.Id
+                        ?? users.FirstOrDefault(u => u.IsActive)?.Id;
+
+        await LoadSales();
+    }
+
+    private async Task Reload()
+    {
+        currentPage = 1;
+        await LoadSales();
+    }
+
+    private async Task LoadSales()
+    {
+        // نطاق محلي كامل اليوم يُحوَّل إلى UTC لأن الطوابع الزمنية تُحفظ بـ UTC.
+        var from = fromDate.Date.ToUniversalTime();
+        var to = toDate.Date.AddDays(1).ToUniversalTime();
+
+        var allSales = await SaleRepo.GetByDateRangeAsync(from, to);
+
+        if (!string.IsNullOrEmpty(statusFilter) && Enum.TryParse<SaleStatus>(statusFilter, out var status))
+        {
+            allSales = allSales.Where(s => s.Status == status).ToList();
+        }
+
+        allSales = allSales.OrderByDescending(s => s.SaleDate).ToList();
+
+        totalPages = Math.Max(1, (int)Math.Ceiling((double)allSales.Count / pageSize));
+        currentPage = Math.Clamp(currentPage, 1, totalPages);
+
+        sales = allSales.Skip((currentPage - 1) * pageSize).Take(pageSize).ToList();
+    }
+
+    private async Task ChangePage(int page)
+    {
+        if (page >= 1 && page <= totalPages)
+        {
+            currentPage = page;
+            await LoadSales();
+        }
+    }
+
+    private async Task ViewReceipt(Guid saleId)
+    {
+        var result = await GenerateReceiptUseCase.ExecuteAsync(saleId);
+        if (!result.IsSuccess)
+        {
+            await JS.InvokeVoidAsync("alert", $"تعذر عرض الإيصال: {string.Join(" | ", result.Errors)}");
+            return;
+        }
+
+        receipt = result.Value;
+    }
+
+    private async Task PrintReceipt(Guid saleId)
+    {
+        var result = await GenerateReceiptUseCase.ExecuteAsync(saleId);
+        if (!result.IsSuccess)
+        {
+            await JS.InvokeVoidAsync("alert", $"تعذر توليد الإيصال: {string.Join(" | ", result.Errors)}");
+            return;
+        }
+
+        var r = result.Value;
+        var builder = new System.Text.StringBuilder();
+        builder.AppendLine(r.Store.Name);
+        builder.AppendLine(r.Store.Address ?? string.Empty);
+        builder.AppendLine(new string('-', 32));
+        builder.AppendLine($"إيصال: {r.SaleNumber} — {r.SaleDate.ToLocalTime():yyyy-MM-dd HH:mm}");
+        builder.AppendLine(new string('-', 32));
+        foreach (var line in r.Lines)
+        {
+            builder.AppendLine(line.ProductName);
+            builder.AppendLine($"  {line.Quantity:0.###} {line.UnitSymbol} × {line.UnitPrice:N2} = {line.LineTotal:N2}");
+        }
+
+        builder.AppendLine(new string('-', 32));
+        builder.AppendLine($"الإجمالي: {r.Total:N2} — المدفوع: {r.Paid:N2} — المتبقي: {r.Remaining:N2}");
+
+        var printed = await Printer.PrintAsync(builder.ToString());
+        await JS.InvokeVoidAsync("alert", printed
+            ? $"تم إرسال الإيصال إلى: {Printer.DeviceName}"
+            : "تعذرت الطباعة. تحقق من الطابعة.");
+    }
+
+    private async Task CorrectSale(Guid saleId)
+    {
+        if (currentUserId is null)
+        {
+            await JS.InvokeVoidAsync("alert", "لا يوجد مستخدم نشط لتنفيذ التصحيح.");
+            return;
+        }
+
+        var reason = await JS.InvokeAsync<string>("prompt", "أدخل سبب التصحيح:");
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return;
+        }
+
+        var result = await CorrectSaleUseCase.ExecuteAsync(saleId, reason, currentUserId.Value);
+        await JS.InvokeVoidAsync("alert", result.IsSuccess
+            ? "تم إنشاء بيع مصحح وحفظ الأصل."
+            : $"تعذر التصحيح: {string.Join(" | ", result.Errors)}");
+
+        await LoadSales();
+    }
+
+    private async Task CancelSale(Guid saleId)
+    {
+        if (currentUserId is null)
+        {
+            await JS.InvokeVoidAsync("alert", "لا يوجد مستخدم نشط لتنفيذ الإلغاء.");
+            return;
+        }
+
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "هل أنت متأكد من إلغاء هذا البيع؟ لا يمكن التراجع.");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        var reason = await JS.InvokeAsync<string>("prompt", "أدخل سبب الإلغاء:");
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return;
+        }
+
+        var result = await CancelSaleUseCase.ExecuteAsync(saleId, reason, currentUserId.Value);
+        await JS.InvokeVoidAsync("alert", result.IsSuccess
+            ? "تم إلغاء البيع."
+            : $"تعذر الإلغاء: {string.Join(" | ", result.Errors)}");
+
+        await LoadSales();
+    }
+
+    private string GetCashierName(Guid? cashierId) =>
+        cashierId.HasValue && cashierNames.TryGetValue(cashierId.Value, out var name) ? name : "—";
+
+    private static string GetStatusBadge(SaleStatus status) => status switch
+    {
+        SaleStatus.Pending => "bg-secondary",
+        SaleStatus.Completed => "bg-success",
+        SaleStatus.Corrected => "bg-warning text-dark",
+        SaleStatus.Cancelled => "bg-danger",
+        _ => "bg-secondary",
+    };
+
+    private static string GetStatusText(SaleStatus status) => status switch
+    {
+        SaleStatus.Pending => "قيد الإنشاء",
+        SaleStatus.Completed => "مكتملة",
+        SaleStatus.Corrected => "مصححة",
+        SaleStatus.Cancelled => "ملغية",
+        _ => "غير معروف",
+    };
+
+    private static string GetPaymentMethodText(Wizz.Domain.PaymentMethod method) => method switch
+    {
+        Wizz.Domain.PaymentMethod.Cash => "💵 نقدي",
+        Wizz.Domain.PaymentMethod.Card => "💳 بطاقة",
+        Wizz.Domain.PaymentMethod.Credit => "📝 آجل",
+        Wizz.Domain.PaymentMethod.Mobile => "📱 محمول",
+        Wizz.Domain.PaymentMethod.Mixed => "🔄 مختلط",
+        _ => "—",
+    };
+}

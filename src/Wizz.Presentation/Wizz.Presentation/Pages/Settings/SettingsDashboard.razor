@@ -1,0 +1,619 @@
+@page "/settings"
+@layout MainLayout
+@inject Wizz.Application.Abstractions.IStoreRepository StoreRepo
+@inject Wizz.Application.Abstractions.IUserRepository UserRepo
+@inject Wizz.Application.Abstractions.IBackupService BackupService
+@inject Wizz.Application.Abstractions.IUnitOfWork UnitOfWork
+@inject IJSRuntime JS
+
+<h2>⚙️ الإعدادات</h2>
+
+<div class="row">
+    <!-- إعدادات المتجر -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header"><h5 class="mb-0">🏪 إعدادات المتجر</h5></div>
+            <div class="card-body">
+                @if (store == null)
+                {
+                    <div class="alert alert-warning">لم يتم إعداد المتجر بعد.</div>
+                    <button class="btn btn-primary" @onclick="() => showStoreModal = true">إعداد المتجر</button>
+                }
+                else
+                {
+                    <div class="mb-3">
+                        <label class="form-label">اسم المتجر <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" @bind="storeForm.Name" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">العنوان</label>
+                        <textarea class="form-control" rows="2" @bind="storeForm.Address"></textarea>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">الهاتف</label>
+                            <input type="text" class="form-control" @bind="storeForm.Phone" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">العملة</label>
+                            <input type="text" class="form-control" maxlength="3" @bind="storeForm.Currency" />
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">الرقم الضريبي (NIF)</label>
+                            <input type="text" class="form-control" @bind="storeForm.TaxNumber" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">السجل التجاري</label>
+                            <input type="text" class="form-control" @bind="storeForm.CommercialRegister" />
+                        </div>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="allowCredit" @bind="storeForm.AllowCreditSales" />
+                        <label class="form-check-label" for="allowCredit">السماح بالبيع الآجل (الدين)</label>
+                    </div>
+                    <button type="button" class="btn btn-primary" @onclick="SaveStoreSettings" disabled="@savingStore">
+                        @if (savingStore)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        حفظ الإعدادات
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- المستخدمون -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">👥 المستخدمون</h5>
+                <button class="btn btn-sm btn-success" @onclick="NewUser">➕ مستخدم</button>
+            </div>
+            <div class="card-body">
+                @if (users.Count == 0)
+                {
+                    <div class="alert alert-info mb-0">لا يوجد مستخدمون.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>اسم المستخدم</th>
+                                    <th>الاسم الكامل</th>
+                                    <th>الدور</th>
+                                    <th>الحالة</th>
+                                    <th>آخر دخول</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var user in users)
+                                {
+                                    <tr>
+                                        <td>@user.Username</td>
+                                        <td>@user.FullName</td>
+                                        <td><span class="badge @GetRoleBadge(user.Role)">@GetRoleText(user.Role)</span></td>
+                                        <td>
+                                            <span class="badge @(user.IsActive ? "bg-success" : "bg-secondary")">
+                                                @(user.IsActive ? "نشط" : "معطل")
+                                            </span>
+                                        </td>
+                                        <td>@(user.LastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary" title="تعديل" @onclick="() => EditUser(user)">✏️</button>
+                                                <button class="btn btn-outline-warning" title="إعادة تعيين كلمة المرور" @onclick="() => ResetPassword(user)">🔑</button>
+                                                <button class="btn btn-outline-@(user.IsActive ? "danger" : "success")"
+                                                        title="@(user.IsActive ? "تعطيل" : "تفعيل")"
+                                                        @onclick="() => ToggleUserActive(user)">
+                                                    @(user.IsActive ? "🚫" : "✅")
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- النسخ الاحتياطي -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">💾 النسخ الاحتياطي</h5>
+                <button class="btn btn-sm btn-primary" @onclick="CreateBackup" disabled="@backupInProgress">
+                    @if (backupInProgress)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    نسخة جديدة
+                </button>
+            </div>
+            <div class="card-body">
+                @if (backups.Count == 0)
+                {
+                    <div class="alert alert-info mb-0">لا توجد نسخ احتياطية.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>الوصف</th>
+                                    <th>التاريخ</th>
+                                    <th class="text-end">الحجم</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var backup in backups)
+                                {
+                                    <tr>
+                                        <td>@backup.Description</td>
+                                        <td>@backup.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                                        <td class="text-end">@FormatBytes(backup.SizeBytes)</td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-success" title="استعادة" @onclick="() => RestoreBackup(backup.Path)">↩️</button>
+                                                <button class="btn btn-outline-danger" title="حذف" @onclick="() => DeleteBackup(backup.Path)">🗑️</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- معلومات النظام -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header"><h5 class="mb-0">ℹ️ معلومات النظام</h5></div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless mb-0">
+                    <tbody>
+                        <tr><td>إصدار التطبيق</td><td class="text-end fw-bold">0.1.0</td></tr>
+                        <tr><td>إطار العمل</td><td class="text-end">.NET 10 / Blazor Server</td></tr>
+                        <tr><td>قاعدة البيانات</td><td class="text-end">SQLite (wizz.db)</td></tr>
+                        <tr><td>الذكاء الاصطناعي</td><td class="text-end">Ollama (محلي)</td></tr>
+                        <tr><td>اللغة</td><td class="text-end">العربية (RTL)</td></tr>
+                        <tr><td>الترخيص</td><td class="text-end">MIT</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة المتجر -->
+@if (showStoreModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">إعداد المتجر</h5>
+                    <button type="button" class="btn-close" @onclick="() => showStoreModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">اسم المتجر <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" @bind="storeForm.Name" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">العنوان</label>
+                        <textarea class="form-control" rows="2" @bind="storeForm.Address"></textarea>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">الهاتف</label>
+                            <input type="text" class="form-control" @bind="storeForm.Phone" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">العملة</label>
+                            <input type="text" class="form-control" maxlength="3" @bind="storeForm.Currency" />
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">الرقم الضريبي</label>
+                            <input type="text" class="form-control" @bind="storeForm.TaxNumber" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">السجل التجاري</label>
+                            <input type="text" class="form-control" @bind="storeForm.CommercialRegister" />
+                        </div>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="allowCreditModal" @bind="storeForm.AllowCreditSales" />
+                        <label class="form-check-label" for="allowCreditModal">السماح بالبيع الآجل</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => showStoreModal = false">إلغاء</button>
+                    <button class="btn btn-primary" @onclick="SaveStoreSettings">حفظ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- نافذة المستخدم -->
+@if (showUserModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(editingUser != null ? "تعديل المستخدم" : "مستخدم جديد")</h5>
+                    <button type="button" class="btn-close" @onclick="() => showUserModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">اسم المستخدم <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" @bind="userForm.Username" disabled="@(editingUser != null)" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">
+                            كلمة المرور
+                            @(editingUser != null ? "(اتركها فارغة للإبقاء على الحالية)" : "*")
+                        </label>
+                        <input type="password" class="form-control" @bind="userForm.Password" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">الاسم الكامل <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" @bind="userForm.FullName" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">الدور</label>
+                        <select class="form-select" @bind="userForm.Role">
+                            <option value="Cashier">كاشير</option>
+                            <option value="Manager">مدير</option>
+                            <option value="Admin">مدير نظام</option>
+                        </select>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="userActive" @bind="userForm.IsActive" />
+                        <label class="form-check-label" for="userActive">نشط</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => showUserModal = false">إلغاء</button>
+                    <button class="btn btn-primary" @onclick="SaveUser" disabled="@savingUser">حفظ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private Store? store;
+    private StoreForm storeForm = new();
+    private bool showStoreModal;
+    private bool savingStore;
+
+    private List<User> users = new();
+    private bool showUserModal;
+    private User? editingUser;
+    private UserForm userForm = new();
+    private bool savingUser;
+
+    private List<Wizz.Application.Abstractions.BackupInfo> backups = new();
+    private bool backupInProgress;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStore();
+        await LoadUsers();
+        await LoadBackups();
+    }
+
+    private async Task LoadStore()
+    {
+        store = await StoreRepo.GetAsync();
+        if (store != null)
+        {
+            storeForm = new StoreForm
+            {
+                Name = store.Name,
+                Address = store.Address,
+                Phone = store.Phone,
+                TaxNumber = store.TaxNumber,
+                CommercialRegister = store.CommercialRegister,
+                AllowCreditSales = store.AllowCreditSales,
+                Currency = store.Currency,
+            };
+        }
+    }
+
+    private async Task LoadUsers() => users = (await UserRepo.GetAllAsync()).ToList();
+
+    private async Task LoadBackups() => backups = (await BackupService.ListBackupsAsync()).ToList();
+
+    private async Task SaveStoreSettings()
+    {
+        if (string.IsNullOrWhiteSpace(storeForm.Name))
+        {
+            await JS.InvokeVoidAsync("alert", "اسم المتجر مطلوب");
+            return;
+        }
+
+        savingStore = true;
+        try
+        {
+            if (store == null)
+            {
+                var created = new Store(
+                    storeForm.Name,
+                    storeForm.Address,
+                    storeForm.Phone,
+                    storeForm.TaxNumber,
+                    storeForm.CommercialRegister,
+                    storeForm.AllowCreditSales,
+                    string.IsNullOrWhiteSpace(storeForm.Currency) ? "DZD" : storeForm.Currency);
+                await StoreRepo.AddAsync(created);
+            }
+            else
+            {
+                store.UpdateSettings(
+                    storeForm.Name,
+                    storeForm.Address,
+                    storeForm.Phone,
+                    storeForm.TaxNumber,
+                    storeForm.CommercialRegister,
+                    storeForm.AllowCreditSales,
+                    storeForm.Currency);
+                StoreRepo.Update(store);
+            }
+
+            await UnitOfWork.SaveChangesAsync();
+            showStoreModal = false;
+            await LoadStore();
+            await JS.InvokeVoidAsync("alert", "تم حفظ إعدادات المتجر بنجاح");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"خطأ: {ex.Message}");
+        }
+        finally
+        {
+            savingStore = false;
+        }
+    }
+
+    private async Task CreateBackup()
+    {
+        backupInProgress = true;
+        try
+        {
+            var result = await BackupService.CreateBackupAsync();
+            if (result.Success)
+            {
+                await LoadBackups();
+                await JS.InvokeVoidAsync("alert", $"تم إنشاء النسخة الاحتياطية: {result.BackupPath}");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("alert", $"فشل النسخ: {result.ErrorMessage}");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"خطأ: {ex.Message}");
+        }
+        finally
+        {
+            backupInProgress = false;
+        }
+    }
+
+    private async Task RestoreBackup(string path)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "تحذير: الاستعادة ستستبدل البيانات الحالية. هل تريد المتابعة؟");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        var result = await BackupService.RestoreAsync(path);
+        if (result.Success)
+        {
+            await JS.InvokeVoidAsync("alert", "تمت الاستعادة بنجاح. أعد تشغيل التطبيق.");
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("alert", $"فشل الاستعادة: {result.ErrorMessage}");
+        }
+    }
+
+    private async Task DeleteBackup(string path)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "هل تريد حذف هذه النسخة الاحتياطية؟");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        await BackupService.DeleteBackupAsync(path);
+        await LoadBackups();
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] units = { "B", "KB", "MB", "GB" };
+        var index = 0;
+        double size = bytes;
+        while (size >= 1024 && index < units.Length - 1)
+        {
+            size /= 1024;
+            index++;
+        }
+
+        return $"{size:N1} {units[index]}";
+    }
+
+    private void NewUser()
+    {
+        editingUser = null;
+        userForm = new UserForm { Role = UserRole.Cashier, IsActive = true };
+        showUserModal = true;
+    }
+
+    private void EditUser(User user)
+    {
+        editingUser = user;
+        userForm = new UserForm
+        {
+            Username = user.Username,
+            FullName = user.FullName,
+            Role = user.Role,
+            IsActive = user.IsActive,
+        };
+        showUserModal = true;
+    }
+
+    private async Task SaveUser()
+    {
+        if (string.IsNullOrWhiteSpace(userForm.FullName))
+        {
+            await JS.InvokeVoidAsync("alert", "الاسم الكامل مطلوب");
+            return;
+        }
+
+        savingUser = true;
+        try
+        {
+            if (editingUser != null)
+            {
+                editingUser.UpdateProfile(userForm.FullName, userForm.Role);
+                if (!string.IsNullOrEmpty(userForm.Password))
+                {
+                    editingUser.ChangePassword(PasswordHasher.Hash(userForm.Password));
+                }
+
+                if (userForm.IsActive)
+                {
+                    editingUser.Activate();
+                }
+                else
+                {
+                    editingUser.Deactivate();
+                }
+
+                UserRepo.Update(editingUser);
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(userForm.Username) || string.IsNullOrEmpty(userForm.Password))
+                {
+                    await JS.InvokeVoidAsync("alert", "اسم المستخدم وكلمة المرور مطلوبان");
+                    return;
+                }
+
+                var created = new User(
+                    userForm.Username,
+                    PasswordHasher.Hash(userForm.Password),
+                    userForm.FullName,
+                    userForm.Role);
+
+                if (!userForm.IsActive)
+                {
+                    created.Deactivate();
+                }
+
+                await UserRepo.AddAsync(created);
+            }
+
+            await UnitOfWork.SaveChangesAsync();
+            showUserModal = false;
+            await LoadUsers();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"خطأ: {ex.Message}");
+        }
+        finally
+        {
+            savingUser = false;
+        }
+    }
+
+    private async Task ResetPassword(User user)
+    {
+        var newPassword = await JS.InvokeAsync<string>("prompt", $"كلمة مرور جديدة للمستخدم {user.Username}:");
+        if (string.IsNullOrWhiteSpace(newPassword))
+        {
+            return;
+        }
+
+        user.ChangePassword(PasswordHasher.Hash(newPassword));
+        UserRepo.Update(user);
+        await UnitOfWork.SaveChangesAsync();
+        await JS.InvokeVoidAsync("alert", "تم تحديث كلمة المرور");
+    }
+
+    private async Task ToggleUserActive(User user)
+    {
+        if (user.IsActive)
+        {
+            user.Deactivate();
+        }
+        else
+        {
+            user.Activate();
+        }
+
+        UserRepo.Update(user);
+        await UnitOfWork.SaveChangesAsync();
+        await LoadUsers();
+    }
+
+    private static string GetRoleBadge(UserRole role) => role switch
+    {
+        UserRole.Admin => "bg-danger",
+        UserRole.Manager => "bg-warning text-dark",
+        UserRole.Cashier => "bg-primary",
+        _ => "bg-secondary",
+    };
+
+    private static string GetRoleText(UserRole role) => role switch
+    {
+        UserRole.Admin => "مدير نظام",
+        UserRole.Manager => "مدير",
+        UserRole.Cashier => "كاشير",
+        _ => "—",
+    };
+
+    private sealed class StoreForm
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? Address { get; set; }
+        public string? Phone { get; set; }
+        public string? TaxNumber { get; set; }
+        public string? CommercialRegister { get; set; }
+        public bool AllowCreditSales { get; set; }
+        public string Currency { get; set; } = "DZD";
+    }
+
+    private sealed class UserForm
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public UserRole Role { get; set; } = UserRole.Cashier;
+        public bool IsActive { get; set; } = true;
+    }
+}

@@ -26,6 +26,10 @@ public sealed class UnitOfMeasure
     }
 
     public void SetAsBaseUnit() => IsBaseUnit = true;
+
+    /// <summary>ربط الوحدة بمنتجها (يُستخدم من داخل الكيان فقط).</summary>
+    internal void AttachToProduct(Guid productId) => ProductId = productId;
+
     public void Update(string name, string symbol, decimal baseQuantity)
     {
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("اسم الوحدة مطلوب", nameof(name));

@@ -1,0 +1,102 @@
+@page "/"
+@layout MainLayout
+@inject Wizz.Application.Abstractions.ISaleRepository SaleRepo
+@inject Wizz.Application.Abstractions.IProductRepository ProductRepo
+
+<h1 class="h3 mb-1">Wizz — نظام نقاط بيع ذكي</h1>
+<p class="text-muted">مرحباً بك. هذه نظرة سريعة على حالة المتجر اليوم.</p>
+
+<div class="row g-3 my-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="text-muted small">مبيعات اليوم</div>
+                <div class="fs-4 fw-bold">@TodaySales.ToString("N2") د.ج</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="text-muted small">عمليات اليوم</div>
+                <div class="fs-4 fw-bold">@TodayCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="text-muted small">إجمالي الديون المستحقة</div>
+                <div class="fs-4 fw-bold @(TotalRemaining > 0 ? "text-danger" : "")">@TotalRemaining.ToString("N2") د.ج</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="text-muted small">المنتجات المسجلة</div>
+                <div class="fs-4 fw-bold">@ProductCount</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title">🛒 بيع جديد</h5>
+                <p class="card-text small text-muted">إنشاء عملية بيع سريعة</p>
+                <a href="/sales/new" class="btn btn-primary w-100">ابدأ البيع</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title">📦 المنتجات</h5>
+                <p class="card-text small text-muted">إدارة المنتجات والأسعار</p>
+                <a href="/products" class="btn btn-outline-primary w-100">عرض المنتجات</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title">📊 التقارير</h5>
+                <p class="card-text small text-muted">مبيعات، طرق دفع، أفضل المنتجات</p>
+                <a href="/reports" class="btn btn-outline-primary w-100">عرض التقارير</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title">⚙️ الإعدادات</h5>
+                <p class="card-text small text-muted">المتجر، المستخدمون، النسخ الاحتياطي</p>
+                <a href="/settings" class="btn btn-outline-primary w-100">الإعدادات</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private decimal TodaySales;
+    private int TodayCount;
+    private decimal TotalRemaining;
+    private int ProductCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var today = DateTime.Today.ToUniversalTime();
+        var tomorrow = DateTime.Today.AddDays(1).ToUniversalTime();
+
+        var sales = await SaleRepo.GetByDateRangeAsync(today, tomorrow);
+        var completed = sales.Where(s => s.Status != SaleStatus.Cancelled).ToList();
+
+        TodaySales = completed.Sum(s => s.Total);
+        TodayCount = completed.Count;
+        TotalRemaining = await SaleRepo.GetTotalRemainingAsync();
+        ProductCount = await ProductRepo.CountAsync();
+    }
+}

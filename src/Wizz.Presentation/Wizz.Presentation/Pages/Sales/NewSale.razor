@@ -1,0 +1,527 @@
+@page "/sales/new"
+@layout MainLayout
+@inject IJSRuntime JS
+@inject Wizz.Application.Abstractions.IProductRepository ProductRepo
+@inject Wizz.Application.Abstractions.IUserRepository UserRepo
+@inject Wizz.Application.UseCases.Sales.CreateSaleUseCase CreateSaleUseCase
+@inject Wizz.Application.UseCases.Receipt.GenerateReceiptUseCase GenerateReceiptUseCase
+@inject Wizz.Application.Abstractions.IPrinter Printer
+@inject Wizz.Application.Abstractions.IBarcodeReader BarcodeReader
+
+<h2>🛒 بيع جديد</h2>
+
+<div class="row">
+    <!-- Product Search & Cart -->
+    <div class="col-lg-8">
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h5 class="mb-0">إضافة منتجات</h5>
+                <div class="input-group" style="max-width: 360px;">
+                    <input type="text" @bind="searchQuery" @bind:event="oninput" @bind:after="ApplyFilter"
+                           placeholder="بحث بالاسم أو الباركود..." class="form-control" @onkeydown="OnSearchKeyDown" />
+                    <button class="btn btn-outline-secondary" @onclick="ScanBarcode" title="مسح باركود (F2)">📷</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small text-muted">
+                        @if (isFiltering)
+                        {
+                            <text>@filteredProducts.Count نتيجة من أصل @allProducts.Count منتج</text>
+                        }
+                        else
+                        {
+                            <text>@allProducts.Count منتج متاح</text>
+                        }
+                    </span>
+                    @if (isFiltering)
+                    {
+                        <button class="btn btn-sm btn-link p-0" @onclick="ClearFilter">عرض كل المنتجات</button>
+                    }
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(justAdded))
+                {
+                    <div class="alert alert-success py-1 px-2 small mb-2">✅ تمت إضافة «@justAdded» إلى السلة.</div>
+                }
+
+                @if (filteredProducts.Count == 0)
+                {
+                    <div class="alert alert-info mb-0">
+                        @(allProducts.Count == 0
+                            ? "لا توجد منتجات بعد. أضف منتجاً من صفحة المنتجات."
+                            : "لا توجد منتجات مطابقة للبحث.")
+                    </div>
+                }
+                else
+                {
+                    <div class="row g-2" style="max-height: 340px; overflow-y: auto;">
+                        @foreach (var product in filteredProducts)
+                        {
+                            <div class="col-6 col-md-4 col-xl-3">
+                                <button type="button" class="btn btn-light border w-100 h-100 p-2 text-start"
+                                        style="white-space: normal;" @onclick="() => AddToCart(product)">
+                                    <div class="fw-bold text-truncate" title="@product.Name">@product.Name</div>
+                                    <div class="small text-muted text-truncate">@(product.Barcode ?? "بدون باركود")</div>
+                                    <div class="small mt-1">
+                                        <span class="fw-bold text-success">@product.RetailPrice.ToString("N2") د.ج</span>
+                                        <span class="text-muted">/ @(product.BaseUnit?.Symbol ?? "قطعة")</span>
+                                    </div>
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Cart -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">السلة (@cartItems.Count)</h5>
+                @if (cartItems.Count > 0)
+                {
+                    <button class="btn btn-sm btn-outline-danger" @onclick="ClearCart">تفريغ السلة</button>
+                }
+            </div>
+            <div class="card-body">
+                @if (cartItems.Count == 0)
+                {
+                    <div class="text-center text-muted py-4">السلة فارغة. ابحث عن منتج وأضفه للسلة.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>المنتج</th>
+                                    <th>الوحدة</th>
+                                    <th class="text-center">الكمية</th>
+                                    <th class="text-center">السعر</th>
+                                    <th class="text-end">الإجمالي</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in cartItems)
+                                {
+                                    <tr>
+                                        <td>@item.ProductName</td>
+                                        <td>@item.UnitSymbol</td>
+                                        <td class="text-center">
+                                            <input type="number" step="0.001" min="0.001" class="form-control form-control-sm text-center mx-auto" style="width: 90px;"
+                                                   @bind="item.Quantity" @bind:event="oninput" @bind:after="() => UpdateCartItem(item)" />
+                                        </td>
+                                        <td class="text-center">
+                                            <select class="form-select form-select-sm mx-auto" style="width: 150px;"
+                                                    @bind="item.IsWholesale" @bind:after="() => UpdateCartItem(item)">
+                                                <option value="false">تجزئة (@item.RetailPrice.ToString("N2"))</option>
+                                                <option value="true">جملة (@item.WholesalePrice.ToString("N2"))</option>
+                                            </select>
+                                        </td>
+                                        <td class="text-end fw-bold">@item.LineTotal.ToString("N2") د.ج</td>
+                                        <td class="text-end">
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveFromCart(item)">
+                                                🗑️
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment & Summary -->
+    <div class="col-lg-4">
+        <div class="card sticky-top" style="top: 20px;">
+            <div class="card-header">
+                <h5 class="mb-0">ملخص الدفع</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">طريقة الدفع</label>
+                    <select class="form-select" @bind="paymentMethod" @bind:after="OnPaymentMethodChanged">
+                        <option value="0">نقدي</option>
+                        <option value="1">بطاقة</option>
+                        <option value="2">آجل (دين)</option>
+                        <option value="3">محمول</option>
+                        <option value="4">مختلط</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">الخصم</label>
+                    <input type="number" step="0.01" min="0" max="@Subtotal" class="form-control"
+                           @bind="discount" @bind:event="oninput" />
+                    @if (discount > Subtotal)
+                    {
+                        <div class="text-danger small mt-1">الخصم لا يمكن أن يتجاوز المجموع الفرعي.</div>
+                    }
+                </div>
+
+                <hr />
+
+                <div class="d-flex justify-content-between mb-2">
+                    <span>المجموع الفرعي</span>
+                    <span class="fw-bold">@Subtotal.ToString("N2") د.ج</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2 text-success">
+                    <span>الخصم</span>
+                    <span class="fw-bold">-@discount.ToString("N2") د.ج</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2 fw-bold fs-5">
+                    <span>الإجمالي</span>
+                    <span>@Total.ToString("N2") د.ج</span>
+                </div>
+
+                <hr />
+
+                <div class="mb-3">
+                    <label class="form-label">المبلغ المدفوع</label>
+                    <input type="number" step="0.01" min="0" class="form-control form-control-lg fw-bold"
+                           @bind="paidAmount" @bind:event="oninput" />
+                    @if (Remaining > 0)
+                    {
+                        <div class="text-danger small mt-1">المتبقي: @Remaining.ToString("N2") د.ج</div>
+                    }
+                    @if (paymentMethod != 2 && paidAmount > Total)
+                    {
+                        <div class="text-warning small mt-1">المبلغ المدفوع أكبر من الإجمالي.</div>
+                    }
+                </div>
+
+                @if (paymentMethod == 2)
+                {
+                    <div class="mb-3">
+                        <label class="form-label">تاريخ الاستحقاق</label>
+                        <input type="date" class="form-control" @bind="dueDate" />
+                    </div>
+                }
+
+                <div class="d-grid gap-2">
+                    <button class="btn btn-success btn-lg" @onclick="CompleteSale" disabled="@(!CanCompleteSale || savingSale)">
+                        @if (savingSale)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        ✅ إتمام البيع (@Total.ToString("N2") د.ج)
+                    </button>
+                    @if (lastSaleId != null)
+                    {
+                        <button class="btn btn-outline-secondary" @onclick="PrintReceipt">🖨️ طباعة آخر إيصال</button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string searchQuery = "";
+    private List<Wizz.Application.DTOs.ProductDto> allProducts = new();
+    private List<Wizz.Application.DTOs.ProductDto> filteredProducts = new();
+    private string? justAdded;
+    private List<CartItem> cartItems = new();
+    private decimal discount;
+    private decimal paidAmount;
+    private int paymentMethod;
+    private DateTime dueDate = DateTime.Today.AddDays(30);
+    private Guid? cashierId;
+    private Guid? lastSaleId;
+    private bool savingSale;
+
+    private bool isFiltering => !string.IsNullOrWhiteSpace(searchQuery);
+
+    private decimal Subtotal => cartItems.Sum(i => i.LineTotal);
+    private decimal Total => Math.Max(0, Subtotal - discount);
+    private decimal Remaining => Math.Max(0, Total - paidAmount);
+
+    private bool CanCompleteSale =>
+        cartItems.Count > 0
+        && discount <= Subtotal
+        && (paymentMethod == 2
+            ? dueDate.Date >= DateTime.Today
+            : paidAmount >= Total);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ResolveCashierAsync();
+        await LoadInitialProducts();
+    }
+
+    private async Task ResolveCashierAsync()
+    {
+        var users = await UserRepo.GetAllAsync();
+        cashierId = users.FirstOrDefault(u => u.IsActive && u.Role == UserRole.Admin)?.Id
+                    ?? users.FirstOrDefault(u => u.IsActive)?.Id;
+    }
+
+    private async Task LoadInitialProducts()
+    {
+        allProducts = MapProducts((await ProductRepo.GetAllAsync()).Where(p => p.IsActive));
+        ApplyFilter();
+    }
+
+    private static List<Wizz.Application.DTOs.ProductDto> MapProducts(IEnumerable<Product> products) =>
+        products.Select(p => new Wizz.Application.DTOs.ProductDto(
+            p.Id, p.Name, p.Barcode, p.Description, p.RetailPrice, p.WholesalePrice,
+            p.IsService, p.IsActive,
+            p.Units.Select(u => new Wizz.Application.DTOs.UnitOfMeasureDto(u.Id, u.Name, u.Symbol, u.BaseQuantity, u.IsBaseUnit)).ToList(),
+            p.GetBaseUnit() is { } bu ? new Wizz.Application.DTOs.UnitOfMeasureDto(bu.Id, bu.Name, bu.Symbol, bu.BaseQuantity, true) : null
+        )).ToList();
+
+    /// <summary>فلترة فورية في الذاكرة — لا تتطلب أي استعلام جديد ولا تُفرغ القائمة.</summary>
+    private void ApplyFilter()
+    {
+        var q = searchQuery?.Trim() ?? "";
+        if (q.Length == 0)
+        {
+            filteredProducts = allProducts;
+        }
+        else
+        {
+            filteredProducts = allProducts
+                .Where(p => p.Name.Contains(q, StringComparison.OrdinalIgnoreCase)
+                            || (p.Barcode?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false))
+                .ToList();
+        }
+    }
+
+    private void ClearFilter()
+    {
+        searchQuery = "";
+        justAdded = null;
+        ApplyFilter();
+    }
+
+    private async Task OnSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            justAdded = null;
+
+            // مطابقة باركود دقيقة أولاً، ثم مطابقة وحيدة
+            var barcodeMatch = filteredProducts.FirstOrDefault(p =>
+                string.Equals(p.Barcode, searchQuery?.Trim(), StringComparison.OrdinalIgnoreCase));
+
+            var target = barcodeMatch ?? (filteredProducts.Count == 1 ? filteredProducts[0] : null);
+            if (target != null)
+            {
+                AddToCart(target);
+            }
+            ApplyFilter();
+            await Task.CompletedTask;
+        }
+        else if (e.Key == "F2")
+        {
+            await ScanBarcode();
+        }
+    }
+
+    private async Task ScanBarcode()
+    {
+        var code = await BarcodeReader.ReadAsync();
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return;
+        }
+
+        searchQuery = code;
+        ApplyFilter();
+        var match = filteredProducts.FirstOrDefault();
+        if (match != null)
+        {
+            AddToCart(match);
+        }
+        StateHasChanged();
+    }
+
+    private void AddToCart(Wizz.Application.DTOs.ProductDto product)
+    {
+        var existing = cartItems.FirstOrDefault(c => c.ProductId == product.Id && !c.IsWholesale);
+        if (existing != null)
+        {
+            existing.Quantity += 1;
+            existing.LineTotal = Math.Round(existing.Quantity * existing.UnitPrice, 2, MidpointRounding.AwayFromZero);
+        }
+        else
+        {
+            var baseUnit = product.BaseUnit ?? product.Units.FirstOrDefault();
+            cartItems.Add(new CartItem
+            {
+                ProductId = product.Id,
+                ProductName = product.Name,
+                UnitId = baseUnit?.Id ?? Guid.Empty,
+                UnitSymbol = baseUnit?.Symbol ?? "قطعة",
+                Quantity = 1,
+                UnitPrice = product.RetailPrice,
+                RetailPrice = product.RetailPrice,
+                WholesalePrice = product.WholesalePrice,
+                IsWholesale = false,
+                LineTotal = product.RetailPrice,
+            });
+        }
+
+        // نُبقي شبكة المنتجات ظاهرة بعد الإضافة — لا تُفرَّغ ولا تختفي
+        justAdded = product.Name;
+        searchQuery = "";
+        ApplyFilter();
+        StateHasChanged();
+    }
+
+    private void UpdateCartItem(CartItem item)
+    {
+        if (item.Quantity <= 0)
+        {
+            item.Quantity = 0.001m;
+        }
+
+        item.UnitPrice = item.IsWholesale ? item.WholesalePrice : item.RetailPrice;
+        item.LineTotal = Math.Round(item.Quantity * item.UnitPrice, 2, MidpointRounding.AwayFromZero);
+        StateHasChanged();
+    }
+
+    private void RemoveFromCart(CartItem item)
+    {
+        cartItems.Remove(item);
+        StateHasChanged();
+    }
+
+    private void OnPaymentMethodChanged()
+    {
+        if (paymentMethod == 2)
+        {
+            paidAmount = 0;
+        }
+        else if (paidAmount < Total)
+        {
+            paidAmount = Total;
+        }
+
+        StateHasChanged();
+    }
+
+    private void ClearCart()
+    {
+        cartItems.Clear();
+        discount = 0;
+        paidAmount = 0;
+        paymentMethod = 0;
+        dueDate = DateTime.Today.AddDays(30);
+        justAdded = null;
+        searchQuery = "";
+        ApplyFilter();
+        StateHasChanged();
+    }
+
+    private async Task CompleteSale()
+    {
+        if (!CanCompleteSale || savingSale)
+        {
+            return;
+        }
+
+        if (cashierId is null)
+        {
+            await JS.InvokeVoidAsync("alert", "لا يوجد مستخدم نشط. أضف مستخدمًا من صفحة الإعدادات أولًا.");
+            return;
+        }
+
+        savingSale = true;
+        try
+        {
+            var input = new Wizz.Application.DTOs.SaleInputDto(
+                cartItems.Select(c => new Wizz.Application.DTOs.SaleLineInputDto(
+                    c.ProductId, c.UnitId, c.Quantity, c.IsWholesale)).ToList(),
+                discount, paidAmount, (Wizz.Application.DTOs.PaymentMethodDto)paymentMethod,
+                paymentMethod == 2, paymentMethod == 2 ? dueDate : null);
+
+            var result = await CreateSaleUseCase.ExecuteAsync(input, cashierId.Value);
+            if (!result.IsSuccess)
+            {
+                await JS.InvokeVoidAsync("alert", $"خطأ: {string.Join(" | ", result.Errors)}");
+                return;
+            }
+
+            lastSaleId = result.Value.Id;
+            ClearCart();
+            await LoadInitialProducts();
+            await JS.InvokeVoidAsync("alert", $"تم البيع بنجاح — الإجمالي {result.Value.Total:N2} د.ج");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"خطأ غير متوقع: {ex.Message}");
+        }
+        finally
+        {
+            savingSale = false;
+        }
+    }
+
+    private async Task PrintReceipt()
+    {
+        if (lastSaleId is null)
+        {
+            return;
+        }
+
+        var result = await GenerateReceiptUseCase.ExecuteAsync(lastSaleId.Value);
+        if (!result.IsSuccess)
+        {
+            await JS.InvokeVoidAsync("alert", $"تعذر توليد الإيصال: {string.Join(" | ", result.Errors)}");
+            return;
+        }
+
+        var receipt = result.Value;
+        var builder = new System.Text.StringBuilder();
+        builder.AppendLine(receipt.Store.Name);
+        builder.AppendLine(receipt.Store.Address ?? "");
+        builder.AppendLine(receipt.Store.Phone ?? "");
+        builder.AppendLine(new string('-', 32));
+        builder.AppendLine($"إيصال رقم: {receipt.SaleNumber}");
+        builder.AppendLine($"التاريخ: {receipt.SaleDate.ToLocalTime():yyyy-MM-dd HH:mm}");
+        builder.AppendLine(new string('-', 32));
+        foreach (var line in receipt.Lines)
+        {
+            builder.AppendLine($"{line.ProductName}");
+            builder.AppendLine($"  {line.Quantity:0.###} {line.UnitSymbol} × {line.UnitPrice:N2} = {line.LineTotal:N2}");
+        }
+
+        builder.AppendLine(new string('-', 32));
+        builder.AppendLine($"المجموع: {receipt.Subtotal:N2}");
+        builder.AppendLine($"الخصم: {receipt.Discount:N2}");
+        builder.AppendLine($"الإجمالي: {receipt.Total:N2}");
+        builder.AppendLine($"المدفوع: {receipt.Paid:N2}");
+        if (receipt.Remaining > 0)
+        {
+            builder.AppendLine($"المتبقي: {receipt.Remaining:N2}");
+        }
+
+        builder.AppendLine(new string('-', 32));
+        builder.AppendLine("شكرًا لتعاملكم معنا");
+
+        var printed = await Printer.PrintAsync(builder.ToString());
+        await JS.InvokeVoidAsync("alert", printed
+            ? $"تم إرسال الإيصال إلى: {Printer.DeviceName}"
+            : "تعذرت الطباعة. تحقق من الطابعة.");
+    }
+
+    private class CartItem
+    {
+        public Guid ProductId { get; set; }
+        public string ProductName { get; set; } = "";
+        public Guid UnitId { get; set; }
+        public string UnitSymbol { get; set; } = "";
+        public decimal Quantity { get; set; }
+        public decimal UnitPrice { get; set; }
+        public decimal RetailPrice { get; set; }
+        public decimal WholesalePrice { get; set; }
+        public bool IsWholesale { get; set; }
+        public decimal LineTotal { get; set; }
+    }
+}

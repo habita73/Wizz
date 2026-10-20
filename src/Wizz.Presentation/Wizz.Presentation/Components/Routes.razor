@@ -1,6 +1,16 @@
-﻿<Router AppAssembly="typeof(Program).Assembly" AdditionalAssemblies="new[] { typeof(Client._Imports).Assembly }" NotFoundPage="typeof(Pages.NotFound)">
+﻿<Router AppAssembly="typeof(Program).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <RouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)" />
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
+    <NotFound>
+        <PageTitle>الصفحة غير موجودة</PageTitle>
+        <LayoutView Layout="typeof(MainLayout)">
+            <div class="container py-5 text-center">
+                <h1 class="display-1">404</h1>
+                <p class="lead">الصفحة المطلوبة غير موجودة.</p>
+                <a href="/" class="btn btn-primary">العودة إلى الرئيسية</a>
+            </div>
+        </LayoutView>
+    </NotFound>
 </Router>

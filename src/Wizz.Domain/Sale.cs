@@ -45,7 +45,7 @@ public sealed class Sale
 
         foreach (var item in items)
         {
-            item.GetType().GetProperty("SaleId")!.SetValue(item, Id);
+            item.AttachToSale(Id);
             _items.Add(item);
         }
 
@@ -87,7 +87,6 @@ public sealed class Sale
             CorrectionReason = reason,
             IsCorrected = true
         };
-        typeof(Sale).GetProperty("Id")!.SetValue(correctedSale, Guid.NewGuid());
 
         Status = SaleStatus.Corrected;
         return correctedSale;
@@ -105,7 +104,7 @@ public sealed class Sale
     public void AddItem(SaleItem item)
     {
         if (Status != SaleStatus.Pending) throw new InvalidOperationException("لا يمكن إضافة أسطر لبيع مكتمل");
-        item.GetType().GetProperty("SaleId")!.SetValue(item, Id);
+        item.AttachToSale(Id);
         _items.Add(item);
         Recalculate();
     }

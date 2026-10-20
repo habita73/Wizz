@@ -1,0 +1,254 @@
+@page "/reports"
+@layout MainLayout
+@inject Wizz.Application.Abstractions.ISaleRepository SaleRepo
+@inject Wizz.Application.Abstractions.IProductRepository ProductRepo
+
+<h2>📊 التقارير ولوحة التحكم</h2>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <input type="date" class="form-control" @bind="fromDate" @bind:after="GenerateReport" />
+    </div>
+    <div class="col-md-3">
+        <input type="date" class="form-control" @bind="toDate" @bind:after="GenerateReport" />
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" @bind="reportType" @bind:after="GenerateReport">
+            <option value="summary">ملخص المبيعات</option>
+            <option value="daily">المبيعات اليومية</option>
+            <option value="products">أفضل المنتجات</option>
+            <option value="payment">طرق الدفع</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <button class="btn btn-primary w-100" @onclick="GenerateReport">🔄 تحديث</button>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <h6 class="card-title">إجمالي المبيعات</h6>
+                <h3 class="mb-0">@TotalSales.ToString("N0") د.ج</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <h6 class="card-title">إجمالي المدفوع</h6>
+                <h3 class="mb-0">@TotalPaid.ToString("N0") د.ج</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body">
+                <h6 class="card-title">المتبقي (ديون)</h6>
+                <h3 class="mb-0">@TotalRemaining.ToString("N0") د.ج</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <h6 class="card-title">عدد العمليات</h6>
+                <h3 class="mb-0">@SalesCount</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Report Content -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">@ReportTitle</h5>
+    </div>
+    <div class="card-body">
+        @switch (reportType)
+        {
+            case "summary":
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>إحصائيات الفترة</h6>
+                        <table class="table table-sm">
+                            <tr><td>إجمالي المبيعات</td><td class="text-end fw-bold">@TotalSales.ToString("N2") د.ج</td></tr>
+                            <tr><td>إجمالي الخصم</td><td class="text-end">@TotalDiscount.ToString("N2") د.ج</td></tr>
+                            <tr><td>الإجمالي قبل الخصم</td><td class="text-end">@((TotalSales + TotalDiscount).ToString("N2")) د.ج</td></tr>
+                            <tr><td>المدفوع</td><td class="text-end text-success">@TotalPaid.ToString("N2") د.ج</td></tr>
+                            <tr><td>المتبقي</td><td class="text-end @(TotalRemaining > 0 ? "text-danger" : "")">@TotalRemaining.ToString("N2") د.ج</td></tr>
+                            <tr><td>عدد العمليات</td><td class="text-end">@SalesCount</td></tr>
+                            <tr><td>متوسط البيع</td><td class="text-end">@(SalesCount > 0 ? (TotalSales / SalesCount).ToString("N2") : "0") د.ج</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>طرق الدفع</h6>
+                        <table class="table table-sm">
+                            <thead><tr><th>الطريقة</th><th class="text-end">العدد</th><th class="text-end">المبلغ</th></tr></thead>
+                            <tbody>
+                                @foreach (var p in paymentBreakdown)
+                                {
+                                    <tr>
+                                        <td>@GetPaymentMethodText(p.Method)</td>
+                                        <td class="text-end">@p.Count</td>
+                                        <td class="text-end">@p.Amount.ToString("N2") د.ج</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                break;
+
+            case "daily":
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead class="table-dark"><tr><th>التاريخ</th><th class="text-end">المبيعات</th><th class="text-end">المدفوع</th><th class="text-end">المتبقي</th><th class="text-end">العمليات</th></tr></thead>
+                        <tbody>
+                            @foreach (var d in dailySales)
+                            {
+                                <tr>
+                                    <td>@d.Date.ToString("yyyy-MM-dd")</td>
+                                    <td class="text-end">@d.Total.ToString("N2") د.ج</td>
+                                    <td class="text-end">@d.Paid.ToString("N2") د.ج</td>
+                                    <td class="text-end @(d.Remaining > 0 ? "text-danger" : "")">@d.Remaining.ToString("N2") د.ج</td>
+                                    <td class="text-end">@d.Count</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                break;
+
+            case "products":
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead class="table-dark"><tr><th>المنتج</th><th class="text-end">الكمية المباعة</th><th class="text-end">إجمالي المبيعات</th><th class="text-end">متوسط السعر</th></tr></thead>
+                        <tbody>
+                            @foreach (var p in topProducts)
+                            {
+                                <tr>
+                                    <td>@p.Name</td>
+                                    <td class="text-end">@p.QuantitySold.ToString("N2")</td>
+                                    <td class="text-end">@p.TotalSales.ToString("N2") د.ج</td>
+                                    <td class="text-end">@(p.QuantitySold > 0 ? (p.TotalSales / p.QuantitySold).ToString("N2") : "0") د.ج</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                break;
+
+            case "payment":
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead class="table-dark"><tr><th>طريقة الدفع</th><th class="text-end">العدد</th><th class="text-end">المبلغ</th><th class="text-end">النسبة</th></tr></thead>
+                        <tbody>
+                            @foreach (var p in paymentBreakdown)
+                            {
+                                <tr>
+                                    <td>@GetPaymentMethodText(p.Method)</td>
+                                    <td class="text-end">@p.Count</td>
+                                    <td class="text-end">@p.Amount.ToString("N2") د.ج</td>
+                                    <td class="text-end">@(TotalSales > 0 ? (p.Amount / TotalSales * 100).ToString("N1") : "0")%</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                break;
+        }
+    </div>
+</div>
+
+@code {
+    private DateTime fromDate = DateTime.Today.AddDays(-30);
+    private DateTime toDate = DateTime.Today;
+    private string reportType = "summary";
+
+    // Summary data
+    private decimal TotalSales = 0;
+    private decimal TotalDiscount = 0;
+    private decimal TotalPaid = 0;
+    private decimal TotalRemaining = 0;
+    private int SalesCount = 0;
+    private List<Wizz.Application.DTOs.PaymentMethodBreakdownDto> paymentBreakdown = new();
+    private List<Wizz.Application.DTOs.DailySalesDto> dailySales = new();
+    private List<(string Name, decimal QuantitySold, decimal TotalSales)> topProducts = new();
+
+    private string ReportTitle => reportType switch
+    {
+        "summary" => "ملخص المبيعات",
+        "daily" => "المبيعات اليومية",
+        "products" => "أفضل المنتجات",
+        "payment" => "تحليل طرق الدفع",
+        _ => "تقرير"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GenerateReport();
+    }
+
+    private async Task GenerateReport()
+    {
+        var from = fromDate.Date.ToUniversalTime();
+        var to = toDate.Date.AddDays(1).ToUniversalTime();
+
+        // Get all sales in period
+        var sales = await SaleRepo.GetByDateRangeAsync(from, to);
+        var completedSales = sales.Where(s => s.Status != Wizz.Domain.SaleStatus.Cancelled).ToList();
+
+        SalesCount = completedSales.Count;
+        TotalSales = completedSales.Sum(s => s.Total);
+        TotalDiscount = completedSales.Sum(s => s.Discount);
+        TotalPaid = completedSales.Sum(s => s.Paid);
+        TotalRemaining = completedSales.Sum(s => s.Remaining);
+
+        // Payment breakdown
+        paymentBreakdown = completedSales
+            .GroupBy(s => s.PaymentMethod)
+            .Select(g => new Wizz.Application.DTOs.PaymentMethodBreakdownDto((Wizz.Application.DTOs.PaymentMethodDto)g.Key, g.Count(), g.Sum(s => s.Total)))
+            .ToList();
+
+        // Daily sales
+        dailySales = completedSales
+            .GroupBy(s => s.SaleDate.ToLocalTime().Date)
+            .Select(g => new Wizz.Application.DTOs.DailySalesDto(g.Key, g.Count(), g.Sum(s => s.Total), g.Sum(s => s.Paid), g.Sum(s => s.Remaining)))
+            .OrderBy(d => d.Date)
+            .ToList();
+
+        // Top products (simplified - from sale items)
+        var productSales = completedSales
+            .SelectMany(s => s.Items)
+            .GroupBy(i => new { i.ProductId, i.Product?.Name })
+            .Select(g => new { Name = g.Key.Name ?? "منتج غير معروف", QuantitySold = g.Sum(i => i.Quantity), TotalSales = g.Sum(i => i.LineTotal) })
+            .OrderByDescending(p => p.TotalSales)
+            .Take(10)
+            .ToList();
+
+        topProducts = productSales.Select(p => (p.Name, p.QuantitySold, p.TotalSales)).ToList();
+    }
+
+    private string GetPaymentMethodText(Wizz.Domain.PaymentMethod method) => method switch
+    {
+        Wizz.Domain.PaymentMethod.Cash => "💵 نقدي",
+        Wizz.Domain.PaymentMethod.Card => "💳 بطاقة",
+        Wizz.Domain.PaymentMethod.Credit => "📝 آجل",
+        Wizz.Domain.PaymentMethod.Mobile => "📱 محمول",
+        Wizz.Domain.PaymentMethod.Mixed => "🔄 مختلط",
+        _ => "—"
+    };
+
+    private string GetPaymentMethodText(Wizz.Application.DTOs.PaymentMethodDto method) => method switch
+    {
+        Wizz.Application.DTOs.PaymentMethodDto.Cash => "💵 نقدي",
+        Wizz.Application.DTOs.PaymentMethodDto.Card => "💳 بطاقة",
+        Wizz.Application.DTOs.PaymentMethodDto.Credit => "📝 آجل",
+        Wizz.Application.DTOs.PaymentMethodDto.Mobile => "📱 محمول",
+        Wizz.Application.DTOs.PaymentMethodDto.Mixed => "🔄 مختلط",
+        _ => "—"
+    };
+}

@@ -1,0 +1,307 @@
+@page "/ai"
+@layout MainLayout
+@inject Wizz.Application.Abstractions.ILlmProvider LlmProvider
+@inject Wizz.Application.AI.QueryAiUseCase QueryAiUseCase
+@inject IJSRuntime JS
+
+<h2>🤖 مساعد Wizz الذكي</h2>
+<p class="text-muted">
+    يعمل المساعد المدمج دائماً وبسرعة وبدون إنترنت. عند تشغيل Ollama يمكن للنموذج المحلي الإجابة عن أسئلة حرة.
+</p>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h5 class="mb-0">💬 المحادثة</h5>
+                <div class="d-flex gap-2 align-items-center">
+                    <span class="badge bg-success" title="يعمل دون نموذج أو إنترنت">⚡ المساعد المدمج جاهز</span>
+                    <span class="badge @(llmAvailable ? "bg-primary" : "bg-secondary")">
+                        @(llmAvailable ? $"🧠 {selectedModel}" : "🧠 Ollama غير متصل")
+                    </span>
+                </div>
+            </div>
+            <div class="card-body d-flex flex-column" style="min-height: 500px;">
+                <div class="flex-grow-1 overflow-auto mb-3" id="chatMessages" style="max-height: 60vh;">
+                    @if (messages.Count == 0)
+                    {
+                        <div class="text-center text-muted py-5">
+                            <div class="display-1">🤖</div>
+                            <p class="mt-3 mb-1">مرحباً! أنا مساعد Wizz.</p>
+                            <p class="small">اسألني عن مبيعاتك، ديونك، أو منتجاتك — سأجيب من بيانات متجرك مباشرة.</p>
+                            <div class="mt-3 d-flex flex-wrap justify-content-center gap-2">
+                                <button class="btn btn-sm btn-outline-primary" @onclick="@(() => AskQuickQuestion("ما هي مبيعات اليوم؟"))">📊 مبيعات اليوم</button>
+                                <button class="btn btn-sm btn-outline-primary" @onclick="@(() => AskQuickQuestion("أفضل 5 منتجات مبيعاً"))">🏆 أفضل المنتجات</button>
+                                <button class="btn btn-sm btn-outline-primary" @onclick="@(() => AskQuickQuestion("كم المتبقي من الديون؟"))">💰 الديون المستحقة</button>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var msg in messages)
+                        {
+                            <div class="mb-3 @(msg.IsUser ? "text-end" : "")">
+                                <div class="d-inline-block @(msg.IsUser ? "bg-primary text-white" : "bg-light border") rounded-3 px-3 py-2" style="max-width: 85%; text-align: start;">
+                                    <div class="small @(msg.IsUser ? "text-white-50" : "text-muted") mb-1">
+                                        @(msg.IsUser ? "أنت" : "🤖 Wizz")
+                                        <span class="ms-2">@msg.Timestamp.ToString("HH:mm")</span>
+                                        @if (!msg.IsUser)
+                                        {
+                                            <span class="ms-2 badge bg-light text-dark border fw-normal">@msg.Provider</span>
+                                        }
+                                    </div>
+                                    <div style="white-space: pre-wrap;">@msg.Content</div>
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    @if (sending)
+                    {
+                        <div class="mb-3">
+                            <div class="d-inline-flex align-items-center gap-2 bg-light border rounded-3 px-3 py-2 text-muted">
+                                <span class="spinner-border spinner-border-sm"></span>
+                                <span>جاري التحضير…</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="input-group">
+                    <textarea class="form-control" rows="1" @bind="userInput" @bind:event="oninput"
+                              placeholder="اكتب سؤالك هنا... (Enter للإرسال، Shift+Enter لسطر جديد)"
+                              @onkeydown="OnInputKeyDown" disabled="@sending"></textarea>
+                    <button class="btn btn-primary" @onclick="SendMessage" disabled="@(sending || string.IsNullOrWhiteSpace(userInput))">
+                        إرسال
+                    </button>
+                </div>
+                <div class="form-text">المساعد المدمج يجيب فوراً من قاعدة البيانات المحلية. الأسئلة الحرة تحتاج Ollama.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header"><h6 class="mb-0">⚡ أسئلة جاهزة</h6></div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" @onclick="@(() => AskQuickQuestion("ما هي مبيعات اليوم؟"))">📊 مبيعات اليوم</button>
+                    <button class="btn btn-outline-primary" @onclick="@(() => AskQuickQuestion("أفضل 5 منتجات مبيعاً"))">🏆 أفضل المنتجات</button>
+                    <button class="btn btn-outline-primary" @onclick="@(() => AskQuickQuestion("كم المتبقي من الديون؟"))">💰 الديون المستحقة</button>
+                    <button class="btn btn-outline-primary" @onclick="@(() => AskQuickQuestion("ملخص المبيعات للأسبوع الماضي"))">📈 ملخص الأسبوع</button>
+                    <button class="btn btn-outline-secondary" @onclick="@(() => AskQuickQuestion("كيف أضيف منتج جديد؟"))">❓ كيف أضيف منتج؟</button>
+                    <button class="btn btn-outline-secondary" @onclick="@(() => AskQuickQuestion("كيف أعمل نسخة احتياطية؟"))">💾 كيف أعمل نسخة احتياطية؟</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">🧠 النموذج المحلي (اختياري)</h6>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshModels" disabled="@loadingModels">
+                    @(loadingModels ? "…" : "🔄")
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <label class="form-label small mb-1">النموذج</label>
+                    <select class="form-select form-select-sm" @bind="selectedModel" @bind:after="ChangeModel" disabled="@(!llmAvailable || availableModels.Count == 0)">
+                        @if (availableModels.Count == 0)
+                        {
+                            <option value="">لا توجد نماذج مثبتة</option>
+                        }
+                        else
+                        {
+                            @foreach (var model in availableModels)
+                            {
+                                <option value="@model">@model</option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                @if (!llmAvailable)
+                {
+                    <div class="alert alert-warning small mb-2">
+                        Ollama غير متصل — لكن المساعد المدمج يعمل بشكل طبيعي.
+                    </div>
+                    <div class="small">
+                        <strong>لتشغيل النموذج المحلي:</strong>
+                        <ol class="mb-0 ps-3 mt-1">
+                            <li>ثبّت Ollama من <code>ollama.com</code></li>
+                            <li><code>ollama pull llama3.2:1b</code></li>
+                            <li>أعد تشغيل التطبيق أو اضغط 🔄</li>
+                        </ol>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-success small mb-2">
+                        متصل بـ Ollama. النموذج النشط: <code>@selectedModel</code>
+                    </div>
+                    <div class="small text-muted">
+                        للأجهزة الضعيفة ننصح بنموذج أخف مثل <code>llama3.2:1b</code>:
+                        <code>ollama pull llama3.2:1b</code> ثم اضغط 🔄.
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0">📊 حالة الجلسة</h6></div>
+            <div class="card-body small">
+                <div class="d-flex justify-content-between mb-1"><span>المساعد المدمج:</span> <span class="badge bg-success">متاح دائماً</span></div>
+                <div class="d-flex justify-content-between mb-1"><span>Ollama:</span> <span class="badge @(llmAvailable ? "bg-success" : "bg-secondary")">@(llmAvailable ? "متاح" : "غير متاح")</span></div>
+                <div class="d-flex justify-content-between mb-1"><span>الموفر:</span> <span>@providerName</span></div>
+                <div class="d-flex justify-content-between mb-2"><span>الرسائل:</span> <span>@messages.Count</span></div>
+                <button class="btn btn-outline-danger btn-sm w-100" @onclick="ClearChat">🗑️ مسح المحادثة</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<ChatMessage> messages = new();
+    private string userInput = "";
+    private bool sending = false;
+    private bool llmAvailable = false;
+    private bool loadingModels = false;
+    private List<string> availableModels = new();
+    private string selectedModel = "";
+    private string providerName = "المساعد المدمج (بدون نموذج)";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshModels();
+    }
+
+    private async Task RefreshModels()
+    {
+        loadingModels = true;
+        try
+        {
+            llmAvailable = await LlmProvider.IsAvailableAsync();
+            providerName = LlmProvider.ProviderName;
+
+            availableModels = (await LlmProvider.GetAvailableModelsAsync()).ToList();
+            if (availableModels.Count > 0)
+            {
+                if (string.IsNullOrEmpty(selectedModel) || !availableModels.Contains(selectedModel))
+                {
+                    selectedModel = availableModels[0];
+                }
+                await LlmProvider.SetModelAsync(selectedModel);
+            }
+            else
+            {
+                selectedModel = "";
+            }
+        }
+        catch
+        {
+            llmAvailable = false;
+        }
+        finally
+        {
+            loadingModels = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ChangeModel()
+    {
+        if (string.IsNullOrEmpty(selectedModel)) return;
+        try
+        {
+            await LlmProvider.SetModelAsync(selectedModel);
+            providerName = LlmProvider.ProviderName;
+        }
+        catch (Exception ex)
+        {
+            messages.Add(new ChatMessage
+            {
+                Content = $"تعذر تفعيل النموذج: {ex.Message}",
+                IsUser = false,
+                Timestamp = DateTime.Now,
+                Provider = "نظام"
+            });
+        }
+    }
+
+    private async Task OnInputKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendMessage();
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(userInput) || sending) return;
+
+        var input = userInput;
+        userInput = "";
+        sending = true;
+        messages.Add(new ChatMessage { Content = input, IsUser = true, Timestamp = DateTime.Now });
+        StateHasChanged();
+        ScrollToBottom();
+
+        try
+        {
+            var result = await QueryAiUseCase.ExecuteAsync(
+                new Wizz.Application.DTOs.AiQueryInputDto(input, true, true, 10));
+
+            messages.Add(new ChatMessage
+            {
+                Content = result.IsSuccess ? result.Value.Answer : $"تعذر الحصول على رد: {string.Join("، ", result.Errors)}",
+                IsUser = false,
+                Timestamp = DateTime.Now,
+                Provider = result.IsSuccess ? result.Value.ProviderName : "نظام"
+            });
+        }
+        catch (Exception ex)
+        {
+            messages.Add(new ChatMessage
+            {
+                Content = $"حدث خطأ غير متوقع: {ex.Message}\nيمكنك إعادة المحاولة أو استخدام الأسئلة الجاهزة.",
+                IsUser = false,
+                Timestamp = DateTime.Now,
+                Provider = "نظام"
+            });
+        }
+        finally
+        {
+            sending = false;
+            StateHasChanged();
+            ScrollToBottom();
+        }
+    }
+
+    private async Task AskQuickQuestion(string question)
+    {
+        if (sending) return;
+        userInput = question;
+        await SendMessage();
+    }
+
+    private void ClearChat()
+    {
+        messages.Clear();
+        StateHasChanged();
+    }
+
+    private void ScrollToBottom()
+    {
+        _ = JS.InvokeVoidAsync("eval",
+            "setTimeout(() => { const el = document.getElementById('chatMessages'); if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' }); }, 80)");
+    }
+
+    private class ChatMessage
+    {
+        public string Content { get; set; } = "";
+        public bool IsUser { get; set; }
+        public DateTime Timestamp { get; set; }
+        public string Provider { get; set; } = "";
+    }
+}

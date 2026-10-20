@@ -56,6 +56,7 @@ public sealed class CreateSaleUseCase
 
             var price = product.GetPrice(lineInput.UseWholesalePrice);
             var item = new SaleItem(lineInput.ProductId, lineInput.UnitId, lineInput.Quantity, price, lineInput.UseWholesalePrice);
+            item.SetCatalog(product, unit);
             items.Add(item);
         }
 

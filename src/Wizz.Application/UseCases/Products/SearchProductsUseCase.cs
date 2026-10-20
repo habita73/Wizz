@@ -17,8 +17,21 @@ public sealed class SearchProductsUseCase
         if (page < 1) page = 1;
         if (pageSize < 1 || pageSize > 200) pageSize = 50;
 
-        var products = await _products.SearchAsync(query, pageSize, ct);
-        var totalCount = await _products.CountAsync(ct);
+        // إذا كان البحث فارغاً، نستخدم GetAllAsync مع الترقيم اليدوي
+        IReadOnlyList<Product> products;
+        int totalCount;
+
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            var all = await _products.GetAllAsync(ct);
+            totalCount = all.Count;
+            products = all.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+        }
+        else
+        {
+            products = await _products.SearchAsync(query, pageSize, ct);
+            totalCount = products.Count; // SearchAsync يعيد محدوداً بالحد المحدد
+        }
 
         return Result<ProductSearchResultDto>.Success(new ProductSearchResultDto(
             products.Select(MapToDto).ToList(), totalCount, page, pageSize));

@@ -61,7 +61,7 @@ public sealed class Product
     {
         var isBase = _units.Count == 0;
         var unit = new UnitOfMeasure(name, symbol, baseQuantity, isBase);
-        unit.GetType().GetProperty("ProductId")!.SetValue(unit, Id);
+        unit.AttachToProduct(Id);
         _units.Add(unit);
         return unit;
     }
@@ -73,8 +73,7 @@ public sealed class Product
         if (_units.Count == 1) throw new InvalidOperationException("لا يمكن حذف الوحدة الوحيدة للمنتج");
         if (unit.IsBaseUnit)
         {
-            var newBase = _units.First(u => u.Id != unitId);
-            newBase.GetType().GetProperty("IsBaseUnit")!.SetValue(newBase, true);
+            _units.First(u => u.Id != unitId).SetAsBaseUnit();
         }
         _units.Remove(unit);
     }

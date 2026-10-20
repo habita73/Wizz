@@ -39,23 +39,22 @@ public static class InfrastructureServiceCollectionExtensions
         });
 
         // AI Tools
-        services.AddSingleton<IAiToolRegistry, AiToolRegistry>();
         services.AddScoped<GetSalesSummaryTool>();
         services.AddScoped<SearchProductTool>();
         services.AddScoped<GetStoreInfoTool>();
 
-        // Register AI tools after provider is built
-        services.AddTransient(sp =>
+        // سجل أدوات الذكاء الاصطناعي — يُبنى مرة واحدة لكل نطاق ويُسجَّل فيه الأدوات
+        services.AddScoped<IAiToolRegistry>(sp =>
         {
-            var registry = sp.GetRequiredService<IAiToolRegistry>();
+            var registry = new AiToolRegistry();
             registry.Register(sp.GetRequiredService<GetSalesSummaryTool>());
             registry.Register(sp.GetRequiredService<SearchProductTool>());
             registry.Register(sp.GetRequiredService<GetStoreInfoTool>());
             return registry;
         });
 
-        // Backup Service
-        services.AddSingleton<IBackupService>(sp =>
+        // Backup Service — يعتمد على DbContext المُدار، لذا يجب أن يكون Scoped
+        services.AddScoped<IBackupService>(sp =>
             new BackupService(sp.GetRequiredService<WizzDbContext>()));
 
         return services;

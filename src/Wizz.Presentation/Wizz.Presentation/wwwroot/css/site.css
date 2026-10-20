@@ -1,0 +1,340 @@
+/* Wizz POS - RTL Arabic Styles */
+
+/* Base RTL Support */
+html[dir="rtl"] {
+    direction: rtl;
+    text-align: right;
+}
+
+body {
+    font-family: 'Segoe UI', 'Tahoma', 'Arial', sans-serif;
+    background-color: #f8f9fa;
+    direction: rtl;
+}
+
+/* Sidebar */
+#sidebar-wrapper {
+    min-height: 100vh;
+    transition: all 0.3s ease;
+}
+
+.sidebar-heading {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.list-group-item {
+    background-color: transparent;
+    border-color: #444;
+    color: #fff;
+    transition: all 0.2s;
+}
+
+.list-group-item:hover,
+.list-group-item.active {
+    background-color: #0d6efd !important;
+    color: white;
+    border-color: #0d6efd;
+}
+
+.list-group-item .me-2 {
+    margin-left: 0.5rem;
+    margin-right: 0;
+}
+
+@media (max-width: 768px) {
+    #sidebar-wrapper {
+        position: fixed;
+        top: 0;
+        right: -250px;
+        z-index: 1000;
+        transition: right 0.3s ease;
+    }
+
+    #wrapper.toggled #sidebar-wrapper {
+        right: 0;
+    }
+
+    #page-content-wrapper {
+        width: 100%;
+    }
+}
+
+/* RTL Form Elements */
+.input-group > .form-control {
+    text-align: right;
+}
+
+.input-group .form-control + .btn {
+    border-top-left-radius: 0.375rem;
+    border-bottom-left-radius: 0.375rem;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.input-group .btn + .form-control {
+    border-top-right-radius: 0.375rem;
+    border-bottom-right-radius: 0.375rem;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+/* RTL Tables */
+.table th,
+.table td {
+    text-align: right;
+}
+
+.table th:first-child,
+.table td:first-child {
+    text-align: right;
+}
+
+.table th:last-child,
+.table td:last-child {
+    text-align: left;
+}
+
+/* RTL Modal */
+.modal-header .btn-close {
+    margin-left: auto;
+    margin-right: 0;
+}
+
+/* RTL Dropdown */
+.dropdown-menu {
+    text-align: right;
+}
+
+/* RTL Pagination */
+.pagination {
+    direction: rtl;
+}
+
+.page-item:first-child .page-link {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-top-right-radius: 0.375rem;
+    border-bottom-right-radius: 0.375rem;
+}
+
+.page-item:last-child .page-link {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-top-left-radius: 0.375rem;
+    border-bottom-left-radius: 0.375rem;
+}
+
+/* RTL Badge in table */
+.badge {
+    direction: ltr;
+}
+
+/* RTL Card */
+.card-header {
+    text-align: right;
+}
+
+/* RTL Navbar */
+.navbar-nav {
+    direction: rtl;
+}
+
+.navbar-nav .nav-link {
+    padding-right: 1rem;
+    padding-left: 0.5rem;
+}
+
+/* Arabic Numbers */
+.arabic-numbers {
+    font-family: 'Amiri', 'Traditional Arabic', serif;
+    direction: ltr;
+    unicode-bidi: bidi-override;
+}
+
+/* Print Styles for Arabic Receipts */
+@media print {
+    @page {
+        size: 80mm auto;
+        margin: 0;
+    }
+
+    body {
+        font-family: 'Amiri', 'Traditional Arabic', serif;
+        font-size: 12px;
+        direction: rtl;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    .receipt {
+        width: 100%;
+        max-width: 80mm;
+        margin: 0 auto;
+        padding: 5mm;
+    }
+
+    .receipt-header {
+        text-align: center;
+        border-bottom: 1px dashed #000;
+        padding-bottom: 5px;
+        margin-bottom: 5px;
+    }
+
+    .receipt-body {
+        margin-bottom: 5px;
+    }
+
+    .receipt-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 3px;
+    }
+
+    .receipt-total {
+        border-top: 1px dashed #000;
+        padding-top: 5px;
+        font-weight: bold;
+        font-size: 14px;
+    }
+}
+
+/* Chat Messages RTL */
+#chatMessages {
+    direction: rtl;
+}
+
+#chatMessages .text-end {
+    text-align: left !important;
+}
+
+/* Form Labels RTL */
+label.form-label {
+    text-align: right;
+    display: block;
+}
+
+/* RTL Input Groups */
+.input-group {
+    direction: rtl;
+}
+
+/* Custom Scrollbar for RTL */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Focus Styles */
+.form-control:focus,
+.form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Arabic Font Stack — local-first: no external font requests */
+.arabic-font,
+body {
+    font-family: 'Segoe UI', 'Cairo', 'Tahoma', 'Traditional Arabic', 'Arial', sans-serif;
+}
+
+/* RTL Alert */
+.alert {
+    text-align: right;
+}
+
+/* RTL Progress */
+.progress {
+    direction: rtl;
+}
+
+/* RTL Tooltip */
+.tooltip {
+    direction: rtl;
+}
+
+/* RTL Popover */
+.popover {
+    direction: rtl;
+    text-align: right;
+}
+
+/* Custom Styles for Wizz */
+.wizz-sidebar {
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+}
+
+.wizz-card {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+}
+
+.wizz-btn-primary {
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.wizz-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(13, 110, 253, 0.4);
+}
+
+.wizz-input {
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+}
+
+.wizz-input:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+}
+
+/* Receipt Printing Styles */
+.receipt-print {
+    font-family: 'Amiri', monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    direction: rtl;
+    width: 80mm;
+}
+
+.receipt-print .header {
+    text-align: center;
+    border-bottom: 1px dashed #000;
+    padding-bottom: 5px;
+    margin-bottom: 5px;
+}
+
+.receipt-print .item {
+    display: flex;
+    justify-content: space-between;
+    margin: 3px 0;
+}
+
+.receipt-print .totals {
+    border-top: 1px dashed #000;
+    padding-top: 5px;
+    margin-top: 5px;
+}
