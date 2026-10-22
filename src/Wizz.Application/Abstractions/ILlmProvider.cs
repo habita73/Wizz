@@ -20,6 +20,25 @@ public interface ILlmProvider
 
     /// <summary>تعيين النموذج المستخدم.</summary>
     Task SetModelAsync(string modelName, CancellationToken ct = default);
+
+    /// <summary>
+    /// اختبار الاتصال بالموفر وإرجاع رسالة تشخيصية واضحة للمستخدم.
+    /// التنفيذ الافتراضي يستعمل <see cref="IsAvailableAsync"/>؛ الموفرون يعطون رسالة أدق.
+    /// </summary>
+    async Task<(bool Success, string Message)> TestConnectionAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var available = await IsAvailableAsync(ct);
+            return available
+                ? (true, $"«{ProviderName}» متاح وجاهز.")
+                : (false, $"«{ProviderName}» غير متاح حالياً.");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"تعذّر الاتصال بـ«{ProviderName}»: {ex.Message}");
+        }
+    }
 }
 
 /// <summary>أداة AI محددة — تُستدعى من قبل النموذج عبر Function Calling.</summary>

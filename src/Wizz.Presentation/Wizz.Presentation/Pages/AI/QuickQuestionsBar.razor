@@ -1,0 +1,37 @@
+@namespace Wizz.Presentation.Pages.AI
+
+@using Wizz.Application.AI.History
+
+@* شريط أسئلة جاهزة: نقرة واحدة = إرسال فوري. *@
+@if (Questions.Count > 0)
+{
+    <div class="quick-questions d-flex flex-wrap gap-2 mb-2" role="toolbar" aria-label="أسئلة جاهزة">
+        @foreach (var q in Questions)
+        {
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary quick-question-chip"
+                    title="إرسال: @q"
+                    disabled="@Disabled"
+                    @onclick="() => Ask(q)">
+                <span class="quick-question-text">@q</span>
+            </button>
+        }
+    </div>
+}
+
+@code {
+    /// <summary>الأسئلة المعروضة (مرتّبة — الأكثر تكراراً أولاً ثم السياقية).</summary>
+    [Parameter] public IReadOnlyList<string> Questions { get; set; } = Array.Empty<string>();
+
+    /// <summary>يُعطَّل الشريط أثناء إرسال سؤال.</summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>يُستدعى عند النقر على سؤال — ضغطة واحدة تُرسل.</summary>
+    [Parameter] public EventCallback<string> OnAsk { get; set; }
+
+    private async Task Ask(string question)
+    {
+        if (Disabled) return;
+        await OnAsk.InvokeAsync(question);
+    }
+}

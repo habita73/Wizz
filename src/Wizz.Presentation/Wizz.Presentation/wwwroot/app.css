@@ -58,3 +58,114 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+/* ---- AI chat messages ---- */
+.msg-content {
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+#chatMessages .d-flex > div {
+    min-width: 0;
+}
+
+/* ---- Artifacts (مخرجات المساعد) ---- */
+.artifact-card {
+    background: #fff;
+    border-color: #dee2e6 !important;
+    max-width: 100%;
+}
+
+.artifact-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.artifact-preview {
+    background: #fbfbfc;
+    max-height: 420px;
+    overflow: auto;
+}
+
+.artifact-image {
+    max-width: 100%;
+    border-radius: .375rem;
+}
+
+.artifact-html :is(h1, h2, h3) { font-size: 1.05rem; font-weight: 700; }
+.artifact-html table { width: 100%; border-collapse: collapse; }
+.artifact-html th, .artifact-html td { border: 1px solid #ced4da; padding: .25rem .5rem; }
+
+.min-w-0 { min-width: 0; }
+
+/* ---- Quick questions (أسئلة جاهزة) ---- */
+.quick-questions {
+    max-height: 6.5rem;
+    overflow-y: auto;
+}
+
+.quick-question-chip {
+    border-radius: 1rem;
+    padding: .15rem .75rem;
+    font-size: .85rem;
+    max-width: 100%;
+}
+
+.quick-question-text {
+    display: inline-block;
+    max-width: 18rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+}
+
+.quick-question-side {
+    text-align: start;
+    white-space: normal;
+}
+
+/* ---- لوحة حالة المسارات (Phase 4) ---- */
+.ai-status-card .card-header {
+    padding-top: .4rem;
+    padding-bottom: .4rem;
+}
+
+.ai-status-line {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.ai-status-line .badge {
+    font-size: .7rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 9rem;
+}
+
+.ai-mini-btn {
+    padding: 0 .35rem;
+    line-height: 1.35;
+    font-size: .8rem;
+    border-radius: .35rem;
+}
+
+.ai-status-details summary {
+    cursor: pointer;
+    color: var(--bs-secondary-color, #6c757d);
+    user-select: none;
+}
+
+.ai-status-details summary:hover {
+    color: var(--bs-primary, #0d6efd);
+}
+
+.ai-status-details[open] summary {
+    margin-bottom: .25rem;
+}

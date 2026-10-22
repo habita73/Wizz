@@ -1,12 +1,15 @@
 @page "/ai"
 @layout MainLayout
-@inject Wizz.Application.Abstractions.ILlmProvider LlmProvider
+@using Wizz.Application.AI.Artifacts
+@using Wizz.Application.AI.History
 @inject Wizz.Application.AI.QueryAiUseCase QueryAiUseCase
+@inject Wizz.Application.Abstractions.IModelRouter ModelRouter
+@inject AiHistoryStore HistoryStore
 @inject IJSRuntime JS
 
 <h2>🤖 مساعد Wizz الذكي</h2>
 <p class="text-muted">
-    يعمل المساعد المدمج دائماً وبسرعة وبدون إنترنت. عند تشغيل Ollama يمكن للنموذج المحلي الإجابة عن أسئلة حرة.
+    يعمل المساعد المدمج دائماً وبسرعة وبدون إنترنت. عند توفر نموذج محلي أو سحابي مجاني، يمكن للموجه اختيار الأنسب لسؤالك.
 </p>
 
 <div class="row">
@@ -15,9 +18,9 @@
             <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h5 class="mb-0">💬 المحادثة</h5>
                 <div class="d-flex gap-2 align-items-center">
-                    <span class="badge bg-success" title="يعمل دون نموذج أو إنترنت">⚡ المساعد المدمج جاهز</span>
-                    <span class="badge @(llmAvailable ? "bg-primary" : "bg-secondary")">
-                        @(llmAvailable ? $"🧠 {selectedModel}" : "🧠 Ollama غير متصل")
+                    <span class="badge bg-success" title="يعمل دون نموذج أو إنترنت">⚡ المدمج جاهز</span>
+                    <span class="badge @(routeStatus.RouteCount > 1 ? "bg-primary" : "bg-secondary")">
+                        @(routeStatus.RouteCount > 1 ? $@"🔀 {routeStatus.RouteCount} مسار" : "🔀 مسار واحد")
                     </span>
                 </div>
             </div>
@@ -30,29 +33,34 @@
                             <p class="mt-3 mb-1">مرحباً! أنا مساعد Wizz.</p>
                             <p class="small">اسألني عن مبيعاتك، ديونك، أو منتجاتك — سأجيب من بيانات متجرك مباشرة.</p>
                             <div class="mt-3 d-flex flex-wrap justify-content-center gap-2">
-                                <button class="btn btn-sm btn-outline-primary" @onclick="@(() => AskQuickQuestion("ما هي مبيعات اليوم؟"))">📊 مبيعات اليوم</button>
-                                <button class="btn btn-sm btn-outline-primary" @onclick="@(() => AskQuickQuestion("أفضل 5 منتجات مبيعاً"))">🏆 أفضل المنتجات</button>
-                                <button class="btn btn-sm btn-outline-primary" @onclick="@(() => AskQuickQuestion("كم المتبقي من الديون؟"))">💰 الديون المستحقة</button>
+                                @foreach (var q in quickQuestions.Take(4))
+                                {
+                                    <button class="btn btn-sm btn-outline-primary" @onclick="@(() => SendQuickQuestion(q))">@q</button>
+                                }
                             </div>
                         </div>
                     }
                     else
                     {
-                        @foreach (var msg in messages)
+                        @foreach (var msg in messages.OrderBy(m => m.Sequence))
                         {
-                            <div class="mb-3 @(msg.IsUser ? "text-end" : "")">
-                                <div class="d-inline-block @(msg.IsUser ? "bg-primary text-white" : "bg-light border") rounded-3 px-3 py-2" style="max-width: 85%; text-align: start;">
-                                    <div class="small @(msg.IsUser ? "text-white-50" : "text-muted") mb-1">
-                                        @(msg.IsUser ? "أنت" : "🤖 Wizz")
-                                        <span class="ms-2">@msg.Timestamp.ToString("HH:mm")</span>
-                                        @if (!msg.IsUser)
-                                        {
-                                            <span class="ms-2 badge bg-light text-dark border fw-normal">@msg.Provider</span>
-                                        }
-                                    </div>
-                                    <div style="white-space: pre-wrap;">@msg.Content</div>
-                                </div>
-                            </div>
+                            <ChatMessage @key="msg.Id" Message="msg"
+                                         OnEdit="EditMessage"
+                                         OnCopy="CopyMessage"
+                                         OnArtifactDelete="DeleteArtifact"
+                                         OnArtifactExport="OpenExportModal">
+                                <EditFooter>
+                                    <ModelSelectorPopover RouteMode="routeMode"
+                                                          RouteModeChanged="OnRouteModeChanged"
+                                                          AvailableModels="availableModels"
+                                                          SelectedLocalModel="selectedModel"
+                                                          SelectedLocalModelChanged="OnSelectedLocalModelChanged"
+                                                          LocalAvailable="routeStatus.LocalAvailable"
+                                                          CloudAvailable="routeStatus.CloudAvailable"
+                                                          LoadingModels="loadingModels"
+                                                          OnRefreshModels="RefreshModels" />
+                                </EditFooter>
+                            </ChatMessage>
                         }
                     }
 
@@ -67,112 +75,178 @@
                     }
                 </div>
 
+                <QuickQuestionsBar Questions="quickQuestions"
+                                   Disabled="@sending"
+                                   OnAsk="SendQuickQuestion" />
+
                 <div class="input-group">
                     <textarea class="form-control" rows="1" @bind="userInput" @bind:event="oninput"
                               placeholder="اكتب سؤالك هنا... (Enter للإرسال، Shift+Enter لسطر جديد)"
                               @onkeydown="OnInputKeyDown" disabled="@sending"></textarea>
-                    <button class="btn btn-primary" @onclick="SendMessage" disabled="@(sending || string.IsNullOrWhiteSpace(userInput))">
+
+                    <!-- محدد الجهة/النموذج داخل الصندوق -->
+                    <ModelSelectorPopover RouteMode="routeMode"
+                                          RouteModeChanged="OnRouteModeChanged"
+                                          AvailableModels="availableModels"
+                                          SelectedLocalModel="selectedModel"
+                                          SelectedLocalModelChanged="OnSelectedLocalModelChanged"
+                                          LocalAvailable="routeStatus.LocalAvailable"
+                                          CloudAvailable="routeStatus.CloudAvailable"
+                                          LoadingModels="loadingModels"
+                                          OnRefreshModels="RefreshModels" />
+
+                    <button type="button" class="btn btn-primary" @onclick="SendMessage" disabled="@(sending || string.IsNullOrWhiteSpace(userInput))">
                         إرسال
                     </button>
                 </div>
-                <div class="form-text">المساعد المدمج يجيب فوراً من قاعدة البيانات المحلية. الأسئلة الحرة تحتاج Ollama.</div>
+                <div class="form-text small">
+                    @if (routeStatus.BuiltInAvailable && routeStatus.RouteCount == 1)
+                    {
+                        <span class="text-warning">⚠️ المساعد المدمج فقط متاح حالياً.</span>
+                    }
+                    else
+                    {
+                        <span>
+                            المساعد المدمج يجيب فوراً من بيانات متجرك.
+                            <span class="text-muted ms-1"
+                                  title="الأسئلة الحرة (شرح، توصيات، صياغة نصوص) تحتاج نموذجاً محلياً أو سحابياً — بدّل الجهة من محدد الجهة داخل صندوق الإدخال، أو فعّل السحابة من الإعدادات.">❓</span>
+                        </span>
+                    }
+                </div>
             </div>
         </div>
     </div>
 
     <div class="col-lg-4">
         <div class="card mb-3">
-            <div class="card-header"><h6 class="mb-0">⚡ أسئلة جاهزة</h6></div>
-            <div class="card-body">
-                <div class="d-grid gap-2">
-                    <button class="btn btn-outline-primary" @onclick="@(() => AskQuickQuestion("ما هي مبيعات اليوم؟"))">📊 مبيعات اليوم</button>
-                    <button class="btn btn-outline-primary" @onclick="@(() => AskQuickQuestion("أفضل 5 منتجات مبيعاً"))">🏆 أفضل المنتجات</button>
-                    <button class="btn btn-outline-primary" @onclick="@(() => AskQuickQuestion("كم المتبقي من الديون؟"))">💰 الديون المستحقة</button>
-                    <button class="btn btn-outline-primary" @onclick="@(() => AskQuickQuestion("ملخص المبيعات للأسبوع الماضي"))">📈 ملخص الأسبوع</button>
-                    <button class="btn btn-outline-secondary" @onclick="@(() => AskQuickQuestion("كيف أضيف منتج جديد؟"))">❓ كيف أضيف منتج؟</button>
-                    <button class="btn btn-outline-secondary" @onclick="@(() => AskQuickQuestion("كيف أعمل نسخة احتياطية؟"))">💾 كيف أعمل نسخة احتياطية؟</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="card mb-3">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0">🧠 النموذج المحلي (اختياري)</h6>
-                <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshModels" disabled="@loadingModels">
-                    @(loadingModels ? "…" : "🔄")
-                </button>
+                <h6 class="mb-0">⚡ أسئلة جاهزة</h6>
+                @if (history is not null && history.Count > 0)
+                {
+                    <span class="badge bg-secondary" title="عدد الأسئلة المسجّلة من استخدامك">@history.Count</span>
+                }
             </div>
             <div class="card-body">
-                <div class="mb-2">
-                    <label class="form-label small mb-1">النموذج</label>
-                    <select class="form-select form-select-sm" @bind="selectedModel" @bind:after="ChangeModel" disabled="@(!llmAvailable || availableModels.Count == 0)">
-                        @if (availableModels.Count == 0)
-                        {
-                            <option value="">لا توجد نماذج مثبتة</option>
-                        }
-                        else
-                        {
-                            @foreach (var model in availableModels)
-                            {
-                                <option value="@model">@model</option>
-                            }
-                        }
-                    </select>
-                </div>
-
-                @if (!llmAvailable)
+                @if (quickQuestions.Count > 0)
                 {
-                    <div class="alert alert-warning small mb-2">
-                        Ollama غير متصل — لكن المساعد المدمج يعمل بشكل طبيعي.
-                    </div>
-                    <div class="small">
-                        <strong>لتشغيل النموذج المحلي:</strong>
-                        <ol class="mb-0 ps-3 mt-1">
-                            <li>ثبّت Ollama من <code>ollama.com</code></li>
-                            <li><code>ollama pull llama3.2:1b</code></li>
-                            <li>أعد تشغيل التطبيق أو اضغط 🔄</li>
-                        </ol>
+                    <div class="d-grid gap-2">
+                        @foreach (var q in quickQuestions)
+                        {
+                            <button class="btn btn-outline-primary btn-sm text-start quick-question-side"
+                                    title="إرسال: @q"
+                                    disabled="@sending"
+                                    @onclick="@(() => SendQuickQuestion(q))">@q</button>
+                        }
                     </div>
                 }
                 else
                 {
-                    <div class="alert alert-success small mb-2">
-                        متصل بـ Ollama. النموذج النشط: <code>@selectedModel</code>
-                    </div>
-                    <div class="small text-muted">
-                        للأجهزة الضعيفة ننصح بنموذج أخف مثل <code>llama3.2:1b</code>:
-                        <code>ollama pull llama3.2:1b</code> ثم اضغط 🔄.
-                    </div>
+                    <div class="text-muted small">ستظهر هنا أسئلتك الأكثر تكراراً بعد أن تبدأ بطرحها.</div>
                 }
             </div>
         </div>
 
+        <AiStatusPanel Status="routeStatus"
+                       Loading="loadingStatus"
+                       OnRefresh="RefreshStatus" />
+
         <div class="card">
-            <div class="card-header"><h6 class="mb-0">📊 حالة الجلسة</h6></div>
-            <div class="card-body small">
-                <div class="d-flex justify-content-between mb-1"><span>المساعد المدمج:</span> <span class="badge bg-success">متاح دائماً</span></div>
-                <div class="d-flex justify-content-between mb-1"><span>Ollama:</span> <span class="badge @(llmAvailable ? "bg-success" : "bg-secondary")">@(llmAvailable ? "متاح" : "غير متاح")</span></div>
-                <div class="d-flex justify-content-between mb-1"><span>الموفر:</span> <span>@providerName</span></div>
-                <div class="d-flex justify-content-between mb-2"><span>الرسائل:</span> <span>@messages.Count</span></div>
-                <button class="btn btn-outline-danger btn-sm w-100" @onclick="ClearChat">🗑️ مسح المحادثة</button>
+            <div class="card-header py-2">
+                <div class="d-flex align-items-center justify-content-between gap-2">
+                    <span class="fw-bold small">📊 الجلسة</span>
+                    <span class="ai-status-line" title="آخر مورّد استُخدم: @providerName">
+                        <span class="badge @GetRouteBadgeClass(lastRouteType)">@lastRouteTypeLabel</span>
+                        <span class="badge bg-secondary">@messages.Count رسالة</span>
+                    </span>
+                </div>
+            </div>
+            <div class="card-body py-2 d-grid gap-2">
+                <button class="btn btn-outline-danger btn-sm" @onclick="ClearChat">🗑️ مسح المحادثة</button>
+                <button class="btn btn-outline-secondary btn-sm" @onclick="ClearHistory">🧹 مسح تاريخ الأسئلة الجاهزة</button>
             </div>
         </div>
     </div>
 </div>
 
+<ChatExportModal IsOpen="exportModalOpen" IsOpenChanged="OnExportModalChanged" Artifact="exportArtifact" />
+
 @code {
-    private List<ChatMessage> messages = new();
+    private List<ChatItem> messages = new();
     private string userInput = "";
     private bool sending = false;
-    private bool llmAvailable = false;
     private bool loadingModels = false;
+    private bool loadingStatus = false;
     private List<string> availableModels = new();
     private string selectedModel = "";
+    private string routeMode = "auto";
     private string providerName = "المساعد المدمج (بدون نموذج)";
+    private RouterStatusDto routeStatus = new(true, false, null, false, null, 1, "المساعد المدمج فقط متاح.");
+    private RouteType lastRouteType = RouteType.BuiltIn;
+    private string lastRouteTypeLabel = "المساعد المدمج";
+    private int nextSequence = 0;
+
+    private bool exportModalOpen = false;
+    private ChatArtifact? exportArtifact;
+
+    private IReadOnlyList<string> quickQuestions = Array.Empty<string>();
+    private AiHistoryService? history;
 
     protected override async Task OnInitializedAsync()
     {
+        await RefreshStatus();
         await RefreshModels();
+        await LoadHistoryAsync();
+    }
+
+    /// <summary>يحمّل تاريخ الأسئلة ويبني قائمة الأسئلة الجاهزة.</summary>
+    private async Task LoadHistoryAsync()
+    {
+        try
+        {
+            history = await HistoryStore.GetAsync();
+            RefreshQuickQuestions();
+        }
+        catch
+        {
+            history = new AiHistoryService();
+            quickQuestions = QuickQuestionSuggestions.Build(QuickQuestionSuggestions.Context.General, null);
+        }
+    }
+
+    /// <summary>يعيد بناء الأسئلة الجاهزة من التاريخ + السياق.</summary>
+    private void RefreshQuickQuestions()
+    {
+        quickQuestions = QuickQuestionSuggestions.Build(
+            QuickQuestionSuggestions.Context.General,
+            history);
+    }
+
+    /// <summary>نقرة على سؤال جاهز = إرسال فوري.</summary>
+    private async Task SendQuickQuestion(string question)
+    {
+        if (sending || string.IsNullOrWhiteSpace(question)) return;
+        await Ask(question.Trim());
+    }
+
+    private async Task RefreshStatus()
+    {
+        loadingStatus = true;
+        try
+        {
+            routeStatus = await ModelRouter.GetStatusAsync();
+            providerName = routeStatus.LocalAvailable ? routeStatus.LocalModel ?? "المساعد المدمج" : "المساعد المدمج (بدون نموذج)";
+        }
+        catch (Exception ex)
+        {
+            // لا نُخفي سبب الفشل: يظهر للمستخدم داخل تفاصيل لوحة الحالة.
+            providerName = "المساعد المدمج (بدون نموذج)";
+            routeStatus = new RouterStatusDto(true, false, null, false, null, 1, $"تعذّر قراءة حالة المسارات: {ex.Message}");
+        }
+        finally
+        {
+            loadingStatus = false;
+            StateHasChanged();
+        }
     }
 
     private async Task RefreshModels()
@@ -180,26 +254,17 @@
         loadingModels = true;
         try
         {
-            llmAvailable = await LlmProvider.IsAvailableAsync();
-            providerName = LlmProvider.ProviderName;
-
-            availableModels = (await LlmProvider.GetAvailableModelsAsync()).ToList();
-            if (availableModels.Count > 0)
+            var models = await ModelRouter.GetAvailableLocalModelsAsync();
+            availableModels = models.ToList();
+            if (availableModels.Count > 0 &&
+                (string.IsNullOrEmpty(selectedModel) || !availableModels.Contains(selectedModel)))
             {
-                if (string.IsNullOrEmpty(selectedModel) || !availableModels.Contains(selectedModel))
-                {
-                    selectedModel = availableModels[0];
-                }
-                await LlmProvider.SetModelAsync(selectedModel);
-            }
-            else
-            {
-                selectedModel = "";
+                selectedModel = availableModels[0];
             }
         }
         catch
         {
-            llmAvailable = false;
+            availableModels = new List<string>();
         }
         finally
         {
@@ -211,21 +276,9 @@
     private async Task ChangeModel()
     {
         if (string.IsNullOrEmpty(selectedModel)) return;
-        try
-        {
-            await LlmProvider.SetModelAsync(selectedModel);
-            providerName = LlmProvider.ProviderName;
-        }
-        catch (Exception ex)
-        {
-            messages.Add(new ChatMessage
-            {
-                Content = $"تعذر تفعيل النموذج: {ex.Message}",
-                IsUser = false,
-                Timestamp = DateTime.Now,
-                Provider = "نظام"
-            });
-        }
+        await ModelRouter.SetLocalModelAsync(selectedModel);
+        await RefreshStatus();
+        providerName = selectedModel;
     }
 
     private async Task OnInputKeyDown(KeyboardEventArgs e)
@@ -236,38 +289,98 @@
         }
     }
 
+    /// <summary>إرسال ما في حقل الإدخال كسؤال جديد في نهاية المحادثة.</summary>
     private async Task SendMessage()
     {
         if (string.IsNullOrWhiteSpace(userInput) || sending) return;
-
-        var input = userInput;
+        var input = userInput.Trim();
         userInput = "";
+        await Ask(input);
+    }
+
+    /// <summary>
+    /// الأساس: يضيف سؤال المستخدم ثم يطلب الرد ويضيفه في نهاية المحادثة.
+    /// يُستخدم للإرسال العادي، وبعد التعديل، وبعد إعادة التوليد.
+    /// </summary>
+    private async Task Ask(string question)
+    {
+        if (sending || string.IsNullOrWhiteSpace(question)) return;
         sending = true;
-        messages.Add(new ChatMessage { Content = input, IsUser = true, Timestamp = DateTime.Now });
+
+        var userMsg = new ChatItem
+        {
+            Content = question,
+            IsUser = true,
+            Timestamp = DateTime.Now,
+            Provider = "أنت",
+            Route = null,
+            Sequence = nextSequence++,
+            CanRegenerate = true
+        };
+        messages.Add(userMsg);
         StateHasChanged();
         ScrollToBottom();
 
+        // تسجيل السؤال في التاريخ (عَدّاد التكرار) — لا يُعطّل الإرسال عند فشله.
         try
         {
-            var result = await QueryAiUseCase.ExecuteAsync(
-                new Wizz.Application.DTOs.AiQueryInputDto(input, true, true, 10));
+            await HistoryStore.RecordAsync(question);
+            if (history is not null) RefreshQuickQuestions();
+        }
+        catch
+        {
+            // تجاهل فشل الحفظ
+        }
 
-            messages.Add(new ChatMessage
+        try
+        {
+            var forcedRoute = routeMode switch
             {
-                Content = result.IsSuccess ? result.Value.Answer : $"تعذر الحصول على رد: {string.Join("، ", result.Errors)}",
+                "built-in" => Wizz.Application.Abstractions.RouteType.BuiltIn,
+                "local" => Wizz.Application.Abstractions.RouteType.Local,
+                "cloud" => Wizz.Application.Abstractions.RouteType.Cloud,
+                _ => (Wizz.Application.Abstractions.RouteType?)null
+            };
+
+            var result = await QueryAiUseCase.ExecuteAsync(
+                new Wizz.Application.DTOs.AiQueryInputDto(question, true, true, 10, forcedRoute));
+
+            var route = InferRouteType(result.Value.ProviderName);
+            lastRouteType = route.Route;
+            lastRouteTypeLabel = route.Label;
+
+            var answerText = result.IsSuccess ? result.Value.Answer : $"تعذر الحصول على رد: {string.Join("، ", result.Errors)}";
+            var parsed = ArtifactParser.Parse(answerText);
+
+            var assistantMsg = new ChatItem
+            {
+                Content = answerText,
+                CleanContent = parsed.Text,
+                Artifacts = parsed.Artifacts,
                 IsUser = false,
                 Timestamp = DateTime.Now,
-                Provider = result.IsSuccess ? result.Value.ProviderName : "نظام"
-            });
+                Provider = result.IsSuccess ? result.Value.ProviderName : "نظام",
+                Route = route.Route.ToString(),
+                ParentId = userMsg.Id,
+                Sequence = nextSequence++,
+                CanRegenerate = true
+            };
+            messages.Add(assistantMsg);
+
+            await RefreshStatus();
         }
         catch (Exception ex)
         {
-            messages.Add(new ChatMessage
+            messages.Add(new ChatItem
             {
                 Content = $"حدث خطأ غير متوقع: {ex.Message}\nيمكنك إعادة المحاولة أو استخدام الأسئلة الجاهزة.",
                 IsUser = false,
                 Timestamp = DateTime.Now,
-                Provider = "نظام"
+                Provider = "نظام",
+                Route = null,
+                ParentId = userMsg.Id,
+                Sequence = nextSequence++,
+                CanRegenerate = false
             });
         }
         finally
@@ -278,16 +391,136 @@
         }
     }
 
-    private async Task AskQuickQuestion(string question)
+    /// <summary>
+    /// يحذف كل الرسائل من موضع معيّن (شاملًا) إلى نهاية المحادثة، ثم يعيد ضبط الترقيم.
+    /// هذا هو جوهر سلوك «إعادة البناء من تلك النقطة» كما في واجهات الوكلاء.
+    /// </summary>
+    private void TruncateFrom(int sequence)
     {
-        if (sending) return;
-        userInput = question;
-        await SendMessage();
+        messages.RemoveAll(m => m.Sequence >= sequence);
+        nextSequence = messages.Count > 0 ? messages.Max(m => m.Sequence) + 1 : 0;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// زر «تعديل وإعادة البناء من هنا» على سؤال المستخدم:
+    /// يحذف السؤال وكل ما بعده، ثم يعيد الإرسال بالنص بعد التحرير.
+    /// </summary>
+    private async Task EditMessage(ChatItem updated)
+    {
+        if (sending || !updated.IsUser) return;
+
+        TruncateFrom(updated.Sequence);
+        await Ask(updated.Content);
+    }
+
+    private async Task CopyMessage(ChatItem msg)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", msg.Content);
+        }
+        catch
+        {
+            // المتصفح قد يمنع الوصول إلى الحافظة — نتجاهل الخطأ بهدوء.
+        }
+        StateHasChanged();
+    }
+
+    /// <summary>فتح نافذة تصدير/تنزيل المخرج المحدد.</summary>
+    private Task OpenExportModal(ChatArtifact artifact)
+    {
+        exportArtifact = artifact;
+        exportModalOpen = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task OnExportModalChanged(bool open)
+    {
+        exportModalOpen = open;
+        if (!open) exportArtifact = null;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>حذف مخرج من عرض رسالة (يُخفى فقط، دون حذف نص الرد).</summary>
+    private Task DeleteArtifact(ChatArtifact artifact)
+    {
+        artifact.IsRemoved = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private (RouteType Route, string Label) InferRouteType(string providerName)
+    {
+        if (providerName.Contains("المساعد المدمج", StringComparison.OrdinalIgnoreCase))
+            return (RouteType.BuiltIn, "المساعد المدمج");
+        if (providerName.Contains("Ollama", StringComparison.OrdinalIgnoreCase) || providerName.Contains("محلي", StringComparison.OrdinalIgnoreCase))
+            return (RouteType.Local, "النموذج المحلي");
+        if (providerName.Contains("سحابي", StringComparison.OrdinalIgnoreCase) || providerName.Contains("Cloud", StringComparison.OrdinalIgnoreCase))
+            return (RouteType.Cloud, "السحابة المجانية");
+        return (RouteType.BuiltIn, "المساعد المدمج");
+    }
+
+    private string GetProviderBadgeClass(string provider)
+    {
+        if (provider.Contains("المساعد المدمج", StringComparison.OrdinalIgnoreCase))
+            return "bg-success";
+        if (provider.Contains("Ollama", StringComparison.OrdinalIgnoreCase) || provider.Contains("محلي", StringComparison.OrdinalIgnoreCase))
+            return "bg-primary";
+        if (provider.Contains("سحابي", StringComparison.OrdinalIgnoreCase) || provider.Contains("Cloud", StringComparison.OrdinalIgnoreCase))
+            return "bg-info text-dark";
+        return "bg-secondary";
+    }
+
+    private string GetRouteBadgeClass(RouteType route)
+    {
+        return route switch
+        {
+            RouteType.BuiltIn => "bg-success",
+            RouteType.Local => "bg-primary",
+            RouteType.Cloud => "bg-info text-dark",
+            _ => "bg-secondary"
+        };
+    }
+
+    private async Task OnRouteModeChanged(string value)
+    {
+        routeMode = value;
+        // إن اختير مسار غير متاح، سيتولّى ModelRouter الانتقال إلى بديل مناسب.
+        StateHasChanged();
+    }
+
+    private async Task OnSelectedLocalModelChanged(string model)
+    {
+        selectedModel = model;
+        await ChangeModel();
+        StateHasChanged();
     }
 
     private void ClearChat()
     {
         messages.Clear();
+        nextSequence = 0;
+        lastRouteType = RouteType.BuiltIn;
+        lastRouteTypeLabel = "المساعد المدمج";
+        StateHasChanged();
+    }
+
+    /// <summary>يمسح تاريخ الأسئلة (الأسئلة الجاهزة) دون المساس بالمحادثة الحالية.</summary>
+    private async Task ClearHistory()
+    {
+        try
+        {
+            await HistoryStore.ClearAsync();
+            if (history is not null) history.Clear();
+            RefreshQuickQuestions();
+        }
+        catch
+        {
+            // تجاهل
+        }
         StateHasChanged();
     }
 
@@ -295,13 +528,5 @@
     {
         _ = JS.InvokeVoidAsync("eval",
             "setTimeout(() => { const el = document.getElementById('chatMessages'); if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' }); }, 80)");
-    }
-
-    private class ChatMessage
-    {
-        public string Content { get; set; } = "";
-        public bool IsUser { get; set; }
-        public DateTime Timestamp { get; set; }
-        public string Provider { get; set; } = "";
     }
 }

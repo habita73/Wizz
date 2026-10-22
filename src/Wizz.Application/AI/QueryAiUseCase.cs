@@ -7,19 +7,20 @@ using Wizz.Application.DTOs;
 
 /// <summary>
 /// استفسار AI مع سياق المتجر.
-/// الاستراتيجية: المساعد المدمج (فوري، بلا نموذج) هو الأساس؛ ويُستخدم النموذج المحلي
-/// فقط إذا كان متاحاً، مع رجوع تلقائي للمدمج عند أي فشل أو مهلة.
+/// التوجيه يتم الآن عبر IModelRouter المستقل:
+/// - الأسئلة المباشرة → المساعد المدمج (قواعد برمجية، فوري، بدون نموذج)
+/// - الأسئلة التحليلية + نموذج محلي متاح → النموذج المحلي أولاً
+/// - الأسئلة الحرة + اتصال سحابي + موافقة المستخدم → مزود سحابي مجاني
+/// - أي فشل → رجوع تلقائي للمدمج أو إرشاد واضح
 /// </summary>
 public sealed class QueryAiUseCase
 {
-    private readonly ILlmProvider _llm;
-    private readonly IAiToolRegistry _tools;
+    private readonly IModelRouter _router;
     private readonly BuiltInAssistant _assistant;
 
-    public QueryAiUseCase(ILlmProvider llm, IAiToolRegistry tools, BuiltInAssistant assistant)
+    public QueryAiUseCase(IModelRouter router, BuiltInAssistant assistant)
     {
-        _llm = llm;
-        _tools = tools;
+        _router = router;
         _assistant = assistant;
     }
 
@@ -30,96 +31,59 @@ public sealed class QueryAiUseCase
 
         var sw = Stopwatch.StartNew();
 
-        // 1) المساعد المدمج أولاً: إجابة فورية من البيانات المحلية بلا نموذج ولا انتظار.
         try
         {
-            var builtIn = await _assistant.TryAnswerAsync(input.Question, ct);
-            if (builtIn is not null)
+            var routeResult = await _router.RouteAsync(input, ct);
+            sw.Stop();
+
+            if (routeResult.RouteType == RouteType.None)
             {
-                sw.Stop();
+                // لا مسار مؤهل — إرشاد واضح ولكن لا فشل
                 return Result<AiQueryResultDto>.Success(new AiQueryResultDto(
-                    builtIn,
+                    routeResult.Answer,
                     true,
-                    new[] { "بيانات محلية" },
+                    Array.Empty<string>(),
                     sw.Elapsed,
-                    _assistant.ProviderName));
+                    routeResult.ProviderName));
             }
+
+            return Result<AiQueryResultDto>.Success(new AiQueryResultDto(
+                routeResult.Answer,
+                routeResult.UsedStoreData,
+                routeResult.ReferencedData,
+                sw.Elapsed,
+                routeResult.ProviderName));
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Built-in assistant failed: {ex.Message}");
-        }
+            sw.Stop();
+            Debug.WriteLine($"QueryAiUseCase failed: {ex.Message}");
 
-        // 2) سؤال حر → النموذج المحلي إن كان متاحاً، مع سياق حقيقي من البيانات.
-        if (await SafeIsAvailableAsync(ct))
-        {
+            // fallback الأخير: محاولة المدمج مباشرة
             try
             {
-                var snapshot = await _assistant.GetSnapshotAsync(ct);
-                var systemPrompt = BuildSystemPrompt(input, snapshot);
-                var answer = await _llm.CompleteWithContextAsync(systemPrompt, input.Question, ct);
-
-                if (!string.IsNullOrWhiteSpace(answer))
+                var builtIn = await _assistant.TryAnswerAsync(input.Question, ct);
+                if (builtIn is not null)
                 {
-                    sw.Stop();
                     return Result<AiQueryResultDto>.Success(new AiQueryResultDto(
-                        answer.Trim(),
+                        builtIn,
                         true,
-                        new[] { "مبيعات اليوم", "مبيعات الأسبوع", "الديون", "المنتجات" },
+                        new[] { "بيانات محلية" },
                         sw.Elapsed,
-                        _llm.ProviderName));
+                        _assistant.ProviderName));
                 }
             }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            catch
             {
-                return Result<AiQueryResultDto>.Failure("أُلغي الطلب.");
+                // تجاهل — نreturn إرشاد أدناه
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"AI fallback: {ex.Message}");
-            }
+
+            return Result<AiQueryResultDto>.Success(new AiQueryResultDto(
+                "لم أفهم السؤال بما يكفي. جرّب صيغة أوضح مثل: «قائمة الديون»، «مجموع الديون»، «أكبر دين»، «مبيعات أمس»، «سعر تفاح».",
+                true,
+                Array.Empty<string>(),
+                sw.Elapsed,
+                _assistant.ProviderName));
         }
-
-        // 3) لا تطابق ولا نموذج → إرشاد واضح بدل رسالة خطأ صامتة.
-        sw.Stop();
-        var hint = "لم أجد إجابة مباشرة لهذا السؤال.\n\n" +
-                   "المساعد المدمج يجيب فوراً عن: مبيعات اليوم، ملخص الأسبوع، أفضل المنتجات، الديون المستحقة، عدد المنتجات، طريقة إضافة منتج، والنسخ الاحتياطي.\n\n";
-
-        hint += await SafeIsAvailableAsync(ct)
-            ? "أعد صياغة السؤال، أو جرّب نموذجاً أخف من إعدادات النموذج المحلي."
-            : "لتشغيل الأسئلة الحرة: شغّل Ollama ثم ثبّت نموذجاً خفيفاً مثل llama3.2:1b.";
-
-        return Result<AiQueryResultDto>.Success(new AiQueryResultDto(
-            hint,
-            true,
-            Array.Empty<string>(),
-            sw.Elapsed,
-            _assistant.ProviderName));
-    }
-
-    private async Task<bool> SafeIsAvailableAsync(CancellationToken ct)
-    {
-        try
-        {
-            return await _llm.IsAvailableAsync(ct);
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private static string BuildSystemPrompt(AiQueryInputDto input, StoreSnapshot snapshot)
-    {
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine("أنت مساعد ذكي لنظام نقاط بيع جزائري اسمه Wizz، يعمل محلياً.");
-        sb.AppendLine("قواعد صارمة:");
-        sb.AppendLine("- استخدم فقط الأرقام الواردة في «بيانات المتجر» أدناه، ولا تخترع أي رقم.");
-        sb.AppendLine("- إن لم يكن الرقم موجوداً في البيانات، قل بوضوح إنه غير متوفر ووجّه المستخدم للصفحة المناسبة.");
-        sb.AppendLine("- لا تقترح عمليات حساسة (حذف، إلغاء بيع، تعديل أسعار) دون تنبيه المستخدم.");
-        sb.AppendLine("- رد بالعربية الفصحى المبسطة، في 3 أسطر كحد أقصى، دون مقدمات طويلة.");
-        sb.AppendLine();
-        sb.AppendLine(BuiltInAssistant.BuildContextText(snapshot));
-        return sb.ToString();
     }
 }

@@ -4,6 +4,9 @@
 @inject Wizz.Application.Abstractions.IUserRepository UserRepo
 @inject Wizz.Application.Abstractions.IBackupService BackupService
 @inject Wizz.Application.Abstractions.IUnitOfWork UnitOfWork
+@inject Wizz.Application.Abstractions.IAiSettingsProvider AiSettings
+@inject Wizz.Application.Abstractions.IDeviceCapabilityEvaluator DeviceEvaluator
+@inject Wizz.Application.Abstractions.IModelRouter ModelRouter
 @inject IJSRuntime JS
 
 <h2>⚙️ الإعدادات</h2>
@@ -188,11 +191,199 @@
                         <tr><td>إصدار التطبيق</td><td class="text-end fw-bold">0.1.0</td></tr>
                         <tr><td>إطار العمل</td><td class="text-end">.NET 10 / Blazor Server</td></tr>
                         <tr><td>قاعدة البيانات</td><td class="text-end">SQLite (wizz.db)</td></tr>
-                        <tr><td>الذكاء الاصطناعي</td><td class="text-end">Ollama (محلي)</td></tr>
+                        <tr><td>الذكاء الاصطناعي</td><td class="text-end">مدمج محلياً</td></tr>
                         <tr><td>اللغة</td><td class="text-end">العربية (RTL)</td></tr>
                         <tr><td>الترخيص</td><td class="text-end">MIT</td></tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- إعدادات الذكاء الاصطناعي (بسيط) -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">🤖 المساعد الذكي</h5>
+                <span class="badge @(aiCloudEnabled ? "bg-success" : "bg-secondary")">
+                    @(aiCloudEnabled ? "سحابي مجاني مفعل" : "محلي فقط")
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="aiCloud" @bind="aiCloudEnabled" />
+                        <label class="form-check-label" for="aiCloud">
+                            تفعيل المساعد الذكي المجاني عبر الإنترنت (اختياري)
+                        </label>
+                    </div>
+                    <div class="form-text">
+                        إذا فعّلت هذا الخيار، سيساعدك المساعد في الإجابة عن الأسئلة المعقدة باستخدام خدمة سحابية مجانية.
+                        إذا لم تُفعّله، سيعمل المساعد من بيانات متجرك محلياً دون إنترنت.
+                    </div>
+                </div>
+
+                @if (aiCloudEnabled)
+                {
+                    <div class="mb-3">
+                        <label class="form-label">مفتاح API (اختياري - للصق من OpenRouter)</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" @bind="cloudApiKey" placeholder="sk-or-... (اختياري)" />
+                            <span class="input-group-text">
+                                <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+                                    🔗 احصل على مفتاح مجاني
+                                </a>
+                            </span>
+                        </div>
+                        <div class="form-text">
+                            انسخ المفتاح من OpenRouter (يبدأ بـ <code>sk-or-...</code>) والصقه هنا.
+                            <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer">مجاني، لا بطاقة بنكية</a>.
+                        </div>
+                    </div>
+                }
+
+                <div class="mb-3">
+                    <label class="form-label">مستوى المساعد المحلي حسب جهازك</label>
+                    <select class="form-select form-select-sm" @bind="localModelLevel">
+                        <option value="light">خفيف (للأجهزة الضعيفة - 4 جيجابايت ذاكرة)</option>
+                        <option value="medium">متوسط (للأجهزة العادية - 8 جيجابايت ذاكرة أو أكثر)</option>
+                    </select>
+                    <div class="form-text">
+                        اختر المستوى الذي يناسب جهازك. المستوى الخفيف أسرع ولا يبطئ جهاز البيع.
+                    </div>
+                    @if (loadingDevice)
+                    {
+                        <div class="alert alert-info py-2 small mb-3">
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            جارٍ قياس قدرة الجهاز…
+                        </div>
+                    }
+                    else if (deviceAssessment is not null)
+                    {
+                        <div class="alert alert-info py-2 small mb-3">
+                            <strong>قدرة الجهاز:</strong> @DeviceTierText(deviceAssessment.Tier)
+                            <span class="text-muted ms-1"
+                                  title="مستوى الجهاز يُقاس من الذاكرة المتاحة، ويحدّد النموذج المحلي المقترح تلقائياً.">❓</span>
+                            <div class="text-muted mt-1">@deviceAssessment.Reason</div>
+                        </div>
+                    }
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">
+                        النموذج المحلي المفضّل
+                        <span class="text-muted" title="النموذج الذي يستخدمه Ollama داخل المتجر. اختر النموذج ثم اضغط «تطبيق». نسخ «coder» غير مخصصة للمحادثة العربية.">❓</span>
+                    </label>
+                    <div class="input-group input-group-sm">
+                        <select class="form-select" @bind="preferredLocalModel" disabled="@(localModels.Count == 0)">
+                            @if (localModels.Count == 0)
+                            {
+                                <option value="">لا توجد نماذج مثبتة</option>
+                            }
+                            else
+                            {
+                                @foreach (var m in localModels)
+                                {
+                                    <option value="@m">@m</option>
+                                }
+                            }
+                        </select>
+                        <button class="btn btn-outline-secondary" title="تحديث قائمة النماذج المثبتة"
+                                @onclick="RefreshLocalModels" disabled="@loadingLocalModels">
+                            @(loadingLocalModels ? "…" : "🔄")
+                        </button>
+                        <button class="btn btn-outline-primary" title="تفعيل النموذج المختار"
+                                @onclick="ApplyLocalModel"
+                                disabled="@(applyingLocalModel || string.IsNullOrWhiteSpace(preferredLocalModel))">
+                            @(applyingLocalModel ? "…" : "تطبيق")
+                        </button>
+                    </div>
+                    <div class="form-text">
+                        نماذج عربية مناسبة: <code>qwen2.5:1.5b</code> (متوازن) أو <code>qwen2.5:0.5b-instruct</code> (خفيف للأجهزة الضعيفة).
+                    </div>
+                </div>
+
+                @if (localModels.Count == 0)
+                {
+                    <div class="alert alert-warning">
+                        <strong>Ollama غير متاح</strong> — لكن المساعد المدمج يعمل بشكل طبيعي بدونه.
+                        <ol class="mb-0 mt-2 ps-3">
+                            <li>ثبّت Ollama من <code>ollama.com</code></li>
+                            <li><code>ollama pull qwen2.5:0.5b-instruct</code></li>
+                            <li>أعد تشغيل التطبيق أو اضغط 🔄</li>
+                        </ol>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-success">
+                        متصل بـ Ollama — @localModels.Count نموذج مثبّت.
+                    </div>
+                }
+
+                <div class="alert alert-info">
+                    <strong>مهم:</strong> البيع والمخزون والمال تعمل دائماً حتى لو كان المساعد الذكي غير متاح.
+                    لا تُرسل أي بيانات من متجرك إلى الإنترنت إلا إذا فعّلت الخيار أعلاه.
+                </div>
+
+                <div class="card card-body bg-light mt-3" style="border: 1px solid #dee2e6;">
+                    <h6 class="mb-2">🔑 للحصول على مفتاح مجاني (اختياري):</h6>
+                    <div class="mb-2">
+                        <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-sm">
+                            🌐 فتح OpenRouter (مجاني)
+                        </a>
+                    </div>
+                    <div class="small text-muted">
+                        <ol class="mb-0 ps-3">
+                            <li>اضغط الزر أعلاه ← يسجّل دخول بحساب Google أو GitHub (مجاني، لا بطاقة بنكية)</li>
+                            <li>من القائمة الشخصية (أعلى اليمين) اختر <strong>Keys</strong></li>
+                            <li>اضغط <strong>Create Key</strong> ← انسخ المفتاح (يبدأ بـ <code>sk-or-...</code>)</li>
+                            <li>الصقه هنا ← احفظ ← المساعد يصبح أقوى للأسئلة المعقدة</li>
+                        </ol>
+                        <div class="text-success small mt-1">
+                            ✅ مجاني تماماً — لا بطاقة بنكية — نماذج عربية مجانية متاحة (Qwen، Gemma، Llama...)
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-secondary py-2 small">
+                    <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                        <span>
+                            <strong>حالة المساعد:</strong> @routerStatusSummary
+                            @if (loadingAiStatus)
+                            {
+                                <span class="spinner-border spinner-border-sm ms-2" role="status"></span>
+                            }
+                        </span>
+                        <span class="d-flex align-items-center gap-1">
+                            <span class="badge bg-success" title="المساعد المدمج — يعمل دائماً بلا إنترنت">⚡ مدمج</span>
+                            <span class="badge @(routerStatus?.LocalAvailable == true ? "bg-success" : "bg-secondary")"
+                                  title="النموذج المحلي (Ollama)">🟢 محلي</span>
+                            <span class="badge @(routerStatus?.CloudAvailable == true ? "bg-success" : "bg-secondary")"
+                                  title="النموذج السحابي (اختياري)">☁️ سحابي</span>
+                            <span class="badge bg-primary" title="عدد المسارات المتاحة">@((routerStatus?.RouteCount ?? 1))</span>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mb-3">
+                    <button class="btn btn-outline-secondary btn-sm flex-fill" @onclick="TestOllamaAsync" disabled="@testingOllama">
+                        @(testingOllama ? "جارٍ الاختبار…" : "اختبار Ollama")
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm flex-fill" @onclick="TestCloudAsync" disabled="@(testingCloud || !aiCloudEnabled)">
+                        @(testingCloud ? "جارٍ الاختبار…" : "اختبار السحابة")
+                    </button>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(ollamaTestResult))
+                {
+                    <div class="alert alert-info py-2 small">@ollamaTestResult</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(cloudTestResult))
+                {
+                    <div class="alert alert-info py-2 small">@cloudTestResult</div>
+                }
+
+                <button class="btn btn-primary w-100" @onclick="SaveAiSettings">حفظ الإعدادات</button>
             </div>
         </div>
     </div>
@@ -314,11 +505,188 @@
     private List<Wizz.Application.Abstractions.BackupInfo> backups = new();
     private bool backupInProgress;
 
+    // إعدادات الذكاء الاصطناعي
+    private bool aiCloudEnabled = false;
+    private string localModelLevel = "light";
+    private string cloudApiKey = "";
+    private DeviceCapabilityAssessment? deviceAssessment;
+    private bool loadingDevice;
+    private string routerStatusSummary = "جارٍ التقييم…";
+    private Wizz.Application.Abstractions.RouterStatusDto? routerStatus;
+    private bool loadingAiStatus = false;
+    private bool testingOllama = false;
+    private bool testingCloud = false;
+    private string ollamaTestResult = "";
+    private string cloudTestResult = "";
+
+    // النموذج المحلي المفضّل
+    private List<string> localModels = new();
+    private string preferredLocalModel = "";
+    private bool loadingLocalModels = false;
+    private bool applyingLocalModel = false;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadStore();
         await LoadUsers();
         await LoadBackups();
+        await LoadAiSettings();
+    }
+
+    private async Task LoadAiSettings()
+    {
+        aiCloudEnabled = AiSettings.IsCloudEnabled;
+        cloudApiKey = AiSettings.GetCloudApiKey() ?? "";
+        localModelLevel = AiSettings.LocalModelLevel;
+        loadingDevice = true;
+        loadingAiStatus = true;
+        try
+        {
+            deviceAssessment = await DeviceEvaluator.AssessAsync();
+        }
+        catch
+        {
+            deviceAssessment = null;
+        }
+        finally
+        {
+            loadingDevice = false;
+            StateHasChanged();
+        }
+
+        await RefreshRouterStatusAsync();
+        await RefreshLocalModels();
+    }
+
+    /// <summary>يحدّث قائمة النماذج المحلية المثبتة ويختار الأنسب افتراضياً.</summary>
+    private async Task RefreshLocalModels()
+    {
+        loadingLocalModels = true;
+        try
+        {
+            var models = await ModelRouter.GetAvailableLocalModelsAsync();
+            localModels = models.ToList();
+
+            if (localModels.Count == 0)
+            {
+                preferredLocalModel = "";
+            }
+            else if (string.IsNullOrWhiteSpace(preferredLocalModel) || !localModels.Contains(preferredLocalModel))
+            {
+                preferredLocalModel = localModels[0];
+            }
+        }
+        catch
+        {
+            localModels = new List<string>();
+        }
+        finally
+        {
+            loadingLocalModels = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>يفعّل النموذج المحلي المختار داخل المتجر.</summary>
+    private async Task ApplyLocalModel()
+    {
+        if (string.IsNullOrWhiteSpace(preferredLocalModel)) return;
+
+        applyingLocalModel = true;
+        try
+        {
+            await ModelRouter.SetLocalModelAsync(preferredLocalModel);
+            await RefreshRouterStatusAsync();
+            await JS.InvokeVoidAsync("alert", $"تم تفعيل النموذج المحلي: {preferredLocalModel}");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"خطأ: {ex.Message}");
+        }
+        finally
+        {
+            applyingLocalModel = false;
+        }
+    }
+
+    private async Task RefreshRouterStatusAsync()
+    {
+        loadingAiStatus = true;
+        StateHasChanged();
+        try
+        {
+            var status = await ModelRouter.GetStatusAsync();
+            routerStatus = status;
+            routerStatusSummary = status.SummaryMessage;
+        }
+        catch (Exception ex)
+        {
+            routerStatusSummary = $"تعذّر تقييم حالة المساعد: {ex.Message}";
+        }
+        finally
+        {
+            loadingAiStatus = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveAiSettings()
+    {
+        AiSettings.IsCloudEnabled = aiCloudEnabled;
+        if (!string.IsNullOrWhiteSpace(cloudApiKey))
+        {
+            AiSettings.SetCloudApiKey(cloudApiKey);
+        }
+        AiSettings.LocalModelLevel = localModelLevel;
+        DeviceEvaluator.InvalidateCache();
+
+        await RefreshRouterStatusAsync();
+        await JS.InvokeVoidAsync("alert", "تم حفظ إعدادات المساعد الذكي");
+    }
+
+    private async Task TestOllamaAsync()
+    {
+        testingOllama = true;
+        ollamaTestResult = "";
+        StateHasChanged();
+        try
+        {
+            // نستكشف Ollama عبر IModelRouter status كمؤشر
+            var status = await ModelRouter.GetStatusAsync();
+            ollamaTestResult = status.LocalAvailable
+                ? $"✅ Ollama متاح: {status.LocalModel}"
+                : "❌ Ollama غير متاح. تحقق من تشغيل تطبيق Ollama على المنفذ 11434 وثبّت نموذجاً (ollama pull qwen2.5:0.5b-instruct).";
+        }
+        catch (Exception ex)
+        {
+            ollamaTestResult = $"❌ خطأ: {ex.Message}";
+        }
+        finally
+        {
+            testingOllama = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task TestCloudAsync()
+    {
+        testingCloud = true;
+        cloudTestResult = "";
+        StateHasChanged();
+        try
+        {
+            var (success, message) = await ModelRouter.TestCloudConnectionAsync();
+            cloudTestResult = message;
+        }
+        catch (Exception ex)
+        {
+            cloudTestResult = $"❌ خطأ: {ex.Message}";
+        }
+        finally
+        {
+            testingCloud = false;
+            StateHasChanged();
+        }
     }
 
     private async Task LoadStore()
@@ -595,6 +963,15 @@
         UserRole.Manager => "مدير",
         UserRole.Cashier => "كاشير",
         _ => "—",
+    };
+
+    /// <summary>يحوّل مستوى قدرة الجهاز إلى نص عربي.</summary>
+    private static string DeviceTierText(Wizz.Application.Abstractions.DeviceCapabilityTier tier) => tier switch
+    {
+        Wizz.Application.Abstractions.DeviceCapabilityTier.Light => "خفيف (نموذج 0.5B–1.5B)",
+        Wizz.Application.Abstractions.DeviceCapabilityTier.Medium => "متوسط (نموذج 2B–4B)",
+        Wizz.Application.Abstractions.DeviceCapabilityTier.Heavy => "قوي (نموذج 7B أو أكثر)",
+        _ => "غير كافٍ للمساعد المحلي — المساعد المدمج يكفي",
     };
 
     private sealed class StoreForm

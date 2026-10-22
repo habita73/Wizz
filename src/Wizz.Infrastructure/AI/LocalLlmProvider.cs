@@ -12,39 +12,42 @@ using Wizz.Application.Abstractions;
 public sealed class LocalLlmProvider : ILlmProvider, IDisposable
 {
     /// <summary>مهلة استكشاف Ollama — قصيرة حتى لا تتجمد الواجهة عند غيابه.</summary>
-    private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(5);
 
     /// <summary>مهلة توليد الرد — تفشل بلطف بدل تعليق الطلب.</summary>
     private static readonly TimeSpan CompletionTimeout = TimeSpan.FromSeconds(60);
 
-    /// <summary>ترتيب تفضيلي للنماذج الخفيفة المناسبة للأجهزة المتوسطة والضعيفة.</summary>
+    /// <summary>ترتيب تفضيلي للنماذج الخفيفة التي تدعم العربية بشكل معقول.</summary>
     private static readonly string[] PreferredModels =
     {
-        "llama3.2:1b",
-        "qwen2.5:0.5b",
-        "qwen2:0.5b",
-        "gemma2:2b",
-        "phi3:mini",
         "qwen2.5:1.5b",
+        "qwen2.5:3b",
+        "qwen2.5:0.5b",
+        "gemma2:2b",
         "llama3.2:3b",
+        "phi3:mini",
+        "llama3.2:1b",
         "llama3.2",
         "llama3"
     };
 
     private readonly OllamaApiClient _client;
+    private readonly IAiSettingsProvider? _settings;
     private readonly ILogger<LocalLlmProvider>? _logger;
     private string? _activeModel;
     private bool _modelResolved;
+    private string? _resolvedLevel;
 
     public string ProviderName => _activeModel is null
         ? "Ollama (محلي)"
         : $"Ollama (محلي) — {_activeModel}";
 
-    public LocalLlmProvider(string baseUrl, string model, ILogger<LocalLlmProvider>? logger = null)
+    public LocalLlmProvider(string baseUrl, string model, IAiSettingsProvider? settings = null, ILogger<LocalLlmProvider>? logger = null)
     {
         _activeModel = string.IsNullOrWhiteSpace(model) ? null : model;
+        _settings = settings;
         _logger = logger;
-        _client = new OllamaApiClient(new Uri(baseUrl), _activeModel ?? "llama3.2:1b");
+        _client = new OllamaApiClient(new Uri(baseUrl), _activeModel ?? "qwen2.5:1.5b");
     }
 
     /// <summary>متاح يعني: Ollama يستجيب وهناك نموذج واحد على الأقل مثبّت.</summary>
@@ -53,18 +56,54 @@ public sealed class LocalLlmProvider : ILlmProvider, IDisposable
         var models = await ListModelsSafeAsync(ct);
         if (models.Count == 0) return false;
 
-        if (!_modelResolved || _activeModel is null || !models.Any(m => SameModel(m.Name, _activeModel)))
+        var currentLevel = _settings?.LocalModelLevel ?? "light";
+        if (!_modelResolved || _resolvedLevel != currentLevel || _activeModel is null || !models.Any(m => SameModel(m.Name, _activeModel)))
         {
-            ResolveLightestModel(models);
+            ResolveLightestModel(models, currentLevel);
         }
 
         return _activeModel is not null;
     }
 
+    /// <summary>
+    /// اختبار الاتصال بـ Ollama وإرجاع رسالة تشخيصية واضحة للمستخدم.
+    /// </summary>
+    public async Task<(bool Success, string Message)> TestConnectionAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(ProbeTimeout);
+
+            var models = await _client.ListLocalModelsAsync(timeout.Token);
+            var modelNames = models.Where(m => !string.IsNullOrWhiteSpace(m.Name)).Select(m => m.Name).ToList();
+
+            if (modelNames.Count == 0)
+            {
+                return (false, "Ollama متصل لكن لا توجد نماذج مثبّتة. ثبت نموذجاً بأمر: ollama pull qwen2.5:1.5b");
+            }
+
+            return (true, $"Ollama متصل بنجاح. النماذج المثبّتة: {string.Join(", ", modelNames.Take(5))}");
+        }
+        catch (Exception ex)
+        {
+            var msg = ex.Message.ToLowerInvariant();
+            if (msg.Contains("connection refused") || msg.Contains("connection refused"))
+            {
+                return (false, "لا يمكن الاتصال بـ Ollama. تأكد أن Ollama يعمل: شغّل أمر 'ollama serve' أو ثبّت Ollama من ollama.com");
+            }
+            if (msg.Contains("timeout") || msg.Contains("timed out"))
+            {
+                return (false, "انتهت مهلة الاتصال بـ Ollama. قد يكون مشغولاً أو غير مستجيب.");
+            }
+            return (false, $"خطأ في الاتصال بـ Ollama: {ex.Message}");
+        }
+    }
+
     public async Task<string> CompleteAsync(string prompt, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(_activeModel))
-            throw new InvalidOperationException("لا يوجد نموذج محلي محدد. شغّل Ollama ثم ثبّت نموذجاً خفيفاً مثل llama3.2:1b.");
+            throw new InvalidOperationException("لا يوجد نموذج محلي محدد. شغّل Ollama ثم ثبّت نموذجاً خفيفاً يدعم العربية مثل qwen2.5:1.5b.");
 
         try
         {
@@ -89,7 +128,7 @@ public sealed class LocalLlmProvider : ILlmProvider, IDisposable
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
             _logger?.LogWarning("انتهت مهلة استجابة Ollama بعد {Seconds} ثانية", CompletionTimeout.TotalSeconds);
-            throw new TimeoutException("انتهت مهلة استجابة المساعد المحلي. جرّب نموذجاً أخف مثل llama3.2:1b.");
+            throw new TimeoutException("انتهت مهلة استجابة المساعد المحلي. جرّب نموذجاً أخف مثل qwen2.5:1.5b.");
         }
         catch (Exception ex)
         {
@@ -155,7 +194,7 @@ public sealed class LocalLlmProvider : ILlmProvider, IDisposable
     /// يختار النموذج الأنسب تلقائياً: النموذج المُعدّ إن كان مثبّتاً،
     /// وإلا أول نموذج من القائمة المفضلة الخفيفة، وإلا أصغر نموذج مثبّت حجماً.
     /// </summary>
-    private void ResolveLightestModel(IReadOnlyList<ModelInfo> models)
+    private void ResolveLightestModel(IReadOnlyList<ModelInfo> models, string level)
     {
         if (models.Count == 0) return;
 
@@ -166,23 +205,41 @@ public sealed class LocalLlmProvider : ILlmProvider, IDisposable
             chosen = models.FirstOrDefault(m => SameModel(m.Name, _activeModel));
         }
 
-        chosen ??= models
-            .Where(m => PreferenceRank(m) < PreferredModels.Length)
-            .OrderBy(PreferenceRank)
-            .ThenBy(m => m.Size)
-            .FirstOrDefault();
+        if (chosen is null && !string.IsNullOrWhiteSpace(_settings?.PreferredLocalModel))
+        {
+            chosen = models.FirstOrDefault(m => SameModel(m.Name, _settings.PreferredLocalModel!));
+        }
 
-        // لا يوجد نموذج من القائمة المفضلة → الأصغر حجماً هو الأسرع عملياً
-        chosen ??= models.OrderBy(m => m.Size).First();
+        if (chosen is null)
+        {
+            if (level == "medium")
+            {
+                // متوسط: أكبر نموذج معقول (≤ 12 غيغابايت) لتحسين جودة الإجابة
+                chosen = models
+                    .Where(m => m.Size <= 12L * 1024 * 1024 * 1024)
+                    .OrderByDescending(m => m.Size)
+                    .FirstOrDefault();
+            }
+
+            chosen ??= models
+                .Where(m => PreferenceRank(m) < PreferredModels.Length)
+                .OrderBy(PreferenceRank)
+                .ThenBy(m => m.Size)
+                .FirstOrDefault();
+
+            // لا يوجد نموذج من القائمة المفضلة → الأصغر حجماً هو الأسرع عملياً
+            chosen ??= models.OrderBy(m => m.Size).First();
+        }
 
         if (!string.Equals(chosen.Name, _activeModel, StringComparison.OrdinalIgnoreCase))
         {
-            _logger?.LogInformation("تم اختيار النموذج المحلي '{Model}' تلقائياً (الحجم: {Size} بايت).", chosen.Name, chosen.Size);
+            _logger?.LogInformation("تم اختيار النموذج المحلي '{Model}' تلقائياً (الحجم: {Size} بايت، المستوى: {Level}).", chosen.Name, chosen.Size, level);
         }
 
         _activeModel = chosen.Name;
         _client.SelectedModel = chosen.Name;
         _modelResolved = true;
+        _resolvedLevel = level;
     }
 
     private static int PreferenceRank(ModelInfo model)

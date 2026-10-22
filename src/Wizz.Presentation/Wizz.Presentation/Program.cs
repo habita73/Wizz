@@ -25,7 +25,8 @@ builder.Services.AddRazorComponents()
 builder.Services.AddWizzInfrastructure(
     connectionString: builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=wizz.db",
     ollamaBaseUrl: builder.Configuration["Ollama:BaseUrl"] ?? "http://localhost:11434",
-    ollamaModel: builder.Configuration["Ollama:Model"] ?? "llama3.2:1b");
+    ollamaModel: builder.Configuration["Ollama:Model"] ?? "qwen2.5:1.5b",
+    configuration: builder.Configuration);
 
 // حالات الاستخدام (Application layer)
 builder.Services.AddScoped<CreateSaleUseCase>();
@@ -43,6 +44,7 @@ builder.Services.AddScoped<BackupDatabaseUseCase>();
 builder.Services.AddScoped<RestoreDatabaseUseCase>();
 builder.Services.AddScoped<BuiltInAssistant>();
 builder.Services.AddScoped<QueryAiUseCase>();
+builder.Services.AddScoped<Wizz.Presentation.Pages.AI.AiHistoryStore>();
 
 var app = builder.Build();
 

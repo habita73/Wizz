@@ -1,0 +1,115 @@
+@namespace Wizz.Presentation.Pages.AI
+
+@using Wizz.Application.AI.Artifacts
+
+@inject IJSRuntime JS
+
+@if (IsOpen && Artifact is not null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,.45);" role="dialog">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">تنزيل / تصدير — @Artifact.Title</h5>
+                    <button type="button" class="btn-close" aria-label="إغلاق" @onclick="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">اختر الصيغة المناسبة. يمكنك أيضاً الطباعة مباشرة أو حفظها كـ PDF من نافذة الطباعة.</p>
+
+                    <div class="d-grid gap-2">
+                        @foreach (var (format, label, icon) in Formats)
+                        {
+                            <button type="button" class="btn btn-outline-primary d-flex justify-content-between align-items-center"
+                                    disabled="@(!CanExport(format))"
+                                    @onclick="() => Download(format)">
+                                <span>@icon @label</span>
+                                <span class="badge bg-light text-dark border">.@ArtifactExporter.ExtensionFor(format)</span>
+                            </button>
+                        }
+
+                        <hr class="my-1" />
+
+                        <button type="button" class="btn btn-outline-secondary d-flex justify-content-between align-items-center" @onclick="Print">
+                            <span>🖨️ طباعة / حفظ PDF</span>
+                            <span class="badge bg-light text-dark border">A4</span>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary d-flex justify-content-between align-items-center" @onclick="OpenInTab">
+                            <span>👁️ عرض في تبويب</span>
+                            <span class="badge bg-light text-dark border">HTML</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="Close">إغلاق</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public ChatArtifact? Artifact { get; set; }
+
+    private static readonly (ArtifactExportFormat Format, string Label, string Icon)[] Formats =
+    {
+        (ArtifactExportFormat.Html, "HTML (صفحة منسّقة)", "🌐"),
+        (ArtifactExportFormat.Markdown, "Markdown", "📝"),
+        (ArtifactExportFormat.Json, "JSON (بيانات)", "🧩"),
+        (ArtifactExportFormat.Csv, "CSV (جدول)", "📊"),
+        (ArtifactExportFormat.Txt, "نص عادي", "📄")
+    };
+
+    private bool CanExport(ArtifactExportFormat format)
+    {
+        if (Artifact is null) return false;
+        // الجداول تدعم CSV؛ الصور والملفات تُنزَّل دائماً.
+        if (format == ArtifactExportFormat.Csv) return Artifact.Kind == ArtifactKind.Table || Artifact.Content is not null;
+        if (format == ArtifactExportFormat.Json) return true;
+        if (format == ArtifactExportFormat.Txt) return true;
+        return true;
+    }
+
+    private async Task Download(ArtifactExportFormat format)
+    {
+        if (Artifact is null) return;
+
+        // الصور/الملفات المبنية على بيانات: نُنزّل البيانات الخام مباشرة.
+        if ((Artifact.Kind == ArtifactKind.Image || Artifact.Kind == ArtifactKind.File) &&
+            (Artifact.Data is not null || Artifact.Url is not null))
+        {
+            var name = (Artifact.FileName ?? "wizz-artifact") + "." + ArtifactExporter.ExtensionFor(format);
+            if (Artifact.Data is not null)
+            {
+                await JS.InvokeVoidAsync("wizzDownloadBase64", Artifact.Data, name, Artifact.MimeType ?? ArtifactExporter.MimeFor(format));
+                return;
+            }
+            if (Artifact.Url is not null)
+            {
+                await JS.InvokeVoidAsync("wizzDownloadUrl", Artifact.Url, name);
+                return;
+            }
+        }
+
+        var content = ArtifactExporter.Export(Artifact, format);
+        var fileName = (Artifact.FileName ?? "wizz-artifact") + "." + ArtifactExporter.ExtensionFor(format);
+        await JS.InvokeVoidAsync("wizzDownloadText", content, fileName, ArtifactExporter.MimeFor(format));
+    }
+
+    private async Task Print()
+    {
+        if (Artifact is null) return;
+        var doc = ArtifactExporter.ToPrintableDocument(Artifact);
+        await JS.InvokeVoidAsync("wizzPrint", doc);
+    }
+
+    private async Task OpenInTab()
+    {
+        if (Artifact is null) return;
+        var doc = ArtifactExporter.ToPrintableDocument(Artifact);
+        await JS.InvokeVoidAsync("wizzOpenHtml", doc);
+    }
+
+    private async Task Close() => await IsOpenChanged.InvokeAsync(false);
+}

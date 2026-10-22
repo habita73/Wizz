@@ -32,7 +32,7 @@ public sealed class BuiltInAssistantTests : IAsyncLifetime
         _db = new WizzDbContext(options);
         await _db.Database.EnsureCreatedAsync();
         _unitOfWork = new UnitOfWork(_db);
-        _assistant = new BuiltInAssistant(_unitOfWork.Sales, _unitOfWork.Products);
+        _assistant = new BuiltInAssistant(_unitOfWork.Sales, _unitOfWork.Products, _unitOfWork.Store);
     }
 
     public async Task DisposeAsync()
@@ -88,8 +88,47 @@ public sealed class BuiltInAssistantTests : IAsyncLifetime
         var answer = await _assistant.TryAnswerAsync("كم المتبقي من الديون؟");
 
         Assert.NotNull(answer);
-        Assert.Contains("إجمالي الديون المستحقة", answer);
+        Assert.Contains("مجموع الديون المستحقة", answer);
         Assert.Contains("300", answer);
+    }
+
+    [Fact]
+    public async Task DebtQuestions_ReturnDifferentAnswers_PerIntent()
+    {
+        var product = await SeedProductAsync();
+        var cashier = await SeedUserAsync();
+
+        // دينان مختلفان: 300 د.ج (استحقاق قريب) و 600 د.ج (استحقاق أبعد)
+        await CreateCreditSaleAsync(product, cashier, quantity: 2m, dueInDays: 5);
+        await CreateCreditSaleAsync(product, cashier, quantity: 4m, dueInDays: 40);
+
+        var total = await _assistant.TryAnswerAsync("ما هو مجموع الديون؟");
+        var list = await _assistant.TryAnswerAsync("اطبع قائمة الديون");
+        var largest = await _assistant.TryAnswerAsync("ما هو أكبر دين؟");
+        var count = await _assistant.TryAnswerAsync("كم عدد الديون؟");
+
+        Assert.NotNull(total);
+        Assert.NotNull(list);
+        Assert.NotNull(largest);
+        Assert.NotNull(count);
+
+        // الإجابات ليست نسخة واحدة
+        Assert.NotEqual(total, list);
+        Assert.NotEqual(total, largest);
+        Assert.NotEqual(list, largest);
+
+        Assert.Contains("مجموع الديون المستحقة", total);
+        Assert.Contains("قائمة الديون", list);
+        Assert.Contains("فاتورة #", list);
+        Assert.Contains("أكبر دين", largest);
+        Assert.Contains("عدد الديون المستحقة", count);
+
+        // أكبر دين هو 600 وليس المجموع 900
+        Assert.Contains("600", largest);
+        Assert.DoesNotContain("900.00", largest);
+
+        // القائمة تعرض عمليتين
+        Assert.Contains("2 عملية", list);
     }
 
     [Fact]
@@ -98,6 +137,21 @@ public sealed class BuiltInAssistantTests : IAsyncLifetime
         var answer = await _assistant.TryAnswerAsync("اشرح لي الفرق بين المحاسبة النقدية والاستحقاق");
 
         Assert.Null(answer);
+    }
+
+    private async Task CreateCreditSaleAsync(Product product, User cashier, decimal quantity, int dueInDays)
+    {
+        var sale = await new CreateSaleUseCase(_unitOfWork).ExecuteAsync(
+            new SaleInputDto(
+                new[] { new SaleLineInputDto(product.Id, product.GetBaseUnit()!.Id, quantity, false) },
+                Discount: 0m,
+                Paid: 0m,
+                PaymentMethodDto.Credit,
+                IsCreditSale: true,
+                DueDate: DateTime.UtcNow.AddDays(dueInDays)),
+            cashier.Id);
+
+        Assert.True(sale.IsSuccess);
     }
 
     private async Task CreateCashSaleAsync(Product product, User cashier, decimal quantity)

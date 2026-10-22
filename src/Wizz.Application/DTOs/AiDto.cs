@@ -1,11 +1,14 @@
 namespace Wizz.Application.DTOs;
 
+using Wizz.Application.Abstractions;
+
 /// <summary>طلب استفسار AI.</summary>
 public sealed record AiQueryInputDto(
     string Question,
     bool IncludeStoreContext,
     bool IncludeRecentSales,
-    int RecentSalesLimit
+    int RecentSalesLimit,
+    RouteType? ForceRoute = null
 );
 
 /// <summary>رد AI.</summary>

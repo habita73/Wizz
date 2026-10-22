@@ -1,0 +1,157 @@
+@namespace Wizz.Presentation.Pages.AI
+
+@using Wizz.Application.AI.Artifacts
+
+@inject IJSRuntime JS
+
+<div class="artifact-card border rounded-3 my-2 overflow-hidden">
+    <div class="d-flex justify-content-between align-items-center gap-2 px-3 py-2 bg-light border-bottom">
+        <div class="d-flex align-items-center gap-2 min-w-0">
+            <span class="artifact-icon">@KindIcon</span>
+            <div class="min-w-0">
+                <div class="fw-bold text-truncate">@Artifact.Title</div>
+                <div class="small text-muted">@KindLabel@(string.IsNullOrWhiteSpace(Artifact.Description) ? "" : " — " + Artifact.Description)</div>
+            </div>
+        </div>
+
+        <div class="btn-group btn-group-sm flex-shrink-0" role="group">
+            @if (CanPreview)
+            {
+                <button type="button" class="btn btn-outline-primary" @onclick="TogglePreview"
+                        title="@(IsPreviewing ? "إخفاء المعاينة" : "عرض")">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z" />
+                        <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0" />
+                    </svg>
+                </button>
+            }
+            <button type="button" class="btn btn-outline-secondary" @onclick="OpenExport"
+                    title="تنزيل / تصدير">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5" />
+                    <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z" />
+                </svg>
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="Print"
+                    title="طباعة">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1" />
+                    <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1" />
+                </svg>
+            </button>
+            <button type="button" class="btn btn-outline-danger" @onclick="Delete"
+                    title="حذف المخرج">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z" />
+                    <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    @if (IsPreviewing)
+    {
+        <div class="artifact-preview p-3">
+            @if (Artifact.Kind == ArtifactKind.Table)
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead class="table-light">
+                            <tr>@foreach (var c in Artifact.Columns) { <th>@c</th> }</tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in Artifact.Rows)
+                            {
+                                <tr>@foreach (var cell in row) { <td>@cell</td> }</tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else if (Artifact.Kind == ArtifactKind.Image)
+            {
+                <img class="artifact-image" src="@ImageSrc" alt="@Artifact.Title" />
+            }
+            else if (Artifact.Kind == ArtifactKind.Link)
+            {
+                <a href="@(Artifact.Url ?? Artifact.Content)" target="_blank" rel="noopener noreferrer">@(Artifact.Url ?? Artifact.Content)</a>
+            }
+            else if (Artifact.Kind == ArtifactKind.File)
+            {
+                <div class="text-muted small">
+                    <div class="mb-2">ملف: <code>@Artifact.FileName</code></div>
+                    <a class="btn btn-sm btn-outline-primary" href="@FileHref" download="@DownloadName">تنزيل الملف</a>
+                </div>
+            }
+            else if (Artifact.IsHtml)
+            {
+                <div class="artifact-html">@((MarkupString)Artifact.Content!)</div>
+            }
+            else
+            {
+                <div class="msg-content">@Artifact.Content</div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public ChatArtifact Artifact { get; set; } = new();
+    [Parameter] public EventCallback<ChatArtifact> OnDelete { get; set; }
+    [Parameter] public EventCallback<ChatArtifact> OnExport { get; set; }
+
+    private bool IsPreviewing { get; set; }
+
+    private bool CanPreview => Artifact.HasPayload;
+
+    private string KindIcon => Artifact.Kind switch
+    {
+        ArtifactKind.Table => "📊",
+        ArtifactKind.Image => "🖼️",
+        ArtifactKind.File => "📄",
+        ArtifactKind.Link => "🔗",
+        _ => "📝"
+    };
+
+    private string KindLabel => Artifact.Kind switch
+    {
+        ArtifactKind.Table => "جدول بيانات",
+        ArtifactKind.Image => "صورة",
+        ArtifactKind.File => "ملف",
+        ArtifactKind.Link => "رابط",
+        _ => "مخرج نصي"
+    };
+
+    private string DownloadName =>
+        (Artifact.FileName ?? "wizz-artifact") + "." + ArtifactExporter.ExtensionFor(FormatFromMime());
+
+    private string ImageSrc => Artifact.Url
+        ?? (Artifact.Data is not null ? $"data:{Artifact.MimeType};base64,{Artifact.Data}" : "");
+
+    private string FileHref => Artifact.Url
+        ?? (Artifact.Data is not null ? $"data:{Artifact.MimeType};base64,{Artifact.Data}" : "#");
+
+    private void TogglePreview() => IsPreviewing = !IsPreviewing;
+
+    private async Task OpenExport() => await OnExport.InvokeAsync(Artifact);
+
+    private async Task Delete() => await OnDelete.InvokeAsync(Artifact);
+
+    private async Task Print()
+    {
+        var doc = ArtifactExporter.ToPrintableDocument(
+            Artifact,
+            Artifact.Kind == ArtifactKind.Text && string.IsNullOrWhiteSpace(Artifact.MimeType) ? "Wizz" : "Wizz");
+        await JS.InvokeVoidAsync("wizzPrint", doc);
+    }
+
+    private ArtifactExportFormat FormatFromMime()
+    {
+        var mime = Artifact.MimeType ?? "";
+        if (mime.Contains("json")) return ArtifactExportFormat.Json;
+        if (mime.Contains("csv")) return ArtifactExportFormat.Csv;
+        if (mime.Contains("html")) return ArtifactExportFormat.Html;
+        if (mime.Contains("markdown")) return ArtifactExportFormat.Markdown;
+        return Artifact.Kind == ArtifactKind.Table ? ArtifactExportFormat.Csv : ArtifactExportFormat.Txt;
+    }
+}
