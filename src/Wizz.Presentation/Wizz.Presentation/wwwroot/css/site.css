@@ -1,9 +1,10 @@
 /* Wizz POS - RTL Arabic Styles — Professional Theme (2026-10-23) */
 
 /* ============================================================
-   1. Design tokens (لوحة الألوان المهنية)
+   1. Design tokens (لوحة الألوان المهنية — مع دعم الوضع الداكن والتلقائي)
    ============================================================ */
-:root {
+:root,
+html[data-theme="system"] {
   /* Primary — أزرق كحلي داكن للأزرار الرئيسية والترويسات */
   --wizz-primary: #1e3a5f;
   --wizz-primary-hover: #14324f;
@@ -16,10 +17,11 @@
   --wizz-secondary-light: rgba(100, 116, 139, 0.10);
   --wizz-secondary-border: #94a3b8;
 
-  /* Surfaces */
+  /* Surfaces — الألوان الفاتحة (الوضع الفاتح) */
   --wizz-bg: #f1f5f9;           /* خلفية الصفحة العامة */
   --wizz-surface: #ffffff;      /* خلفية البطاقات والنوافذ */
-  --wizz-surface-hover: #f8fafc;
+  --wizz-surface-hover: #f8fafc; /* خلفية بطاقة خفيفة أكثر تشبعاً للتفاعل */
+  --wizz-card-bg: rgba(30, 58, 95, 0.04); /* بطاقة بلون الأساسي لكنها أخف تشبعاً */
 
   /* Text */
   --wizz-text: #0f172a;         /* النص الأساسي والعناوين */
@@ -47,6 +49,84 @@
   --wizz-shadow-hover: 0 8px 16px -2px rgba(0, 0, 0, 0.12),
                        0 4px 8px -2px rgba(0, 0, 0, 0.06);
   --wizz-transition: all 0.22s ease;
+}
+
+/* الوضع الداكن الصريح */
+html[data-theme="dark"] {
+  --wizz-primary: #38bdf8;
+  --wizz-primary-hover: #0ea5e9;
+  --wizz-primary-light: rgba(56, 189, 248, 0.15);
+  --wizz-primary-border: #38bdf8;
+
+  --wizz-secondary: #94a3b8;
+  --wizz-secondary-hover: #64748b;
+  --wizz-secondary-light: rgba(148, 163, 184, 0.15);
+  --wizz-secondary-border: #475569;
+
+  --wizz-bg: #020617;
+  --wizz-surface: #0f172a;
+  --wizz-surface-hover: #1e293b;
+  --wizz-card-bg: rgba(56, 189, 248, 0.03);
+
+  --wizz-text: #f8fafc;
+  --wizz-text-secondary: #cbd5e1;
+  --wizz-text-muted: #94a3b8;
+  --wizz-text-on-primary: #0f172a;
+
+  --wizz-border: #334155;
+  --wizz-border-light: #1e293b;
+
+  --wizz-success: #34d399;
+  --wizz-success-light: rgba(52, 211, 153, 0.15);
+  --wizz-danger: #f87171;
+  --wizz-danger-light: rgba(248, 113, 113, 0.15);
+  --wizz-warning: #fbbf24;
+  --wizz-warning-light: rgba(251, 191, 36, 0.15);
+
+  --wizz-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4),
+                 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --wizz-shadow-hover: 0 8px 16px -2px rgba(0, 0, 0, 0.5),
+                       0 4px 8px -2px rgba(0, 0, 0, 0.4);
+}
+
+/* تفعيل الوضع الداكن عندما يفضله النظام (لـ data-theme="system") */
+@media (prefers-color-scheme: dark) {
+  html[data-theme="system"] {
+    --wizz-primary: #38bdf8;
+    --wizz-primary-hover: #0ea5e9;
+    --wizz-primary-light: rgba(56, 189, 248, 0.15);
+    --wizz-primary-border: #38bdf8;
+
+    --wizz-secondary: #94a3b8;
+    --wizz-secondary-hover: #64748b;
+    --wizz-secondary-light: rgba(148, 163, 184, 0.15);
+    --wizz-secondary-border: #475569;
+
+    --wizz-bg: #020617;
+    --wizz-surface: #0f172a;
+    --wizz-surface-hover: #1e293b;
+    --wizz-card-bg: rgba(56, 189, 248, 0.03);
+
+    --wizz-text: #f8fafc;
+    --wizz-text-secondary: #cbd5e1;
+    --wizz-text-muted: #94a3b8;
+    --wizz-text-on-primary: #0f172a;
+
+    --wizz-border: #334155;
+    --wizz-border-light: #1e293b;
+
+    --wizz-success: #34d399;
+    --wizz-success-light: rgba(52, 211, 153, 0.15);
+    --wizz-danger: #f87171;
+    --wizz-danger-light: rgba(248, 113, 113, 0.15);
+    --wizz-warning: #fbbf24;
+    --wizz-warning-light: rgba(251, 191, 36, 0.15);
+
+    --wizz-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4),
+                   0 2px 4px -1px rgba(0, 0, 0, 0.3);
+    --wizz-shadow-hover: 0 8px 16px -2px rgba(0, 0, 0, 0.5),
+                         0 4px 8px -2px rgba(0, 0, 0, 0.4);
+  }
 }
 
 /* ============================================================
@@ -318,6 +398,25 @@ label.form-label {
     background-color: var(--wizz-primary-hover);
     border-color: var(--wizz-primary-hover);
     box-shadow: 0 0 0 0.25rem var(--wizz-primary-light);
+}
+
+/• تأكيد تطبيق اللون الكحلي على جميع أزرار principale حتى في حال وجود تعارض*/
+.btn.btn-primary,
+button.btn-primary,
+a.btn-primary,
+.btn-send.btn-primary {
+    background-color: var(--wizz-primary) !important;
+    border-color: var(--wizz-primary-border) !important;
+    color: var(--wizz-text-on-primary) !important;
+}
+
+.btn.btn-primary:hover,
+button.btn-primary:hover,
+a.btn-primary:hover,
+.btn-send.btn-primary:hover {
+    background-color: var(--wizz-primary-hover) !important;
+    border-color: var(--wizz-primary-hover) !important;
+    color: var(--wizz-text-on-primary) !important;
 }
 
 .btn-outline-primary {
@@ -1041,3 +1140,289 @@ h6, .h6 {
 .section-icon {
     font-size: 1.5rem;
 }
+
+/* ============================================================
+   18. Dark mode specific overrides (تجاوزات الوضع الداكن)
+   ============================================================ */
+html[data-theme="dark"] .form-control,
+html[data-theme="dark"] .form-select,
+@media (prefers-color-scheme: dark) {
+  html[data-theme="system"] .form-control,
+  html[data-theme="system"] .form-select {
+    background-color: var(--wizz-surface);
+    border-color: var(--wizz-border);
+    color: var(--wizz-text);
+  }
+
+  html[data-theme="dark"] .card,
+  html[data-theme="system"] .card {
+    background-color: var(--wizz-surface);
+    border-color: var(--wizz-border);
+  }
+
+  html[data-theme="dark"] .card-header,
+  html[data-theme="system"] .card-header {
+    background-color: var(--wizz-surface-hover);
+    border-color: var(--wizz-border);
+  }
+
+  html[data-theme="dark"] .card-footer,
+  html[data-theme="system"] .card-footer {
+    background-color: var(--wizz-surface-hover);
+    border-color: var(--wizz-border);
+  }
+
+  html[data-theme="dark"] .alert,
+  html[data-theme="system"] .alert {
+    color: var(--wizz-text);
+  }
+
+  html[data-theme="dark"] .bg-light,
+  html[data-theme="system"] .bg-light {
+    background-color: var(--wizz-surface-hover) !important;
+    color: var(--wizz-text-secondary) !important;
+  }
+
+  html[data-theme="dark"] .artifact-preview,
+  html[data-theme="system"] .artifact-preview {
+    background-color: var(--wizz-surface-hover);
+    border-color: var(--wizz-border);
+  }
+
+  html[data-theme="dark"] .quick-question-chip,
+  html[data-theme="system"] .quick-question-chip {
+    background-color: var(--wizz-surface);
+    border-color: var(--wizz-border);
+    color: var(--wizz-text-secondary);
+  }
+
+  html[data-theme="dark"] .quick-question-chip:hover,
+  html[data-theme="system"] .quick-question-chip:hover {
+    background-color: var(--wizz-primary-light);
+    border-color: var(--wizz-primary);
+    color: var(--wizz-primary);
+  }
+
+  html[data-theme="dark"] .route-priority-row.route-priority-dragging,
+  html[data-theme="system"] .route-priority-row.route-priority-dragging {
+    background-color: var(--wizz-surface-hover);
+  }
+
+  html[data-theme="dark"] .text-warning,
+  html[data-theme="system"] .text-warning {
+    color: var(--wizz-warning) !important;
+  }
+
+  html[data-theme="dark"] .text-danger,
+  html[data-theme="system"] .text-danger {
+    color: var(--wizz-danger) !important;
+  }
+
+  html[data-theme="dark"] .text-success,
+  html[data-theme="system"] .text-success {
+    color: var(--wizz-success) !important;
+  }
+
+  html[data-theme="dark"] .spinner-border,
+  html[data-theme="system"] .spinner-border {
+    color: var(--wizz-primary) !important;
+  }
+}
+
+/* ============================================================
+   19. Theme toggle (مبدل الوضع: فاتح / داكن / نظام)
+   ============================================================ */
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--wizz-surface);
+    border: 1px solid var(--wizz-border);
+    border-radius: var(--wizz-radius-sm);
+    color: var(--wizz-text);
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: var(--wizz-transition);
+}
+
+.theme-toggle:hover {
+    border-color: var(--wizz-primary);
+    color: var(--wizz-primary);
+    background: var(--wizz-primary-light);
+}
+
+.theme-toggle .theme-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ============================================================
+   20. Dashboard cards — ارتفاع متساوٍ وأزرار في الأسفل
+   ============================================================ */
+.dashboard-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    border: 1px solid var(--wizz-border);
+    border-radius: var(--wizz-radius);
+    background: var(--wizz-surface);
+    box-shadow: var(--wizz-shadow);
+    transition: var(--wizz-transition);
+    overflow: hidden;
+}
+
+.dashboard-card:hover {
+    box-shadow: var(--wizz-shadow-hover);
+    border-color: var(--wizz-primary);
+    transform: translateY(-2px);
+}
+
+.dashboard-card .card-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 1.25rem;
+}
+
+.dashboard-card .card-body > * {
+    margin-bottom: 0.75rem;
+}
+
+.dashboard-card .card-body > *:last-child {
+    margin-bottom: 0;
+}
+
+.dashboard-card .card-actions {
+    margin-top: auto;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--wizz-border);
+}
+
+/* خلفية البطاقة بلون الأساسي مخفف تشبعاً (متسق مع أزرار principal) */
+.dashboard-card.stats-card {
+    background: var(--wizz-card-bg);
+    border-left: 4px solid var(--wizz-primary);
+}
+
+.dashboard-card.action-card {
+    background: var(--wizz-surface);
+}
+
+.dashboard-card .card-icon {
+    width: 3rem;
+    height: 3rem;
+    border-radius: var(--wizz-radius-sm);
+    background: var(--wizz-primary-light);
+    color: var(--wizz-primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.dashboard-card.action-card .card-icon {
+    background: var(--wizz-secondary-light);
+    color: var(--wizz-secondary);
+}
+
+/* ============================================================
+   21. AI Chat — فصل أزرار الإرسال والمحدد (لا grouping)
+   ============================================================ */
+.ai-composer {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.ai-composer .form-control {
+    flex: 1;
+    min-height: 3.5rem;
+    border-radius: var(--wizz-radius-sm);
+}
+
+.ai-composer .btn-send {
+    min-width: 80px;
+    height: 3.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--wizz-radius-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ai-composer .model-selector {
+    flex-shrink: 0;
+}
+
+/* أيقونات SVG داخلية بدلاً من الإيموجيات子孙 */
+.svg-icon {
+    display: inline-block;
+    width: 1.25rem;
+    height: 1.25rem;
+    vertical-align: middle;
+    margin-left: 0.25rem;
+}
+
+.svg-icon-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* شارة الجهة في المحادثة — محسّنة */
+.msg-route-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: var(--wizz-radius-sm);
+    margin-top: 0.25rem;
+}
+
+.msg-route-chip.built-in {
+    background: var(--wizz-success-light);
+    color: var(--wizz-success);
+    border: 1px solid var(--wizz-success);
+}
+
+.msg-route-chip.web {
+    background: var(--wizz-primary-light);
+    color: var(--wizz-primary);
+    border: 1px solid var(--wizz-primary);
+}
+
+.msg-route-chip.local {
+    background: var(--wizz-success-light);
+    color: var(--wizz-success);
+    border: 1px solid var(--wizz-success);
+}
+
+.msg-route-chip.cloud {
+    background: var(--wizz-warning-light);
+    color: var(--wizz-warning);
+    border: 1px solid var(--wizz-warning);
+}
+
+/* إزالة الإيموجيات الصبيانية من شارات واجهة المستخدم — استخدام نص نقي */
+.emoji-free {
+    font-family: var(--wizz-font-system);
+}
+
+/* equal height columns for dashboard */
+.row.equal-cols {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.row.equal-cols > [class*="col-"] {
+    display: flex;
+    flex-direction: column;
+}
+

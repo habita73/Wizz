@@ -3,21 +3,26 @@
     cursor: pointer;
     width: 3.5rem;
     height: 2.5rem;
-    color: white;
+    color: var(--wizz-text-on-primary);
     position: absolute;
     top: 0.5rem;
     left: 1rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.55%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") no-repeat center/1.75rem rgba(255, 255, 255, 0.1);
+    background: var(--wizz-primary);
+    transition: var(--wizz-transition);
+}
+
+.navbar-toggler:hover {
+    background: var(--wizz-primary-hover);
 }
 
 .navbar-toggler:checked {
-    background-color: rgba(255, 255, 255, 0.5);
+    background-color: rgba(255, 255, 255, 0.15);
 }
 
 .top-row {
     min-height: 3.5rem;
-    background-color: rgba(0, 0, 0, 0.4);
+    background-color: var(--wizz-surface);
 }
 
 .navbar-brand {
@@ -25,12 +30,14 @@
     align-items: center;
     gap: 0.6rem;
     font-size: 1.1rem;
-    color: #ffffff;
+    color: var(--wizz-text-on-primary);
     text-decoration: none;
+    padding: 0.5rem 1rem;
 }
 
 .brand-mark {
-    font-size: 1.4rem;
+    width: 1.5rem;
+    height: 1.5rem;
     line-height: 1;
 }
 
@@ -47,14 +54,18 @@
 
 .brand-text small {
     font-size: 0.7rem;
-    opacity: 0.75;
+    opacity: 0.85;
+    display: block;
+    margin-top: 0.1rem;
 }
 
 .nav-icon {
     display: inline-block;
     width: 1.6rem;
+    height: 1.6rem;
     text-align: center;
     margin-left: 0.5rem;
+    flex-shrink: 0;
 }
 
 .nav-item {
@@ -71,27 +82,30 @@
 }
 
 .nav-item ::deep .nav-link {
-    color: #d7d7d7;
-    background: none;
-    border: none;
-    border-radius: 6px;
-    height: 2.9rem;
+    color: rgba(255, 255, 255, 0.85) !important;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--wizz-radius-sm);
+    height: auto;
     display: flex;
     align-items: center;
-    line-height: 2.9rem;
+    line-height: normal;
     width: 100%;
-    padding-inline-start: 0.75rem;
+    padding: 0.75rem 1rem !important;
+    margin: 0 0.25rem !important;
+    transition: var(--wizz-transition) !important;
 }
 
 .nav-item ::deep a.active {
-    background-color: rgba(255, 255, 255, 0.18);
-    color: white;
+    background-color: var(--wizz-primary-hover) !important;
+    color: #ffffff !important;
     font-weight: 600;
+    border: 1px solid var(--wizz-text-on-primary) !important;
 }
 
 .nav-item ::deep .nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: white;
+    background-color: var(--wizz-primary-light) !important;
+    color: #ffffff !important;
 }
 
 .nav-scrollable {

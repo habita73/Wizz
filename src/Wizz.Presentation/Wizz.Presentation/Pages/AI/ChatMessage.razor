@@ -8,19 +8,19 @@
         <div class="d-flex justify-content-between align-items-start mb-1 gap-2 flex-wrap">
             <div class="d-flex align-items-center gap-2">
                 <span class="small fw-bold @(Message.IsUser ? "text-white-50" : "text-muted")">
-                    @(Message.IsUser ? "أنت" : "🤖 Wizz")
+                    @(Message.IsUser ? "أنت" : "Wizz")
                 </span>
                 <span class="small @(Message.IsUser ? "text-white-50" : "text-muted")">@Message.Timestamp.ToString("HH:mm")</span>
                 @if (!Message.IsUser && !string.IsNullOrWhiteSpace(Message.Route))
                 {
-                    <span class="badge @GetRouteBadgeClass(Message.Route) text-dark border fw-normal">
+                    <span class="msg-route-chip @GetRouteChipClass(Message.Route)">
                         @GetRouteLabel(Message.Route)
                     </span>
                 }
                 @if (!Message.IsUser && Message.IsWebAnswer)
                 {
-                    <span class="badge bg-info text-dark border fw-normal" title="معلومة من الإنترنت — ليست من بيانات متجرك">
-                        🌐 إنترنت
+                    <span class="msg-route-chip web" title="معلومة من الإنترنت — ليست من بيانات متجرك">
+                        إنترنت
                     </span>
                 }
             </div>
@@ -79,7 +79,7 @@
             }
             @if (!string.IsNullOrWhiteSpace(RouteHint))
             {
-                <div class="small text-muted mb-1">🎯 @RouteHint</div>
+                <div class="small text-muted mb-1">@RouteHint</div>
             }
             <div class="form-text small">Enter للحفظ، Shift+Enter لسطر جديد. سيُعاد بناء المحادثة من هنا.</div>
         }
@@ -129,15 +129,15 @@
 
     private string WrapperClass =>
         Message.IsUser
-            ? "bg-primary text-white rounded-3 px-3 py-2"
-            : "bg-light border rounded-3 px-3 py-2";
+            ? "msg-user rounded-3 px-3 py-2"
+            : "msg-assistant rounded-3 px-3 py-2";
 
-    private string GetRouteBadgeClass(string route) => route switch
+    private string GetRouteChipClass(string route) => route switch
     {
-        "BuiltIn" => "bg-success",
-        "Local" => "bg-primary",
-        "Cloud" => "bg-info text-dark",
-        _ => "bg-secondary"
+        "BuiltIn" => "built-in",
+        "Local" => "local",
+        "Cloud" => "cloud",
+        _ => "built-in"
     };
 
     private string GetRouteLabel(string route) => route switch

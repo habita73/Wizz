@@ -10,13 +10,20 @@
 @inject Wizz.Presentation.Pages.AI.AiMemoryStore MemoryStore
 @inject IJSRuntime JS
 
-<h2>⚙️ الإعدادات</h2>
+<h2>
+    <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2v-1a2 2 0 0 1-2-2v-5a1.65 1.65 0 0 0-1-1.51l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H19a1.65 1.65 0 0 0 1.5-1 1.65 1.65 0 0 0-.33-1Z"/>
+        <line x1="12" y1="15" x2="12.01" y2="15"/>
+    </svg>
+    الإعدادات
+</h2>
 
 <div class="row">
     <!-- إعدادات المتجر -->
     <div class="col-lg-6 mb-4">
         <div class="card h-100">
-            <div class="card-header"><h5 class="mb-0">🏪 إعدادات المتجر</h5></div>
+            <div class="card-header"><h5 class="mb-0"><svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="21"/></svg> إعدادات المتجر</h5></div>
             <div class="card-body">
                 @if (store == null)
                 {
@@ -357,11 +364,11 @@
                             }
                         </span>
                         <span class="d-flex align-items-center gap-1">
-                            <span class="badge bg-success" title="المساعد المدمج — يعمل دائماً بلا إنترنت">⚡ مدمج</span>
+                            <span class="badge bg-success" title="المساعد المدمج — يعمل دائماً بلا إنترنت">المدمج</span>
                             <span class="badge @(routerStatus?.LocalAvailable == true ? "bg-success" : "bg-secondary")"
-                                  title="النموذج المحلي (Ollama)">🟢 محلي</span>
+                                  title="النموذج المحلي (Ollama)">محلي</span>
                             <span class="badge @(routerStatus?.CloudAvailable == true ? "bg-success" : "bg-secondary")"
-                                  title="النموذج السحابي (اختياري)">☁️ سحابي</span>
+                                  title="النموذج السحابي (اختياري)">سحابي</span>
                             <span class="badge bg-primary" title="عدد المسارات المتاحة">@((routerStatus?.RouteCount ?? 1))</span>
                         </span>
                     </div>
@@ -418,6 +425,43 @@
                 <div class="d-flex gap-2 mb-3">
                     <button class="btn btn-outline-primary btn-sm flex-fill" @onclick="SaveAiPreferences">💾 حفظ التفضيلات</button>
                     <button class="btn btn-outline-secondary btn-sm flex-fill" @onclick="ResetAiPreferences">↺ الافتراضي</button>
+                </div>
+
+                <!-- قسم المظهر والوضع اللوني -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h6 class="mb-3"><svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:0.5rem;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 1 21 12.79Z"/></svg> المظهر والوضع اللوني</h6>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="theme" id="themeLight"
+                                   checked="@(themeMode == "light")"
+                                   @onchange="SetThemeLight" />
+                            <label class="form-check-label" for="themeLight">
+                                <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                                الوضع الفاتح
+                            </label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="theme" id="themeDark"
+                                   checked="@(themeMode == "dark")"
+                                   @onchange="SetThemeDark" />
+                            <label class="form-check-label" for="themeDark">
+                                <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 1 21 12.79Z"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                                الوضع الداكن
+                            </label>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="radio" name="theme" id="themeSystem"
+                                   checked="@(themeMode == "system")"
+                                   @onchange="SetThemeSystem" />
+                            <label class="form-check-label" for="themeSystem">
+                                <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                                seguit النظام (تلقائي)
+                            </label>
+                        </div>
+                        <div class="form-text">
+                            عند اختيار «النظام» سيfollow الواجهة تفضيلات نظام التشغيل (الوضع الليلي إذا كان مفعلاً في ويندوز/الجهاز).
+                        </div>
+                    </div>
                 </div>
 
                 <RoutePriorityEditor />
@@ -586,6 +630,9 @@
     private bool rememberContext = true;
     private bool allowInternetAccess;
 
+    // المظهر والوضع اللوني
+    private string themeMode = "system";
+
     protected override async Task OnInitializedAsync()
     {
         await LoadStore();
@@ -593,7 +640,49 @@
         await LoadBackups();
         await LoadAiSettings();
         await LoadAiPreferences();
+        await LoadThemeMode();
     }
+
+    /// <summary>يحمّل تفضيل الوضع اللوني من التخزين المحلي (الافتراضي: النظام).</summary>
+    private async Task LoadThemeMode()
+    {
+        try
+        {
+            var saved = await JS.InvokeAsync<string?>("localStorage.getItem", "wizz.theme");
+            if (!string.IsNullOrWhiteSpace(saved))
+            {
+                themeMode = saved;
+            }
+        }
+        catch
+        {
+            // استخدام القيمة الافتراضية (النظام)
+        }
+        await ApplyThemeAsync();
+    }
+
+    /// <summary>يطبق الوضع اللوني المحدد على عنصر html عبر سمة data-theme.</summary>
+    private async Task ApplyThemeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", "wizz.theme", themeMode);
+            await JS.InvokeVoidAsync("document.documentElement.setAttribute", "data-theme", themeMode);
+        }
+        catch
+        {
+            // تجاهل فشل التطبيق
+        }
+    }
+
+    /// <summary>يضع الوضع الفاتح ويطبقه.</summary>
+    private void SetThemeLight() { themeMode = "light"; _ = ApplyThemeAsync(); }
+
+    /// <summary>يضع الوضع الداكن ويطبقه.</summary>
+    private void SetThemeDark() { themeMode = "dark"; _ = ApplyThemeAsync(); }
+
+    /// <summary>يضع وضع النظام ويطبقه.</summary>
+    private void SetThemeSystem() { themeMode = "system"; _ = ApplyThemeAsync(); }
 
     /// <summary>يحمّل تفضيلات المساعد المحفوظة محلياً.</summary>
     private async Task LoadAiPreferences()
