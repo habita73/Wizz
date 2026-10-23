@@ -52,8 +52,14 @@ public static class ArtifactExporter
         _ => "txt"
     };
 
-    /// <summary>يُنتج مستند HTML كامل (A4، RTL) للطباعة أو الفتح في تبويب.</summary>
-    public static string ToPrintableDocument(ChatArtifact a, string storeName = "Wizz")
+    /// <summary>
+    /// يُنتج مستند HTML كامل جاهز للطباعة على ورق A4 باتجاه RTL:
+    /// ترويسة باسم المتجر وتاريخ الإنشاء، وجدول يتكرر رأسه في كل صفحة بلا قطع للصفوف، وتذييل ثابت.
+    /// </summary>
+    /// <param name="a">المخرج المطلوب طباعته.</param>
+    /// <param name="storeName">اسم المتجر الذي يظهر في الترويسة.</param>
+    /// <param name="generatedAt">وقت الإنشاء (لاختبارات قابلة للتكرار)؛ الافتراضي الآن.</param>
+    public static string ToPrintableDocument(ChatArtifact a, string storeName = "Wizz", DateTime? generatedAt = null)
     {
         var body = a.Kind switch
         {
@@ -63,31 +69,61 @@ public static class ArtifactExporter
             _ => IsHtmlPayload(a) ? (a.Content ?? string.Empty) : $"<pre class=\"plain\">{Html(a.Content ?? string.Empty)}</pre>"
         };
 
+        var generated = (generatedAt ?? DateTime.Now).ToString("yyyy-MM-dd HH:mm");
+        var summary = a.Kind == ArtifactKind.Table && a.Rows.Count > 0
+            ? $"{a.Rows.Count} صف × {a.Columns.Count} عمود"
+            : string.Empty;
+        var store = Html(string.IsNullOrWhiteSpace(storeName) ? "Wizz" : storeName.Trim());
+
         return $$"""
         <!DOCTYPE html>
         <html lang="ar" dir="rtl">
         <head>
         <meta charset="utf-8" />
-        <title>{{Html(a.Title)}}</title>
+        <title>{{Html(a.Title)}} — {{store}}</title>
         <style>
-          @page { size: A4; margin: 14mm; }
+          @page { size: A4; margin: 14mm 12mm 18mm; }
           * { box-sizing: border-box; }
-          body { font-family: 'Segoe UI', 'Tahoma', Arial, sans-serif; color:#111; margin:0; padding:16px; }
-          h1 { font-size: 20px; margin: 0 0 4px; }
-          .meta { color:#666; font-size: 12px; margin-bottom: 16px; }
-          table { width:100%; border-collapse: collapse; margin-top: 8px; }
-          th, td { border:1px solid #ccc; padding:6px 8px; text-align: start; font-size: 13px; }
-          th { background:#f2f2f2; }
-          pre.plain { white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size:13px; }
+          html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          body {
+            font-family: 'Segoe UI', 'Tahoma', Arial, sans-serif;
+            color: #111; margin: 0; padding: 16px; font-size: 13px; line-height: 1.6;
+          }
+          .doc-header { border-bottom: 2px solid #0d6efd; padding-bottom: 8px; margin-bottom: 14px; }
+          .doc-header .store { color: #0d6efd; font-size: 12px; font-weight: 600; }
+          h1 { font-size: 20px; margin: 2px 0 4px; }
+          .meta { color: #666; font-size: 11.5px; }
+          .meta .dot { margin: 0 6px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+          thead { display: table-header-group; }
+          tfoot { display: table-row-group; }
+          tr { page-break-inside: avoid; break-inside: avoid; }
+          th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: start; font-size: 12.5px; vertical-align: top; }
+          th { background: #eef2f7; font-weight: 600; }
+          tbody tr:nth-child(even) td { background: #fafafa; }
+          pre.plain { white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 13px; }
           img { max-width: 100%; }
-          footer { margin-top: 24px; color:#888; font-size: 11px; border-top:1px solid #ddd; padding-top:6px; }
+          .doc-footer {
+            position: fixed; bottom: 0; right: 0; left: 0;
+            color: #888; font-size: 10.5px; border-top: 1px solid #ddd; padding-top: 4px;
+            background: #fff;
+          }
+          @media print {
+            body { padding: 0; }
+            .no-print { display: none !important; }
+          }
         </style>
         </head>
         <body>
-          <h1>{{Html(a.Title)}}</h1>
-          <div class="meta">{{Html(storeName)}} — {{DateTime.Now:yyyy-MM-dd HH:mm}}</div>
+          <header class="doc-header">
+            <div class="store">{{store}}</div>
+            <h1>{{Html(a.Title)}}</h1>
+            <div class="meta">
+              تاريخ الطبع: {{generated}}{{ (summary.Length > 0 ? $"<span class=\"dot\">•</span>{summary}" : string.Empty) }}
+            </div>
+          </header>
           {{body}}
-          <footer>تم الإنشاء بواسطة Wizz</footer>
+          <footer class="doc-footer">{{store}} — Wizz · {{generated}}</footer>
         </body>
         </html>
         """;

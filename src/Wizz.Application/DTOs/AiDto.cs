@@ -17,7 +17,8 @@ public sealed record AiQueryResultDto(
     bool UsedStoreData,
     IReadOnlyList<string> ReferencedData,
     TimeSpan ResponseTime,
-    string ProviderName
+    string ProviderName,
+    RouteDecision? Decision = null
 );
 
 /// <summary>إعدادات AI.</summary>

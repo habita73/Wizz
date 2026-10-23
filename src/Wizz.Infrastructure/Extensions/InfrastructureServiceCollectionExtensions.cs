@@ -86,8 +86,12 @@ public static class InfrastructureServiceCollectionExtensions
             var quotaTracker = sp.GetRequiredService<IQuotaTracker>();
             var fallbackPolicy = sp.GetRequiredService<IFallbackPolicy>();
             var providerFactory = sp.GetRequiredService<ILlmProviderFactory>();
+            var memory = sp.GetService<Wizz.Application.AI.Memory.IConversationMemory>();
+            var preferences = sp.GetService<Wizz.Application.AI.Memory.UserPreferenceStore>();
+            var priority = sp.GetService<Wizz.Application.AI.Routing.AutoRoutePriority>();
+            var decisionLog = sp.GetService<Wizz.Application.AI.Routing.RouteDecisionLog>();
 
-            return new ModelRouter(builtIn, localLlm, settings, deviceEvaluator, quotaTracker, fallbackPolicy, providerFactory);
+            return new ModelRouter(builtIn, localLlm, settings, deviceEvaluator, quotaTracker, fallbackPolicy, providerFactory, memory, preferences, priority, decisionLog);
         });
 
         // AI Tools

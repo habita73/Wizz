@@ -17,6 +17,12 @@
                         @GetRouteLabel(Message.Route)
                     </span>
                 }
+                @if (!Message.IsUser && Message.IsWebAnswer)
+                {
+                    <span class="badge bg-info text-dark border fw-normal" title="معلومة من الإنترنت — ليست من بيانات متجرك">
+                        🌐 إنترنت
+                    </span>
+                }
             </div>
 
             @if (!IsEditing)
@@ -66,10 +72,14 @@
                       @onkeydown="OnEditKeyDown"></textarea>
             @if (EditFooter is not null)
             {
-                <div class="d-flex align-items-center gap-2 mb-1">
+                <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                     <span class="small text-muted">الجهة:</span>
                     @EditFooter
                 </div>
+            }
+            @if (!string.IsNullOrWhiteSpace(RouteHint))
+            {
+                <div class="small text-muted mb-1">🎯 @RouteHint</div>
             }
             <div class="form-text small">Enter للحفظ، Shift+Enter لسطر جديد. سيُعاد بناء المحادثة من هنا.</div>
         }
@@ -82,6 +92,7 @@
             @foreach (var artifact in VisibleArtifacts)
             {
                 <ArtifactCard Artifact="artifact"
+                              StoreName="@StoreName"
                               OnDelete="OnArtifactDelete"
                               OnExport="OnArtifactExport" />
             }
@@ -92,6 +103,12 @@
 @code {
     [Parameter] public ChatItem Message { get; set; } = new();
     [Parameter] public RenderFragment? EditFooter { get; set; }
+
+    /// <summary>اسم المتجر الذي يظهر في ترويسة الطباعة.</summary>
+    [Parameter] public string StoreName { get; set; } = "Wizz";
+
+    /// <summary>توضيح الجهة التي ستجيب عن هذا السؤال عند إعادة إرساله (يظهر في وضع التحرير).</summary>
+    [Parameter] public string? RouteHint { get; set; }
     [Parameter] public EventCallback<ChatItem> OnEdit { get; set; }
     [Parameter] public EventCallback<ChatItem> OnCopy { get; set; }
     [Parameter] public EventCallback<ChatArtifact> OnArtifactDelete { get; set; }

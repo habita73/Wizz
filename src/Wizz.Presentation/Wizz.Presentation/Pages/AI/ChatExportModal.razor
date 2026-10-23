@@ -52,6 +52,9 @@
     [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
     [Parameter] public ChatArtifact? Artifact { get; set; }
 
+    /// <summary>اسم المتجر الذي يظهر في ترويسة الطباعة.</summary>
+    [Parameter] public string StoreName { get; set; } = "Wizz";
+
     private static readonly (ArtifactExportFormat Format, string Label, string Icon)[] Formats =
     {
         (ArtifactExportFormat.Html, "HTML (صفحة منسّقة)", "🌐"),
@@ -100,14 +103,14 @@
     private async Task Print()
     {
         if (Artifact is null) return;
-        var doc = ArtifactExporter.ToPrintableDocument(Artifact);
+        var doc = ArtifactExporter.ToPrintableDocument(Artifact, StoreName);
         await JS.InvokeVoidAsync("wizzPrint", doc);
     }
 
     private async Task OpenInTab()
     {
         if (Artifact is null) return;
-        var doc = ArtifactExporter.ToPrintableDocument(Artifact);
+        var doc = ArtifactExporter.ToPrintableDocument(Artifact, StoreName);
         await JS.InvokeVoidAsync("wizzOpenHtml", doc);
     }
 

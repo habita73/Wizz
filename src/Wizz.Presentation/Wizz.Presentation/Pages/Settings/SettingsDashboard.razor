@@ -7,6 +7,7 @@
 @inject Wizz.Application.Abstractions.IAiSettingsProvider AiSettings
 @inject Wizz.Application.Abstractions.IDeviceCapabilityEvaluator DeviceEvaluator
 @inject Wizz.Application.Abstractions.IModelRouter ModelRouter
+@inject Wizz.Presentation.Pages.AI.AiMemoryStore MemoryStore
 @inject IJSRuntime JS
 
 <h2>⚙️ الإعدادات</h2>
@@ -366,6 +367,61 @@
                     </div>
                 </div>
 
+                <hr />
+
+                <h6 class="mb-2">🧠 تفضيلات المساعد</h6>
+
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="aiRememberContext" @bind="rememberContext" />
+                        <label class="form-check-label" for="aiRememberContext">
+                            حفظ سياق المحادثة
+                            <span class="text-muted" title="عند التفعيل يتذكّر المساعد آخر منتج سألت عنه فيجيب عن «كم سعره؟». كل شيء محفوظ على جهازك فقط ويمكن مسحه من صفحة المساعد.">❓</span>
+                        </label>
+                    </div>
+                    <div class="form-text">
+                        يتذكّر المساعد آخر منتج سألت عنه فيجيب عن أسئلة المتابعة مثل «كم سعره؟». البيانات محفوظة على جهازك فقط،
+                        ويمكن مسحها بزر «🧠 مسح الذاكرة» في صفحة المساعد.
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">السعر الذي يظهر أولاً في الإجابات</label>
+                    <select class="form-select form-select-sm" @bind="priceMode">
+                        <option value="Retail">سعر التجزئة</option>
+                        <option value="Wholesale">سعر الجملة</option>
+                    </select>
+                    <div class="form-text">يحدّد أيّ سعر يُعرض أولاً حين يسألك المستخدم عن سعر منتج.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">وحدة القياس المفضّلة (اختياري)</label>
+                    <input type="text" class="form-control form-control-sm" @bind="preferredUnit" placeholder="مثال: كجم أو لتر" />
+                    <div class="form-text">تظهر منتجات هذه الوحدة أولاً في قوائم المنتجات التي يعرضها المساعد.</div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="aiInternetAccess" @bind="allowInternetAccess" />
+                        <label class="form-check-label" for="aiInternetAccess">
+                            السماح للمساعد المدمج بالبحث في الإنترنت عند الطلب
+                            <span class="text-muted" title="مغلق افتراضياً. عند التفعيل فقط، وإذا كتبت «ابحث عن…» أو «من هو…»، تُرسل كلمات سؤالك إلى خدمة بحث عامة. أسئلة متجرك لا تُرسل أبداً.">❓</span>
+                        </label>
+                    </div>
+                    <div class="form-text">
+                        <strong>مغلق افتراضياً</strong> — المساعد يعمل كاملاً دون إنترنت. عند التفعيل، اسأل صراحةً مثل «ابحث عن تاريخ الجزائر»
+                        أو «من هو ابن باديس؟» فتُرسل كلمات سؤالك إلى خدمة بحث عامة (ويكيبيديا / DuckDuckGo) ويظهر المصدر مع الإجابة.
+                        أسئلة المبيعات والديون والأسعار والمنتجات <strong>لا تُرسل إلى الإنترنت أبداً</strong>.
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mb-3">
+                    <button class="btn btn-outline-primary btn-sm flex-fill" @onclick="SaveAiPreferences">💾 حفظ التفضيلات</button>
+                    <button class="btn btn-outline-secondary btn-sm flex-fill" @onclick="ResetAiPreferences">↺ الافتراضي</button>
+                </div>
+
+                <RoutePriorityEditor />
+
                 <div class="d-flex gap-2 mb-3">
                     <button class="btn btn-outline-secondary btn-sm flex-fill" @onclick="TestOllamaAsync" disabled="@testingOllama">
                         @(testingOllama ? "جارٍ الاختبار…" : "اختبار Ollama")
@@ -373,8 +429,7 @@
                     <button class="btn btn-outline-secondary btn-sm flex-fill" @onclick="TestCloudAsync" disabled="@(testingCloud || !aiCloudEnabled)">
                         @(testingCloud ? "جارٍ الاختبار…" : "اختبار السحابة")
                     </button>
-                </div>
-                @if (!string.IsNullOrWhiteSpace(ollamaTestResult))
+                </div>                @if (!string.IsNullOrWhiteSpace(ollamaTestResult))
                 {
                     <div class="alert alert-info py-2 small">@ollamaTestResult</div>
                 }
@@ -525,12 +580,75 @@
     private bool loadingLocalModels = false;
     private bool applyingLocalModel = false;
 
+    // تفضيلات المساعد (الذاكرة ونوع السعر ووحدة القياس)
+    private string priceMode = "Retail";
+    private string preferredUnit = "";
+    private bool rememberContext = true;
+    private bool allowInternetAccess;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadStore();
         await LoadUsers();
         await LoadBackups();
         await LoadAiSettings();
+        await LoadAiPreferences();
+    }
+
+    /// <summary>يحمّل تفضيلات المساعد المحفوظة محلياً.</summary>
+    private async Task LoadAiPreferences()
+    {
+        try
+        {
+            await MemoryStore.LoadAsync();
+            priceMode = MemoryStore.Preferences.IsWholesalePreferred ? "Wholesale" : "Retail";
+            preferredUnit = MemoryStore.Preferences.PreferredUnit ?? "";
+            rememberContext = MemoryStore.Preferences.RememberContext;
+            allowInternetAccess = MemoryStore.Preferences.AllowInternetAccess;
+        }
+        catch
+        {
+            // غياب التخزين المحلي — نكمل بالقيم الافتراضية.
+        }
+    }
+
+    /// <summary>يحفظ تفضيلات المساعد محلياً.</summary>
+    private async Task SaveAiPreferences()
+    {
+        try
+        {
+            MemoryStore.Preferences.SetPriceMode(
+                string.Equals(priceMode, "Wholesale", StringComparison.OrdinalIgnoreCase)
+                    ? Wizz.Application.AI.Memory.PriceMode.Wholesale
+                    : Wizz.Application.AI.Memory.PriceMode.Retail);
+            MemoryStore.Preferences.SetPreferredUnit(preferredUnit);
+            MemoryStore.Preferences.SetRememberContext(rememberContext);
+            MemoryStore.Preferences.SetAllowInternetAccess(allowInternetAccess);
+            await MemoryStore.SaveAsync();
+            await JS.InvokeVoidAsync("alert", "تم حفظ تفضيلات المساعد");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"تعذّر حفظ التفضيلات: {ex.Message}");
+        }
+    }
+
+    /// <summary>يعيد تفضيلات المساعد إلى القيم الافتراضية.</summary>
+    private async Task ResetAiPreferences()
+    {
+        try
+        {
+            await MemoryStore.ResetPreferencesAsync();
+            priceMode = "Retail";
+            preferredUnit = "";
+            rememberContext = true;
+            allowInternetAccess = false;
+            StateHasChanged();
+        }
+        catch
+        {
+            // تجاهل
+        }
     }
 
     private async Task LoadAiSettings()

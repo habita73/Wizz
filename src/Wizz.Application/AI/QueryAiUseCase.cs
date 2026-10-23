@@ -44,7 +44,8 @@ public sealed class QueryAiUseCase
                     true,
                     Array.Empty<string>(),
                     sw.Elapsed,
-                    routeResult.ProviderName));
+                    routeResult.ProviderName,
+                    routeResult.Decision));
             }
 
             return Result<AiQueryResultDto>.Success(new AiQueryResultDto(
@@ -52,7 +53,8 @@ public sealed class QueryAiUseCase
                 routeResult.UsedStoreData,
                 routeResult.ReferencedData,
                 sw.Elapsed,
-                routeResult.ProviderName));
+                routeResult.ProviderName,
+                routeResult.Decision));
         }
         catch (Exception ex)
         {

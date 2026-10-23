@@ -97,6 +97,10 @@
 
 @code {
     [Parameter] public ChatArtifact Artifact { get; set; } = new();
+
+    /// <summary>اسم المتجر الذي يظهر في ترويسة الطباعة (من إعدادات المتجر).</summary>
+    [Parameter] public string StoreName { get; set; } = "Wizz";
+
     [Parameter] public EventCallback<ChatArtifact> OnDelete { get; set; }
     [Parameter] public EventCallback<ChatArtifact> OnExport { get; set; }
 
@@ -139,9 +143,7 @@
 
     private async Task Print()
     {
-        var doc = ArtifactExporter.ToPrintableDocument(
-            Artifact,
-            Artifact.Kind == ArtifactKind.Text && string.IsNullOrWhiteSpace(Artifact.MimeType) ? "Wizz" : "Wizz");
+        var doc = ArtifactExporter.ToPrintableDocument(Artifact, StoreName);
         await JS.InvokeVoidAsync("wizzPrint", doc);
     }
 

@@ -38,7 +38,24 @@ public sealed record ModelRouteResult(
     IReadOnlyList<string> ReferencedData,
     TimeSpan ResponseTime,
     bool IsFallback,
-    string? ErrorMessage = null);
+    string? ErrorMessage = null,
+    RouteDecision? Decision = null);
+
+/// <summary>مرشح مسار واحد: متاح أو لا، درجته، وسبب ظهوره/استبعاده.</summary>
+/// <param name="Route">المسار.</param>
+/// <param name="Eligible">هل يمكن اختياره لهذا الطلب؟</param>
+/// <param name="Score">درجة الوزن (أولوية + جودة)؛ صفر لغير المتاح.</param>
+/// <param name="Reason">سبب عربي واضح يظهر للمستخدم.</param>
+/// <param name="Checked">هل فُحص المسار فعلاً؟ (false = استُبعد قبل الفحص لتوفير الوقت).</param>
+public sealed record RouteCandidate(RouteType Route, bool Eligible, int Score, string Reason, bool Checked = true);
+
+/// <summary>قرار التوجيه: المسار المختار وسبب اختياره مع كل المرشحين بترتيب الدرجات.</summary>
+public sealed record RouteDecision(RouteType Chosen, string Reason, IReadOnlyList<RouteCandidate> Candidates)
+{
+    /// <summary>قرار اختيار يدوي من المستخدم (لا منافسة تلقائية).</summary>
+    public static RouteDecision Manual(RouteType route)
+        => new(route, "اختيار يدوي من المستخدم", Array.Empty<RouteCandidate>());
+}
 
 /// <summary>نوع المسار المستخدم في الاستجابة.</summary>
 public enum RouteType

@@ -1,10 +1,16 @@
 @page "/ai"
 @layout MainLayout
+@using Wizz.Application.AI
 @using Wizz.Application.AI.Artifacts
 @using Wizz.Application.AI.History
+@using Wizz.Application.AI.Routing
 @inject Wizz.Application.AI.QueryAiUseCase QueryAiUseCase
+@inject Wizz.Application.UseCases.Store.GetStoreSettingsUseCase StoreSettings
 @inject Wizz.Application.Abstractions.IModelRouter ModelRouter
 @inject AiHistoryStore HistoryStore
+@inject AiMemoryStore MemoryStore
+@inject AiRoutePriorityStore PriorityStore
+@inject RouteDecisionLog DecisionLog
 @inject IJSRuntime JS
 
 <h2>🤖 مساعد Wizz الذكي</h2>
@@ -45,15 +51,17 @@
                         @foreach (var msg in messages.OrderBy(m => m.Sequence))
                         {
                             <ChatMessage @key="msg.Id" Message="msg"
+                                         StoreName="@storeName"
+                                         RouteHint="@BuildRouteHint()"
                                          OnEdit="EditMessage"
                                          OnCopy="CopyMessage"
                                          OnArtifactDelete="DeleteArtifact"
                                          OnArtifactExport="OpenExportModal">
                                 <EditFooter>
-                                    <ModelSelectorPopover RouteMode="routeMode"
+                                    <ModelSelectorPopover RouteMode="@routeMode"
                                                           RouteModeChanged="OnRouteModeChanged"
                                                           AvailableModels="availableModels"
-                                                          SelectedLocalModel="selectedModel"
+                                                          SelectedLocalModel="@selectedModel"
                                                           SelectedLocalModelChanged="OnSelectedLocalModelChanged"
                                                           LocalAvailable="routeStatus.LocalAvailable"
                                                           CloudAvailable="routeStatus.CloudAvailable"
@@ -66,10 +74,14 @@
 
                     @if (sending)
                     {
-                        <div class="mb-3">
-                            <div class="d-inline-flex align-items-center gap-2 bg-light border rounded-3 px-3 py-2 text-muted">
-                                <span class="spinner-border spinner-border-sm"></span>
-                                <span>جاري التحضير…</span>
+                        <div class="mb-3" aria-live="polite">
+                            <div class="d-inline-flex align-items-start gap-2 bg-light border rounded-3 px-3 py-2">
+                                <span class="spinner-border spinner-border-sm text-primary mt-1" role="status"></span>
+                                <span class="small">
+                                    <strong>@PendingLabel</strong>
+                                    <br />
+                                    <span class="text-muted">@PendingHint</span>
+                                </span>
                             </div>
                         </div>
                     }
@@ -81,14 +93,14 @@
 
                 <div class="input-group">
                     <textarea class="form-control" rows="1" @bind="userInput" @bind:event="oninput"
-                              placeholder="اكتب سؤالك هنا... (Enter للإرسال، Shift+Enter لسطر جديد)"
+                              placeholder="اكتب سؤالك هنا… (Enter إرسال · Shift+Enter سطر جديد · Esc مسح)"
                               @onkeydown="OnInputKeyDown" disabled="@sending"></textarea>
 
                     <!-- محدد الجهة/النموذج داخل الصندوق -->
-                    <ModelSelectorPopover RouteMode="routeMode"
+                    <ModelSelectorPopover RouteMode="@routeMode"
                                           RouteModeChanged="OnRouteModeChanged"
                                           AvailableModels="availableModels"
-                                          SelectedLocalModel="selectedModel"
+                                          SelectedLocalModel="@selectedModel"
                                           SelectedLocalModelChanged="OnSelectedLocalModelChanged"
                                           LocalAvailable="routeStatus.LocalAvailable"
                                           CloudAvailable="routeStatus.CloudAvailable"
@@ -100,6 +112,23 @@
                     </button>
                 </div>
                 <div class="form-text small">
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                        <span class="badge bg-light text-dark border" title="الجهة التي سترد على الأسئلة القادمة">
+                            🎯 الرد من: @CurrentRouteLabel
+                        </span>
+                        @if (routeMode == "auto")
+                        {
+                            <span class="text-muted" title="ترتيب الأولوية المحفوظ في الإعدادات — يُطبَّق بعد استبعاد غير المتاح">
+                                الأولوية: @PriorityOrderText
+                            </span>
+                        }
+                        <span class="text-muted" title="حماية أسئلة الأرقام: المبيعات والديون والأسعار والأعداد يجيب عنها المدمج دائماً لضمان دقة الرقم">
+                            🔒 أسئلة الأرقام للمدمج
+                        </span>
+                        <span class="text-muted" title="@ChatKeymap.Hint">
+                            @ChatKeymap.Hint
+                        </span>
+                    </div>
                     @if (routeStatus.BuiltInAvailable && routeStatus.RouteCount == 1)
                     {
                         <span class="text-warning">⚠️ المساعد المدمج فقط متاح حالياً.</span>
@@ -113,6 +142,15 @@
                         </span>
                     }
                 </div>
+
+                @if (lastDecision is not null)
+                {
+                    <div class="small text-muted mt-1"
+                         title="@DecisionTooltip(lastDecision.Chosen, lastDecision.Reason, lastDecision.Candidates)">
+                        🧭 التوجيه: <strong>@RouteText.Display(lastDecision.Chosen)</strong>
+                        <span>— @lastDecision.Reason</span>
+                    </div>
+                }
             </div>
         </div>
     </div>
@@ -150,6 +188,34 @@
                        Loading="loadingStatus"
                        OnRefresh="RefreshStatus" />
 
+        <div class="card route-decision-card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-bold small">🧭 قرارات التوجيه</span>
+                <span class="badge bg-secondary" title="عدد القرارات في هذه الجلسة">@DecisionLog.Count</span>
+            </div>
+            <div class="card-body py-2">
+                @if (recentDecisions.Count == 0)
+                {
+                    <div class="text-muted small">ستظهر هنا أسباب اختيار كل مسار بعد أول سؤال.</div>
+                }
+                else
+                {
+                    <div class="route-decision-log d-grid gap-1">
+                        @foreach (var d in recentDecisions)
+                        {
+                            <div class="small" title="@DecisionTooltip(d.Route, d.Reason, d.Candidates)">
+                                <span class="text-muted">@d.AtUtc.ToLocalTime().ToString("HH:mm")</span>
+                                <strong>@RouteText.Display(d.Route)</strong>
+                                <span class="text-muted">— @d.Reason</span>
+                                <div class="text-truncate text-secondary">@d.Question</div>
+                            </div>
+                        }
+                    </div>
+                    <button class="btn btn-outline-secondary btn-sm w-100 mt-2" @onclick="ClearDecisionLog">🧹 مسح السجل</button>
+                }
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header py-2">
                 <div class="d-flex align-items-center justify-content-between gap-2">
@@ -163,12 +229,19 @@
             <div class="card-body py-2 d-grid gap-2">
                 <button class="btn btn-outline-danger btn-sm" @onclick="ClearChat">🗑️ مسح المحادثة</button>
                 <button class="btn btn-outline-secondary btn-sm" @onclick="ClearHistory">🧹 مسح تاريخ الأسئلة الجاهزة</button>
+                <button class="btn btn-outline-secondary btn-sm"
+                        title="يمسح ما يحفظه المساعد من محادثة سابقة ومن آخر منتج تذكّره — لا يمسح تفضيلاتك (من الإعدادات)"
+                        @onclick="ClearMemory">🧠 مسح الذاكرة</button>
+                @if (!string.IsNullOrWhiteSpace(rememberedSubject))
+                {
+                    <div class="small text-muted">🧠 يتذكّر الآن: <strong>@rememberedSubject</strong></div>
+                }
             </div>
         </div>
     </div>
 </div>
 
-<ChatExportModal IsOpen="exportModalOpen" IsOpenChanged="OnExportModalChanged" Artifact="exportArtifact" />
+<ChatExportModal IsOpen="exportModalOpen" IsOpenChanged="OnExportModalChanged" Artifact="exportArtifact" StoreName="@storeName" />
 
 @code {
     private List<ChatItem> messages = new();
@@ -187,15 +260,133 @@
 
     private bool exportModalOpen = false;
     private ChatArtifact? exportArtifact;
+    private string storeName = "Wizz";
 
     private IReadOnlyList<string> quickQuestions = Array.Empty<string>();
     private AiHistoryService? history;
+    private string? rememberedSubject;
+    private RouteDecision? lastDecision;
+    private IReadOnlyList<RouteDecisionEntry> recentDecisions = Array.Empty<RouteDecisionEntry>();
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadStoreNameAsync();
+        await LoadRoutePriorityAsync();
         await RefreshStatus();
         await RefreshModels();
         await LoadHistoryAsync();
+        await LoadMemoryAsync();
+        RefreshRecentDecisions();
+    }
+
+    /// <summary>يحمّل اسم المتجر لعرضه في ترويسة طباعة المخرجات (الافتراضي: Wizz).</summary>
+    private async Task LoadStoreNameAsync()
+    {
+        try
+        {
+            var result = await StoreSettings.ExecuteAsync();
+            if (result.IsSuccess && !string.IsNullOrWhiteSpace(result.Value.Name))
+            {
+                storeName = result.Value.Name.Trim();
+            }
+        }
+        catch
+        {
+            // غياب إعدادات المتجر لا يمنع الطباعة بالاسم الافتراضي.
+        }
+    }
+
+    /// <summary>يحمّل أولوية المسارات المحفوظة محلياً — يستخدمها الموجّه في هذه الجلسة.</summary>
+    private async Task LoadRoutePriorityAsync()
+    {
+        try
+        {
+            await PriorityStore.LoadAsync();
+        }
+        catch
+        {
+            // غياب التخزين المحلي لا يمنع عمل المحادثة.
+        }
+    }
+
+    /// <summary>اسم الاختيار الحالي للجهة المُجيبة (يظهر تحت صندوق الإرسال).</summary>
+    private string CurrentRouteLabel => routeMode switch
+    {
+        "built-in" => "⚡ المدمج (مُثبَّت)",
+        "local" => "🟢 المحلي (مُثبَّت)",
+        "cloud" => "☁️ السحابي (مُثبَّت)",
+        _ => "تلقائي"
+    };
+
+    /// <summary>ترتيب الأولوية المحفوظ كنص عربي: «⚡ المدمج ← 🟢 المحلي ← ☁️ السحابي».</summary>
+    private string PriorityOrderText
+        => string.Join(" ← ", PriorityStore.Priority.Order.Select(RouteText.Display));
+
+    /// <summary>عنوان فقاعة الانتظار أثناء تجهيز الرد — يوضّح الجهة المتوقعة.</summary>
+    private string PendingLabel => routeMode switch
+    {
+        "built-in" => "⚡ المساعد المدمج يجهّز الرد…",
+        "local" => "🟢 النموذج المحلي يكتب…",
+        "cloud" => "☁️ النموذج السحابي يكتب…",
+        _ => "⏳ جاري اختيار الجهة المناسبة…"
+    };
+
+    /// <summary>سطر توضيحي تحت عنوان الانتظار (يُذكّر بمصدر الإجابة).</summary>
+    private string PendingHint => routeMode == "auto"
+        ? "أسئلة المبيعات والأسعار يجيب عنها المدمج فوراً؛ الأسئلة الحرة قد تستغرق لحظات."
+        : "الرد من الجهة المثبّتة يدوياً — يمكنك الانتظار أو تغيير الجهة بعد الرد.";
+
+    /// <summary>توضيح الجهة التي ستجيب عند إعادة إرسال سؤال معدَّل.</summary>
+    private string BuildRouteHint() => routeMode switch
+    {
+        "built-in" => "مُثبَّت يدوياً على ⚡ المدمج — تُعاد الإجابة من بيانات متجرك مباشرة.",
+        "local" => "مُثبَّت يدوياً على 🟢 المحلي" +
+                   (string.IsNullOrWhiteSpace(selectedModel) ? string.Empty : $" ({selectedModel})") +
+                   " — تُعاد الإجابة من نموذج جهازك.",
+        "cloud" => "مُثبَّت يدوياً على ☁️ السحابي — تُعاد الإجابة عبر الإنترنت.",
+        _ => $"تلقائي — الأولوية الحالية: {PriorityOrderText}. أسئلة الأرقام يجيب عنها المدمج دائماً لضمان الدقة."
+    };
+
+    /// <summary>يحدّث لائحة آخر قرارات التوجيه المعروضة في اللوحة الجانبية.</summary>
+    private void RefreshRecentDecisions() => recentDecisions = DecisionLog.Recent(5);
+
+    /// <summary>يمسح سجل قرارات التوجيه المعروض (لا يؤثر على المحادثة).</summary>
+    private void ClearDecisionLog()
+    {
+        DecisionLog.Clear();
+        recentDecisions = Array.Empty<RouteDecisionEntry>();
+        lastDecision = null;
+    }
+
+    /// <summary>يبني تلميحاً يشرح سبب القرار ودرجة كل مرشح.</summary>
+    private static string DecisionTooltip(RouteType chosen, string reason, IReadOnlyList<RouteCandidate> candidates)
+    {
+        var lines = new List<string> { $"القرار: {RouteText.Display(chosen)} — {reason}" };
+        foreach (var candidate in candidates)
+        {
+            lines.Add(candidate switch
+            {
+                { Checked: false } => $"{RouteText.Display(candidate.Route)}: {candidate.Reason}",
+                { Eligible: true } => $"{RouteText.Display(candidate.Route)}: {candidate.Score} نقطة — {candidate.Reason}",
+                _ => $"{RouteText.Display(candidate.Route)}: غير متاح — {candidate.Reason}"
+            });
+        }
+
+        return string.Join(" | ", lines);
+    }
+
+    /// <summary>يحمّل ذاكرة المحادثة والتفضيلات المحفوظة محلياً.</summary>
+    private async Task LoadMemoryAsync()
+    {
+        try
+        {
+            await MemoryStore.LoadAsync();
+            rememberedSubject = MemoryStore.Memory.LastSubject;
+        }
+        catch
+        {
+            // غياب التخزين المحلي لا يمنع عمل المحادثة.
+        }
     }
 
     /// <summary>يحمّل تاريخ الأسئلة ويبني قائمة الأسئلة الجاهزة.</summary>
@@ -283,9 +474,25 @@
 
     private async Task OnInputKeyDown(KeyboardEventArgs e)
     {
-        if (e.Key == "Enter" && !e.ShiftKey)
+        var action = ChatKeymap.Resolve(e.Key, e.CtrlKey, e.ShiftKey, e.AltKey, !string.IsNullOrWhiteSpace(userInput));
+        switch (action)
         {
-            await SendMessage();
+            case ChatKeyAction.Send:
+                await SendMessage();
+                break;
+
+            case ChatKeyAction.ClearInput:
+                if (!string.IsNullOrWhiteSpace(userInput))
+                {
+                    userInput = string.Empty;
+                    StateHasChanged();
+                }
+                else if (exportModalOpen)
+                {
+                    exportModalOpen = false;
+                    StateHasChanged();
+                }
+                break;
         }
     }
 
@@ -348,6 +555,8 @@
             var route = InferRouteType(result.Value.ProviderName);
             lastRouteType = route.Route;
             lastRouteTypeLabel = route.Label;
+            lastDecision = result.IsSuccess ? result.Value.Decision : null;
+            RefreshRecentDecisions();
 
             var answerText = result.IsSuccess ? result.Value.Answer : $"تعذر الحصول على رد: {string.Join("، ", result.Errors)}";
             var parsed = ArtifactParser.Parse(answerText);
@@ -361,11 +570,15 @@
                 Timestamp = DateTime.Now,
                 Provider = result.IsSuccess ? result.Value.ProviderName : "نظام",
                 Route = route.Route.ToString(),
+                IsWebAnswer = result.IsSuccess && result.Value.ReferencedData.Contains("بحث إنترنت"),
                 ParentId = userMsg.Id,
                 Sequence = nextSequence++,
                 CanRegenerate = true
             };
             messages.Add(assistantMsg);
+
+            // حفظ ذاكرة المحادثة (السياق والموضوع) محلياً — لا يُعطّل الإجابة عند فشله.
+            await SaveMemoryAsync();
 
             await RefreshStatus();
         }
@@ -505,6 +718,35 @@
         nextSequence = 0;
         lastRouteType = RouteType.BuiltIn;
         lastRouteTypeLabel = "المساعد المدمج";
+        StateHasChanged();
+    }
+
+    /// <summary>يحفظ ذاكرة المحادثة والتفضيلات في التخزين المحلي.</summary>
+    private async Task SaveMemoryAsync()
+    {
+        try
+        {
+            await MemoryStore.SaveAsync();
+            rememberedSubject = MemoryStore.Memory.LastSubject;
+        }
+        catch
+        {
+            // تجاهل — الذاكرة في الذاكرة فقط.
+        }
+    }
+
+    /// <summary>يمسح ذاكرة المساعد (المحادثة السابقة + آخر منتج تذكّره) دون المساس بالتفضيلات.</summary>
+    private async Task ClearMemory()
+    {
+        try
+        {
+            await MemoryStore.ClearMemoryAsync();
+            rememberedSubject = null;
+        }
+        catch
+        {
+            // تجاهل
+        }
         StateHasChanged();
     }
 

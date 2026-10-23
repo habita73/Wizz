@@ -8,20 +8,31 @@ public sealed class BuiltInToolRegistry
 {
     private readonly IReadOnlyList<IBuiltInTool> _tools;
 
-    /// <summary>السجل الافتراضي بأدوات النظام الأساسية.</summary>
+    /// <summary>السجل الافتراضي بأدوات النظام الأساسية (+ البحث اختياري عند تمرير مزوّده).</summary>
     public static BuiltInToolRegistry CreateDefault(
         Func<DateTime>? now = null,
         TimeZoneInfo? timeZone = null,
         Func<IReadOnlyList<DriveSpace>>? drives = null,
         Func<PrinterInfo>? printerInfo = null,
-        Func<SystemInfo>? systemInfo = null)
-        => new(new IBuiltInTool[]
+        Func<SystemInfo>? systemInfo = null,
+        IWebSearch? webSearch = null,
+        Func<bool>? internetAllowed = null)
+    {
+        var tools = new List<IBuiltInTool>
         {
             new GetTimeTool(now, timeZone),
             new GetDriveInfoTool(drives),
             new GetPrintTemplatesTool(printerInfo),
             new GetSystemInfoTool(systemInfo)
-        });
+        };
+
+        if (webSearch is not null)
+        {
+            tools.Add(new SearchWebTool(webSearch, internetAllowed));
+        }
+
+        return new BuiltInToolRegistry(tools);
+    }
 
     public BuiltInToolRegistry(IEnumerable<IBuiltInTool> tools)
     {

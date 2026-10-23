@@ -29,6 +29,9 @@ public record ChatItem
     /// <summary>نوع المسار المستخدم في الاستجابة.</summary>
     public string? Route { get; init; }
 
+    /// <summary>هل الإجابة من بحث الإنترنت؟ (تظهر شارة «🌐 إنترنت» مع المصدر).</summary>
+    public bool IsWebAnswer { get; init; }
+
     /// <summary>هل يمكن إعادة توليد هذه الرسالة؟</summary>
     public bool CanRegenerate { get; init; } = true;
 

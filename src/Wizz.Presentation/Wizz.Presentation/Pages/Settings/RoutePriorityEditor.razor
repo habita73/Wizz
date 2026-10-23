@@ -1,0 +1,190 @@
+@using Wizz.Application.Abstractions
+@inject Wizz.Presentation.Pages.AI.AiRoutePriorityStore PriorityStore
+
+<div class="border rounded p-3 mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="fw-bold small">🧭 أولوية المسارات التلقائية</span>
+        <button class="btn btn-sm btn-outline-secondary" @onclick="ResetAsync" disabled="@saving"
+                title="إعادة الترتيب الافتراضي: المدمج ← المحلي ← السحابي">↺ الافتراضي</button>
+    </div>
+
+    <p class="small text-muted mb-2">
+        اسحب الصفوف لإعادة الترتيب (أو استخدم ▲ ▼). يُجرَّب المسار الأول أولاً، ثم الذي يليه إن لم يكن متاحاً.
+    </p>
+    <p class="small text-muted mb-2" title="حماية أسئلة الأرقام: المبيعات والديون والأسعار والأعداد يجيب عنها المدمج دائماً لضمان دقة الرقم، ولا يستبدلها نموذج لغوي">
+        🔒 <strong>حماية أسئلة الأرقام:</strong> أسئلة المبيعات والديون والأسعار والأعداد يجيب عنها «المدمج» دائماً.
+        الترتيب يحدد الرد على الأسئلة الحرة والتحليلية وما لا يعرفه المدمج.
+    </p>
+
+    @if (!loaded)
+    {
+        <div class="text-muted small">جارٍ تحميل الترتيب…</div>
+    }
+    else
+    {
+        <ol class="list-unstyled mb-2">
+            @for (var i = 0; i < ordering.Count; i++)
+            {
+                var index = i;
+                var row = Rows[ordering[index]];
+                <li @key="row.Route"
+                    class="route-priority-row d-flex align-items-center gap-2 border rounded px-2 py-2 mb-1 @(dragIndex == index ? "route-priority-dragging" : "") @(dropIndex == index ? "route-priority-drop" : "")"
+                    draggable="true"
+                    @ondragstart="() => OnDragStart(index)"
+                    @ondragend="OnDragEnd"
+                    @ondragover="() => OnDragOver(index)"
+                    @ondragover:preventDefault="true"
+                    @ondrop="() => OnDropAsync(index)">
+                    <span class="text-muted" title="اسحب لإعادة الترتيب" aria-hidden="true">⋮⋮</span>
+                    <span class="badge bg-secondary" title="المرتبة">@(index + 1)</span>
+                    <span class="flex-grow-1 small">
+                        <strong>@row.Icon @row.Label</strong>
+                        <span class="text-muted"> — @row.Description</span>
+                    </span>
+                    <button class="btn btn-sm btn-outline-secondary" title="أعلى"
+                            disabled="@(index == 0 || saving)" @onclick="() => MoveUpAsync(index)">▲</button>
+                    <button class="btn btn-sm btn-outline-secondary" title="أسفل"
+                            disabled="@(index == ordering.Count - 1 || saving)" @onclick="() => MoveDownAsync(index)">▼</button>
+                </li>
+            }
+        </ol>
+
+        <div class="small @(justSaved ? "text-success" : "text-muted")">
+            @if (justSaved)
+            {
+                <span>✅ حُفظ الترتيب — يُطبّق في صفحة المساعد بعد إعادة تحميلها.</span>
+            }
+            else
+            {
+                <span>الترتيب الحالي: @string.Join(" ← ", ordering.Select(r => Rows[r].Label))</span>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly Dictionary<RouteType, RouteRow> Rows = new()
+    {
+        [RouteType.BuiltIn] = new(RouteType.BuiltIn, "⚡", "المدمج", "قواعد محلية فورية، بلا إنترنت أو نموذج"),
+        [RouteType.Local] = new(RouteType.Local, "🟢", "المحلي", "نموذج Ollama على جهازك (خصوصية، بلا تكلفة)"),
+        [RouteType.Cloud] = new(RouteType.Cloud, "☁️", "السحابي", "OpenRouter المجاني (يتطلب إنترنت)")
+    };
+
+    private List<RouteType> ordering = new();
+    private int? dragIndex;
+    private int? dropIndex;
+    private bool loaded;
+    private bool saving;
+    private bool justSaved;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PriorityStore.LoadAsync();
+        }
+        catch
+        {
+            // غياب التخزين المحلي لا يمنع عرض الترتيب الافتراضي.
+        }
+
+        ordering = PriorityStore.Priority.Order.ToList();
+        loaded = true;
+    }
+
+    private void OnDragStart(int index)
+    {
+        dragIndex = index;
+        dropIndex = null;
+    }
+
+    private void OnDragOver(int index)
+    {
+        if (dragIndex is not null && dragIndex != index)
+        {
+            dropIndex = index;
+        }
+    }
+
+    private void OnDragEnd()
+    {
+        dragIndex = null;
+        dropIndex = null;
+    }
+
+    private async Task OnDropAsync(int index)
+    {
+        if (dragIndex is null || dragIndex == index)
+        {
+            OnDragEnd();
+            return;
+        }
+
+        var moved = ordering[dragIndex.Value];
+        ordering.RemoveAt(dragIndex.Value);
+        ordering.Insert(Math.Clamp(index, 0, ordering.Count), moved);
+        OnDragEnd();
+
+        await PersistAsync();
+    }
+
+    private async Task MoveUpAsync(int index)
+    {
+        if (index <= 0)
+        {
+            return;
+        }
+
+        (ordering[index - 1], ordering[index]) = (ordering[index], ordering[index - 1]);
+        await PersistAsync();
+    }
+
+    private async Task MoveDownAsync(int index)
+    {
+        if (index < 0 || index >= ordering.Count - 1)
+        {
+            return;
+        }
+
+        (ordering[index + 1], ordering[index]) = (ordering[index], ordering[index + 1]);
+        await PersistAsync();
+    }
+
+    private async Task PersistAsync()
+    {
+        saving = true;
+        try
+        {
+            await PriorityStore.SetOrderAsync(ordering);
+            justSaved = true;
+        }
+        catch
+        {
+            justSaved = false;
+        }
+        finally
+        {
+            saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ResetAsync()
+    {
+        saving = true;
+        try
+        {
+            await PriorityStore.ResetAsync();
+            ordering = PriorityStore.Priority.Order.ToList();
+            justSaved = false;
+        }
+        finally
+        {
+            saving = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>صف عرض مسار واحد.</summary>
+    private sealed record RouteRow(RouteType Route, string Icon, string Label, string Description);
+}

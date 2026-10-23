@@ -169,3 +169,38 @@ h1:focus {
 .ai-status-details[open] summary {
     margin-bottom: .25rem;
 }
+
+/* ---- أولوية مسارات التوجيه التلقائي (Phase 6) ---- */
+.route-priority-row {
+    cursor: grab;
+    user-select: none;
+    transition: background-color .15s ease, border-color .15s ease, opacity .15s ease;
+}
+
+.route-priority-row:active {
+    cursor: grabbing;
+}
+
+.route-priority-row.route-priority-dragging {
+    opacity: .5;
+    background-color: #f8f9fa;
+}
+
+.route-priority-row.route-priority-drop {
+    border-color: #0d6efd !important;
+    background-color: rgba(13, 110, 253, .06);
+}
+
+.route-decision-card .card-header {
+    padding-top: .4rem;
+    padding-bottom: .4rem;
+}
+
+.route-decision-log {
+    max-height: 11rem;
+    overflow-y: auto;
+}
+
+.route-decision-log .small {
+    line-height: 1.35;
+}

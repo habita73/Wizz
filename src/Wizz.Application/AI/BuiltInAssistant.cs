@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Wizz.Application.Abstractions;
 using Wizz.Application.AI.Artifacts;
+using Wizz.Application.AI.Memory;
 using Wizz.Application.AI.Tools;
 using Wizz.Domain;
 
@@ -27,6 +28,8 @@ public sealed class BuiltInAssistant
     private readonly IProductRepository _products;
     private readonly IStoreRepository _store;
     private readonly BuiltInToolRegistry _tools;
+    private readonly IConversationMemory? _memory;
+    private readonly UserPreferenceStore? _preferences;
 
     public BuiltInAssistant(ISaleRepository sales, IProductRepository products, IStoreRepository store)
         : this(sales, products, store, BuiltInToolRegistry.CreateDefault())
@@ -38,11 +41,24 @@ public sealed class BuiltInAssistant
         IProductRepository products,
         IStoreRepository store,
         BuiltInToolRegistry tools)
+        : this(sales, products, store, tools, null, null)
+    {
+    }
+
+    public BuiltInAssistant(
+        ISaleRepository sales,
+        IProductRepository products,
+        IStoreRepository store,
+        BuiltInToolRegistry tools,
+        IConversationMemory? memory,
+        UserPreferenceStore? preferences)
     {
         _sales = sales;
         _products = products;
         _store = store;
         _tools = tools;
+        _memory = memory;
+        _preferences = preferences;
     }
 
     public string ProviderName => "المساعد المدمج (بدون نموذج)";
@@ -50,6 +66,19 @@ public sealed class BuiltInAssistant
     /// <summary>هل السؤال تحليلي؟ (يُفضَّل معه النموذج المحلي إن وُجد)</summary>
     public static bool IsAnalytical(string question)
         => HasAny(Normalize(question), AnalyticalMarkers);
+
+    /// <summary>النيّات التي تُرجع أرقاماً دقيقة من قاعدة البيانات (حماية أسئلة الأرقام).</summary>
+    private static readonly string[] PrecisionIntents =
+    {
+        "مبيعات", "ديون", "سعر", "منتجات", "أفضل", "متجر", "أدوات"
+    };
+
+    /// <summary>
+    /// هل هذه الإجابة «بيانات دقيقة» يجب ألا يستبدلها نموذج لغوي؟
+    /// صحيح للمبالغ والأعداد والأسعار والأدوات؛ وخاطئ للتحية/المساعدة/الإجرائي/التحليلي.
+    /// </summary>
+    public static bool IsPrecisionAnswer(BuiltInAnswer? answer)
+        => answer?.Intent is { Length: > 0 } intent && PrecisionIntents.Contains(intent);
 
     /// <summary>لقطة سريعة من بيانات المتجر تُستخدم في الإجابات وفي سياق النموذج المحلي.</summary>
     public async Task<StoreSnapshot> GetSnapshotAsync(CancellationToken ct = default)
@@ -180,24 +209,38 @@ public sealed class BuiltInAssistant
     /// <summary>محاولة إجابة السؤال من البيانات المحلية. يعيد null إذا لم تُطابق أي نية معروفة.</summary>
     public async Task<string?> TryAnswerAsync(string question, CancellationToken ct = default)
     {
+        var answer = await TryAnswerWithSubjectAsync(question, ct);
+        return answer?.Text;
+    }
+
+    /// <summary>
+    /// إجابة المساعد المدمج مع الموضوع المتذكَّر (اسم المنتج) والنية — تُستخدم لتغذية ذاكرة المحادثة
+    /// وفهم أسئلة المتابعة مثل «كم سعره؟».
+    /// </summary>
+    public async Task<BuiltInAnswer?> TryAnswerWithSubjectAsync(string question, CancellationToken ct = default)
+    {
         var q = Normalize(question);
         if (q.Length == 0) return null;
 
         if (HasAny(q, "مرحبا", "السلام", "اهلا", "صباح", "مساء", "hello", "hi"))
         {
-            return "أهلاً بك 👋\nأنا المساعد المدمج في Wizz، أعمل بدون إنترنت.\n" +
-                   "اسألني مثلاً: «قائمة الديون»، «مجموع ديون اليوم»، «أكبر دين»، «مبيعات أمس»، " +
-                   "«أفضل 3 منتجات»، «سعر تفاح»، أو «كيف أعمل نسخة احتياطية؟».";
+            return Ok(
+                "أهلاً بك 👋\nأنا المساعد المدمج في Wizz، أعمل بدون إنترنت.\n" +
+                "اسألني مثلاً: «قائمة الديون»، «مجموع ديون اليوم»، «أكبر دين»، «مبيعات أمس»، " +
+                "«أفضل 3 منتجات»، «سعر تفاح»، أو «كيف أعمل نسخة احتياطية؟».",
+                null, "تحية");
         }
 
         if (HasAny(q, "مساعده", "ماذا تستطيع", "ما تستطيع", "help", "قائمه الاوامر"))
         {
-            return "أفهم أسئلة مثل:\n" +
-                   "• المبيعات: اليوم / أمس / هذا الأسبوع / هذا الشهر / الإجمالي.\n" +
-                   "• الديون: قائمة الديون / مجموع الديون / أكبر دين / أقدم دين / عدد الديون.\n" +
-                   "• المنتجات: عدد المنتجات / قائمة المنتجات / سعر منتج / المنتجات المعطلة.\n" +
-                   "• النظام: الوقت والتاريخ / مساحة القرص / مواصفات الجهاز / قوالب الطباعة.\n" +
-                   "• مساعدة: إضافة منتج، تصحيح أو إلغاء بيع، طباعة إيصال، نسخة احتياطية، معلومات المتجر.";
+            return Ok(
+                "أفهم أسئلة مثل:\n" +
+                "• المبيعات: اليوم / أمس / هذا الأسبوع / هذا الشهر / الإجمالي.\n" +
+                "• الديون: قائمة الديون / مجموع الديون / أكبر دين / أقدم دين / عدد الديون.\n" +
+                "• المنتجات: عدد المنتجات / قائمة المنتجات / سعر منتج / المنتجات المعطلة.\n" +
+                "• النظام: الوقت والتاريخ / مساحة القرص / مواصفات الجهاز / قوالب الطباعة.\n" +
+                "• مساعدة: إضافة منتج، تصحيح أو إلغاء بيع، طباعة إيصال، نسخة احتياطية، معلومات المتجر.",
+                null, "مساعدة");
         }
 
         // ---- أدوات النظام (وقت/أقراص/طباعة/مواصفات) ----
@@ -209,27 +252,27 @@ public sealed class BuiltInAssistant
         };
         var toolAnswer = await _tools.TryAnswerAsync(toolContext, ct);
         if (toolAnswer is not null)
-            return toolAnswer;
+            return Ok(toolAnswer, null, SearchWebTool.IsWebAnswer(toolAnswer) ? SearchWebTool.Intent : "أدوات");
 
         // ---- أسئلة إجرائية (كيف أفعل...) ----
         if (HasAny(q, "نسخه", "نسخ احتياطي", "احتياطي", "backup"))
         {
-            return "لأخذ نسخة احتياطية:\n1) افتح «الإعدادات».\n2) انزل إلى قسم «النسخ الاحتياطي».\n3) اضغط «إنشاء نسخة احتياطية».\n\nالنسخة تُحفظ محلياً وتعمل دون إنترنت.";
+            return Ok("لأخذ نسخة احتياطية:\n1) افتح «الإعدادات».\n2) انزل إلى قسم «النسخ الاحتياطي».\n3) اضغط «إنشاء نسخة احتياطية».\n\nالنسخة تُحفظ محلياً وتعمل دون إنترنت.", null, "إجرائي");
         }
 
         if (q.Contains("منتج") && HasAny(q, "اضيف", "اضافه", "انشئ", "اسجل", "كيف"))
         {
-            return "لإضافة منتج:\n1) صفحة «المنتجات» ← «➕ منتج جديد».\n2) الاسم وسعر التجزئة وسعر الجملة إلزامية.\n3) أضف الوحدات (قطعة/كجم/علبة) مع الكمية الأساسية.\n4) «إنشاء المنتج».\n\nنصيحة: املأ الباركود لتسريع البيع بالمسح.";
+            return Ok("لإضافة منتج:\n1) صفحة «المنتجات» ← «➕ منتج جديد».\n2) الاسم وسعر التجزئة وسعر الجملة إلزامية.\n3) أضف الوحدات (قطعة/كجم/علبة) مع الكمية الأساسية.\n4) «إنشاء المنتج».\n\nنصيحة: املأ الباركود لتسريع البيع بالمسح.", null, "إجرائي");
         }
 
         if (HasAny(q, "تصحيح", "اصحح", "الغاء", "الغي") && HasAny(q, "بيع", "فاتوره", "عمليه"))
         {
-            return "لتصحيح أو إلغاء بيع:\n1) افتح «سجل المبيعات».\n2) اختر العملية ← «تصحيح» أو «إلغاء».\n3) اكتب السبب وأكّد.\n\nيُحفظ السجل الأصلي كأثر تدقيقي، ولا يُحذف.";
+            return Ok("لتصحيح أو إلغاء بيع:\n1) افتح «سجل المبيعات».\n2) اختر العملية ← «تصحيح» أو «إلغاء».\n3) اكتب السبب وأكّد.\n\nيُحفظ السجل الأصلي كأثر تدقيقي، ولا يُحذف.", null, "إجرائي");
         }
 
         if (HasAny(q, "اطبع", "طباعه", "ايصال") && !HasAny(q, "دين", "ديون", "مستحق", "متبقي", "الباقي"))
         {
-            return "لطباعة إيصال:\n• بعد إتمام البيع مباشرة: زر «🖨️ طباعة آخر إيصال».\n• لبيع سابق: «سجل المبيعات» ← اختر العملية ← «إيصال».\n\nحالياً الطابعة تجريبية (Mock) وتُظهر الإيصال كنص.";
+            return Ok("لطباعة إيصال:\n• بعد إتمام البيع مباشرة: زر «🖨️ طباعة آخر إيصال».\n• لبيع سابق: «سجل المبيعات» ← اختر العملية ← «إيصال».\n\nحالياً الطابعة تجريبية (Mock) وتُظهر الإيصال كنص.", null, "إجرائي");
         }
 
         var s = await GetSnapshotAsync(ct);
@@ -239,25 +282,25 @@ public sealed class BuiltInAssistant
         {
             if (HasAny(q, "قائمه", "قايمه", "اعرض", "ارني", "اسرد", "كل الديون", "الديون كلها", "فواتير", "تفاصيل"))
             {
-                return FormatDebtList(s);
+                return Ok(FormatDebtList(s), null, "ديون");
             }
 
             if (HasAny(q, "اكبر", "اعلي", "الاكثر"))
             {
-                return FormatLargestDebt(s);
+                return Ok(FormatLargestDebt(s), null, "ديون");
             }
 
             if (HasAny(q, "اقدم", "اقرب", "متاخر", "فائت", "انتهي", "تجاوز", "استحق"))
             {
-                return FormatOldestDebt(s);
+                return Ok(FormatOldestDebt(s), null, "ديون");
             }
 
             if (HasAny(q, "كم عدد", "عدد الديون", "عدد العمليات", "عدد الفواتير", "كم فاتوره"))
             {
-                return FormatDebtCount(s);
+                return Ok(FormatDebtCount(s), null, "ديون");
             }
 
-            return FormatDebtTotal(s);
+            return Ok(FormatDebtTotal(s), null, "ديون");
         }
 
         // ---- أفضل المنتجات ----
@@ -267,7 +310,7 @@ public sealed class BuiltInAssistant
             var limit = ParseCount(q, 5, 1, 20);
             if (s.TopProducts.Count == 0)
             {
-                return "لا توجد مبيعات مسجلة بعد، لذلك لا يمكن حساب الأكثر مبيعاً.";
+                return Ok("لا توجد مبيعات مسجلة بعد، لذلك لا يمكن حساب الأكثر مبيعاً.");
             }
 
             var shown = Math.Min(limit, s.TopProducts.Count);
@@ -294,30 +337,34 @@ public sealed class BuiltInAssistant
                     })
                     .ToList()));
 
-            return sb.ToString().TrimEnd();
+            return Ok(sb.ToString().TrimEnd(), null, "أفضل");
         }
 
         // ---- المبيعات حسب الفترة ----
         if (HasAny(q, "مبيعات", "بيع", "ايراد", "دخل", "مدخول", "sale", "sales"))
         {
             if (HasAny(q, "امس"))
-                return FormatPeriod("أمس", s.YesterdaySales, s.YesterdayCount, s.YesterdayPaid, s.YesterdayRemaining);
+                return Ok(FormatPeriod("أمس", s.YesterdaySales, s.YesterdayCount, s.YesterdayPaid, s.YesterdayRemaining), null, "مبيعات");
 
             if (HasAny(q, "اسبوع", "7 ايام"))
-                return FormatPeriod("آخر 7 أيام", s.WeekSales, s.WeekCount, s.WeekSales - s.TodayRemaining, null);
+                return Ok(FormatPeriod("آخر 7 أيام", s.WeekSales, s.WeekCount, s.WeekSales - s.TodayRemaining, null), null, "مبيعات");
 
             if (HasAny(q, "شهر"))
-                return FormatPeriod("هذا الشهر", s.MonthSales, s.MonthCount, null, null);
+                return Ok(FormatPeriod("هذا الشهر", s.MonthSales, s.MonthCount, null, null), null, "مبيعات");
 
             if (HasAny(q, "كلي", "اجمالي", "كل الفترات", "من البدايه"))
-                return FormatPeriod("كل الفترات", s.LifetimeSales, s.LifetimeCount, null, null);
+                return Ok(FormatPeriod("كل الفترات", s.LifetimeSales, s.LifetimeCount, null, null), null, "مبيعات");
 
-            return $"مبيعات اليوم حتى الآن:\n" +
-                   $"• الإجمالي: {Fmt(s.TodaySales)} د.ج\n" +
-                   $"• عدد العمليات: {s.TodayCount}\n" +
-                   $"• المدفوع: {Fmt(s.TodayPaid)} د.ج\n" +
-                   $"• المتبقي (آجل): {Fmt(s.TodayRemaining)} د.ج\n" +
-                   $"• آخر 7 أيام: {Fmt(s.WeekSales)} د.ج في {s.WeekCount} عملية";
+            return Ok(
+                $"مبيعات اليوم حتى الآن:\n" +
+                $"• الإجمالي: {Fmt(s.TodaySales)} د.ج\n" +
+                $"• عدد العمليات: {s.TodayCount}\n" +
+                $"• المدفوع: {Fmt(s.TodayPaid)} د.ج\n" +
+                $"• المتبقي (آجل): {Fmt(s.TodayRemaining)} د.ج\n" +
+                $"• آخر 7 أيام: {Fmt(s.WeekSales)} د.ج في {s.WeekCount} عملية\n\n" +
+                SalesSummaryTable(s),
+                null,
+                "مبيعات");
         }
 
         // ---- المنتجات ----
@@ -331,35 +378,85 @@ public sealed class BuiltInAssistant
             if (HasAny(q, "غير نشط", "معطل", "موقوف", "متوقف"))
             {
                 var inactive = s.Products.Where(p => !p.IsActive).Select(p => p.Name).ToList();
-                return inactive.Count == 0
+                return Ok(inactive.Count == 0
                     ? "كل المنتجات نشطة، لا يوجد منتج معطّل."
-                    : $"المنتجات المعطلة ({inactive.Count}):\n" + string.Join("\n", inactive.Select(n => $"• {n}"));
+                    : $"المنتجات المعطلة ({inactive.Count}):\n" + string.Join("\n", inactive.Select(n => $"• {n}")), null, "منتجات");
             }
 
             if (HasAny(q, "قائمه", "قايمه", "اعرض", "ارني", "اسرد", "كل المنتجات"))
             {
-                var list = s.Products.Take(15).ToList();
-                if (list.Count == 0) return "لا توجد منتجات مسجلة بعد.";
-                var sb = new StringBuilder($"المنتجات ({s.ProductCount}، النشط منها {s.ActiveProductCount}):\n");
+                var ordered = OrderByPreferredUnit(s.Products);
+                var list = ordered.Take(15).ToList();
+                if (list.Count == 0) return Ok("لا توجد منتجات مسجلة بعد.");
+
+                var unitNote = string.IsNullOrWhiteSpace(_preferences?.PreferredUnit)
+                    ? string.Empty
+                    : $"\nوحدة القياس المفضّلة: {_preferences!.PreferredUnit}";
+                var sb = new StringBuilder($"المنتجات ({s.ProductCount}، النشط منها {s.ActiveProductCount}){unitNote}:\n");
                 foreach (var p in list)
                 {
                     sb.AppendLine($"• {p.Name} — {Fmt(p.RetailPrice)} د.ج / {p.Unit}{(p.IsActive ? string.Empty : " (معطّل)")}");
                 }
-                if (s.Products.Count > list.Count) sb.AppendLine($"… و{s.Products.Count - list.Count} منتجاً آخر في صفحة المنتجات.");
-                return sb.ToString().TrimEnd();
+                if (ordered.Count > list.Count) sb.AppendLine($"… و{ordered.Count - list.Count} منتجاً آخر في صفحة المنتجات.");
+
+                // مخرج قابل للتصدير: جدول المنتجات والأسعار.
+                sb.AppendLine();
+                sb.Append(ArtifactMarkers.Table(
+                    $"المنتجات والأسعار ({list.Count})",
+                    new[] { "#", "المنتج", "التجزئة (د.ج)", "الجملة (د.ج)", "الوحدة", "الحالة" },
+                    list.Select((p, index) => (IReadOnlyList<string>)new[]
+                    {
+                        (index + 1).ToString(CultureInfo.InvariantCulture),
+                        p.Name,
+                        Fmt(p.RetailPrice),
+                        Fmt(p.WholesalePrice),
+                        p.Unit,
+                        p.IsActive ? "نشط" : "معطّل"
+                    }).ToList()));
+
+                return Ok(sb.ToString().TrimEnd(), null, "منتجات");
             }
 
-            return $"عدد المنتجات: {s.ProductCount} (نشط: {s.ActiveProductCount}، معطّل: {s.ProductCount - s.ActiveProductCount}).\n" +
-                   "لعرضها أو تعديل أسعارها افتح صفحة «المنتجات».";
+            return Ok(
+                $"عدد المنتجات: {s.ProductCount} (نشط: {s.ActiveProductCount}، معطّل: {s.ProductCount - s.ActiveProductCount}).\n" +
+                "لعرضها أو تعديل أسعارها افتح صفحة «المنتجات».", null, "منتجات");
         }
 
         // ---- معلومات المتجر ----
         if (HasAny(q, "اسم المتجر", "المتجر", "عنوان", "هاتف", "رقم الهاتف"))
         {
-            return $"بيانات المتجر:\n• الاسم: {s.StoreName}\n• العنوان: {s.StoreAddress ?? "غير محدد"}\n• الهاتف: {s.StorePhone ?? "غير محدد"}";
+            var storeText =
+                $"بيانات المتجر:\n• الاسم: {s.StoreName}\n• العنوان: {s.StoreAddress ?? "غير محدد"}\n• الهاتف: {s.StorePhone ?? "غير محدد"}";
+            return Ok(storeText + "\n\n" + ArtifactMarkers.Table(
+                "بيانات المتجر",
+                new[] { "البيان", "القيمة" },
+                new List<IReadOnlyList<string>>
+                {
+                    new[] { "الاسم", s.StoreName },
+                    new[] { "العنوان", s.StoreAddress ?? "غير محدد" },
+                    new[] { "الهاتف", s.StorePhone ?? "غير محدد" }
+                }), null, "متجر");
         }
 
         return null;
+    }
+
+    /// <summary>جدول ملخص المبيعات لكل الفترات — مخرج قابل للتصدير والطباعة.</summary>
+    private static string SalesSummaryTable(StoreSnapshot s)
+    {
+        var rows = new List<IReadOnlyList<string>>
+        {
+            new[] { "اليوم", Fmt(s.TodaySales), s.TodayCount.ToString(CultureInfo.InvariantCulture), Fmt(s.TodayPaid), Fmt(s.TodayRemaining) },
+            new[] { "أمس", Fmt(s.YesterdaySales), s.YesterdayCount.ToString(CultureInfo.InvariantCulture), Fmt(s.YesterdayPaid), Fmt(s.YesterdayRemaining) },
+            new[] { "آخر 7 أيام", Fmt(s.WeekSales), s.WeekCount.ToString(CultureInfo.InvariantCulture), "—", "—" },
+            new[] { "هذا الشهر", Fmt(s.MonthSales), s.MonthCount.ToString(CultureInfo.InvariantCulture), "—", "—" },
+            new[] { "كل الفترات", Fmt(s.LifetimeSales), s.LifetimeCount.ToString(CultureInfo.InvariantCulture), "—", "—" }
+        };
+
+        return ArtifactMarkers.Table(
+            "ملخص المبيعات",
+            new[] { "الفترة", "الإجمالي (د.ج)", "العمليات", "المدفوع (د.ج)", "المتبقي (د.ج)" },
+            rows);
     }
 
     private static string FormatDebtTotal(StoreSnapshot s)
@@ -389,6 +486,24 @@ public sealed class BuiltInAssistant
             sb.AppendLine($"{i++}. فاتورة #{d.SaleNumber} — {d.SaleDate.ToLocalTime():yyyy-MM-dd} — متبقٍ {Fmt(d.Remaining)} د.ج{due}{late}");
         }
         if (s.Debts.Count > 20) sb.AppendLine($"… و{s.Debts.Count - 20} عملية أخرى.");
+
+        // مخرج قابل للتصدير: جدول الديون (تنزيل CSV/JSON، طباعة).
+        sb.AppendLine();
+        sb.Append(ArtifactMarkers.Table(
+            $"قائمة الديون ({s.Debts.Count} عملية)",
+            new[] { "#", "رقم الفاتورة", "التاريخ", "المتبقي (د.ج)", "الاستحقاق", "الحالة" },
+            s.Debts.Take(20)
+                .Select((d, index) => (IReadOnlyList<string>)new[]
+                {
+                    (index + 1).ToString(CultureInfo.InvariantCulture),
+                    "#" + d.SaleNumber,
+                    d.SaleDate.ToLocalTime().ToString("yyyy-MM-dd"),
+                    Fmt(d.Remaining),
+                    d.DueDate.HasValue ? d.DueDate.Value.ToLocalTime().ToString("yyyy-MM-dd") : "—",
+                    d.IsOverdue ? $"متأخر {d.DaysOverdue} يوم" : "في الأجل"
+                })
+                .ToList()));
+
         return sb.ToString().TrimEnd();
     }
 
@@ -438,39 +553,90 @@ public sealed class BuiltInAssistant
         return sb.ToString();
     }
 
-    private static string FormatPrice(StoreSnapshot s, string q)
+    private BuiltInAnswer FormatPrice(StoreSnapshot s, string q)
     {
-        var tokens = q
-            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-            .Where(t => t.Length >= 3 && !HasAny(t, "سعر", "ثمن", "بكم", "منتج", "كام", "كم", "هو", "هي", "المنتج"))
-            .ToList();
+        var tokens = SubjectResolver.ExtractTokens(q);
+        var matches = MatchProducts(s.Products, tokens);
+        var assumedSubject = false;
 
-        if (tokens.Count == 0)
-            return "اكتب اسم المنتج بعد كلمة «سعر»، مثال: «كم سعر تفاح».";
-
-        var matches = s.Products
-            .Where(p => tokens.Any(t => Normalize(p.Name).Contains(t, StringComparison.Ordinal)
-                                        || (p.Barcode?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false)))
-            .Take(5)
-            .ToList();
+        // سؤال متابعة بلا اسم منتج («كم سعره؟») → نستعمل آخر موضوع متذكَّر.
+        if (matches.Count == 0)
+        {
+            var remembered = RememberedSubject();
+            if (!string.IsNullOrWhiteSpace(remembered))
+            {
+                matches = MatchProducts(s.Products, SubjectResolver.ExtractTokens(remembered));
+                assumedSubject = matches.Count > 0;
+            }
+        }
 
         if (matches.Count == 0)
-            return "لم أجد منتجاً بهذا الاسم. تحقق من الاسم أو ابحث في صفحة «المنتجات».";
+        {
+            return Ok("اكتب اسم المنتج بعد كلمة «سعر»، مثال: «كم سعر تفاح».");
+        }
 
         if (matches.Count == 1)
         {
             var p = matches[0];
             var status = p.IsActive ? string.Empty : "\n⚠️ هذا المنتج معطّل حالياً.";
-            return $"سعر «{p.Name}»:\n• التجزئة: {Fmt(p.RetailPrice)} د.ج / {p.Unit}\n• الجملة: {Fmt(p.WholesalePrice)} د.ج / {p.Unit}{status}";
+            var wholesaleFirst = _preferences?.IsWholesalePreferred == true;
+            var firstLabel = wholesaleFirst ? "الجملة" : "التجزئة";
+            var secondLabel = wholesaleFirst ? "التجزئة" : "الجملة";
+            var firstPrice = wholesaleFirst ? p.WholesalePrice : p.RetailPrice;
+            var secondPrice = wholesaleFirst ? p.RetailPrice : p.WholesalePrice;
+
+            var sb = new StringBuilder($"سعر «{p.Name}»{(assumedSubject ? " (لآخر منتج سألت عنه)" : string.Empty)}:\n");
+            sb.AppendLine($"• {firstLabel}: {PriceLine(firstPrice, p.Unit)}");
+            sb.AppendLine($"• {secondLabel}: {PriceLine(secondPrice, p.Unit)}");
+            return Ok(sb.ToString().TrimEnd() + status, p.Name, "سعر");
         }
 
-        var sb = new StringBuilder("وجدت عدة منتجات مطابقة:\n");
+        var multi = new StringBuilder("وجدت عدة منتجات مطابقة:\n");
         foreach (var p in matches)
         {
-            sb.AppendLine($"• {p.Name}: تجزئة {Fmt(p.RetailPrice)} د.ج / جملة {Fmt(p.WholesalePrice)} د.ج — {p.Unit}");
+            multi.AppendLine($"• {p.Name}: تجزئة {Fmt(p.RetailPrice)} د.ج / جملة {Fmt(p.WholesalePrice)} د.ج — {p.Unit}");
         }
-        return sb.ToString().TrimEnd();
+        return Ok(multi.ToString().TrimEnd(), null, "سعر");
     }
+
+    private static IReadOnlyList<ProductInfo> MatchProducts(IReadOnlyList<ProductInfo> products, IReadOnlyList<string> tokens)
+        => SubjectResolver.MatchProducts(products, tokens);
+
+    /// <summary>يرتّب المنتجات بحيث تأتي وحدة القياس المفضّلة أولاً (مع الحفاظ على الترتيب الأصلي داخل كل مجموعة).</summary>
+    private IReadOnlyList<ProductInfo> OrderByPreferredUnit(IReadOnlyList<ProductInfo> products)
+    {
+        var preferred = _preferences?.PreferredUnit;
+        if (string.IsNullOrWhiteSpace(preferred))
+        {
+            return products;
+        }
+
+        return products
+            .OrderBy(p => string.Equals(p.Unit, preferred, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .ToList();
+    }
+
+    /// <summary>آخر موضوع متذكَّر — مع احترام مفتاح الخصوصية «حفظ السياق».</summary>
+    private string? RememberedSubject()
+    {
+        if (_memory is null)
+        {
+            return null;
+        }
+
+        if (_preferences is not null && !_preferences.RememberContext)
+        {
+            return null;
+        }
+
+        return _memory.LastSubject;
+    }
+
+    private static string PriceLine(decimal price, string unit)
+        => price <= 0 ? "غير محدد" : $"{Fmt(price)} د.ج / {unit}";
+
+    private static BuiltInAnswer Ok(string text, string? subject = null, string? intent = null)
+        => new(text, subject, intent);
 
     private static int ParseCount(string q, int fallback, int min, int max)
     {
@@ -482,34 +648,9 @@ public sealed class BuiltInAssistant
 
     private static string Fmt(decimal value) => value.ToString("N2", CultureInfo.InvariantCulture);
 
-    private static string Normalize(string text)
-    {
-        if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+    private static string Normalize(string text) => TextNormalizer.Normalize(text);
 
-        var sb = new StringBuilder(text.Length);
-        foreach (var raw in text.Trim().ToLowerInvariant())
-        {
-            // توحيد الأرقام العربية والفارسية
-            if (raw is >= '\u0660' and <= '\u0669') { sb.Append((char)('0' + (raw - '\u0660'))); continue; }
-            if (raw is >= '\u06F0' and <= '\u06F9') { sb.Append((char)('0' + (raw - '\u06F0'))); continue; }
-
-            sb.Append(raw switch
-            {
-                'أ' or 'إ' or 'آ' or 'ٱ' => 'ا',
-                'ى' => 'ي',
-                'ؤ' => 'و',
-                'ئ' => 'ي',
-                'ة' => 'ه',
-                '\u064B' or '\u064C' or '\u064D' or '\u064E' or '\u064F' or '\u0650' or '\u0651' or '\u0652' or '\u0640' => '\0',
-                _ => raw
-            });
-        }
-
-        return sb.Replace("\0", string.Empty).ToString();
-    }
-
-    private static bool HasAny(string text, params string[] keywords)
-        => keywords.Any(k => text.Contains(k, StringComparison.Ordinal));
+    private static bool HasAny(string text, params string[] keywords) => TextNormalizer.HasAny(text, keywords);
 }
 
 /// <summary>لقطة بيانات المتجر المستخدمة في الإجابات المدمجة وسياق النموذج.</summary>
