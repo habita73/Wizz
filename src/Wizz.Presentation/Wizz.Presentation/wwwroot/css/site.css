@@ -338,14 +338,14 @@ label.form-label {
 
 .ai-composer .form-control {
     flex: 1;
-    min-height: 3.5rem;
+    min-height: 2.5rem;
     border: 1px solid var(--wizz-border);
     border-left: none;
     border-radius: 0;
     background: var(--wizz-surface);
     color: var(--wizz-text);
     resize: none;
-    padding: 0.75rem 1rem;
+    padding: 0.5rem 1rem;
     font-size: 0.95rem;
     line-height: 1.4;
 }
@@ -378,8 +378,8 @@ label.form-label {
 .ai-composer .btn-group > button,
 .ai-composer .btn-group > .dropdown-toggle {
     height: 100%;
-    min-width: 48px;
-    padding: 0 1rem;
+    min-width: 44px;
+    padding: 0 0.75rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -425,7 +425,7 @@ label.form-label {
     border-color: var(--wizz-primary-border) !important;
     color: #ffffff !important;
     font-weight: 600;
-    min-width: 80px;
+    min-width: 72px;
 }
 
 .ai-composer .btn-send:hover:not(:disabled) {
