@@ -16,6 +16,21 @@
 </head>
 
 <body>
+    <script>
+        // تطبيق السمة المحفوظة من localStorage قبل تحميل واجهة Blazor
+        (function () {
+            try {
+                var saved = localStorage.getItem('wizz.theme');
+                if (saved) {
+                    document.documentElement.setAttribute('data-theme', saved);
+                } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    document.documentElement.setAttribute('data-theme', 'system');
+                }
+            } catch (e) {
+                // تجاهل الأخطاء
+            }
+        })();
+    </script>
     <Routes @rendermode="InteractiveServer" />
     <ReconnectModal />
     <script src="@Assets["_framework/blazor.web.js"]"></script>

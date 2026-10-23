@@ -11,6 +11,11 @@ html[data-theme="system"] {
   --wizz-primary-light: rgba(30, 58, 95, 0.10);
   --wizz-primary-border: #1e3a5f;
 
+  /* ربط متغيرات Bootstrap بألوان Wizz لضمان تطبيق اللون على جميع الأزرار */
+  --bs-primary: #1e3a5f;
+  --bs-primary-hover: #14324f;
+  --bs-primary-rgb: 30, 58, 95;
+
   /* Secondary — رمادي أزرق للأزرار الثانوية والنصوص المساعدة */
   --wizz-secondary: #64748b;
   --wizz-secondary-hover: #475569;
@@ -51,81 +56,91 @@ html[data-theme="system"] {
   --wizz-transition: all 0.22s ease;
 }
 
-/* الوضع الداكن الصريح */
+/* الوضع الداكن الصريح — أقرب لويندوز الداكن (رمادي داكن محايد، أزرق محايد) */
 html[data-theme="dark"] {
-  --wizz-primary: #38bdf8;
-  --wizz-primary-hover: #0ea5e9;
-  --wizz-primary-light: rgba(56, 189, 248, 0.15);
-  --wizz-primary-border: #38bdf8;
+  --wizz-primary: #0d6efd;
+  --wizz-primary-hover: #0b5ed7;
+  --wizz-primary-light: rgba(13, 110, 253, 0.15);
+  --wizz-primary-border: #0d6efd;
 
-  --wizz-secondary: #94a3b8;
-  --wizz-secondary-hover: #64748b;
-  --wizz-secondary-light: rgba(148, 163, 184, 0.15);
-  --wizz-secondary-border: #475569;
+  /* ربط متغيرات Bootstrap بألوان Wizz للوضع الداكن */
+  --bs-primary: #0d6efd;
+  --bs-primary-hover: #0b5ed7;
+  --bs-primary-rgb: 13, 110, 253;
 
-  --wizz-bg: #020617;
-  --wizz-surface: #0f172a;
-  --wizz-surface-hover: #1e293b;
-  --wizz-card-bg: rgba(56, 189, 248, 0.03);
+  --wizz-secondary: #6c757d;
+  --wizz-secondary-hover: #5a6268;
+  --wizz-secondary-light: rgba(108, 117, 125, 0.15);
+  --wizz-secondary-border: #495057;
 
-  --wizz-text: #f8fafc;
-  --wizz-text-secondary: #cbd5e1;
-  --wizz-text-muted: #94a3b8;
-  --wizz-text-on-primary: #0f172a;
+  --wizz-bg: #121212;           /* خلفية قريبة لويندوز الداكن */
+  --wizz-surface: #1e1e1e;      /* بطاقات قريبة لويندوز الداكن */
+  --wizz-surface-hover: #2d2d2d;
+  --wizz-card-bg: rgba(13, 110, 253, 0.03);
 
-  --wizz-border: #334155;
-  --wizz-border-light: #1e293b;
+  --wizz-text: #e0e0e0;
+  --wizz-text-secondary: #b0b0b0;
+  --wizz-text-muted: #808080;
+  --wizz-text-on-primary: #ffffff;
 
-  --wizz-success: #34d399;
-  --wizz-success-light: rgba(52, 211, 153, 0.15);
-  --wizz-danger: #f87171;
-  --wizz-danger-light: rgba(248, 113, 113, 0.15);
-  --wizz-warning: #fbbf24;
-  --wizz-warning-light: rgba(251, 191, 36, 0.15);
+  --wizz-border: #333333;
+  --wizz-border-light: #2d2d2d;
 
-  --wizz-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4),
-                 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-  --wizz-shadow-hover: 0 8px 16px -2px rgba(0, 0, 0, 0.5),
-                       0 4px 8px -2px rgba(0, 0, 0, 0.4);
+  --wizz-success: #28a745;
+  --wizz-success-light: rgba(40, 167, 69, 0.15);
+  --wizz-danger: #dc3545;
+  --wizz-danger-light: rgba(220, 53, 69, 0.15);
+  --wizz-warning: #ffc107;
+  --wizz-warning-light: rgba(255, 193, 7, 0.15);
+
+  --wizz-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5),
+                 0 2px 4px -1px rgba(0, 0, 0, 0.4);
+  --wizz-shadow-hover: 0 8px 16px -2px rgba(0, 0, 0, 0.6),
+                       0 4px 8px -2px rgba(0, 0, 0, 0.5);
 }
 
-/* تفعيل الوضع الداكن عندما يفضله النظام (لـ data-theme="system") */
+/* تفعيل الوضع الداكن عندما يفضله النظام */
 @media (prefers-color-scheme: dark) {
   html[data-theme="system"] {
-    --wizz-primary: #38bdf8;
-    --wizz-primary-hover: #0ea5e9;
-    --wizz-primary-light: rgba(56, 189, 248, 0.15);
-    --wizz-primary-border: #38bdf8;
+    --wizz-primary: #0d6efd;
+    --wizz-primary-hover: #0b5ed7;
+    --wizz-primary-light: rgba(13, 110, 253, 0.15);
+    --wizz-primary-border: #0d6efd;
 
-    --wizz-secondary: #94a3b8;
-    --wizz-secondary-hover: #64748b;
-    --wizz-secondary-light: rgba(148, 163, 184, 0.15);
-    --wizz-secondary-border: #475569;
+    /* ربط متغيرات Bootstrap بألوان Wizz للوضع الداكن (تفضيل النظام) */
+    --bs-primary: #0d6efd;
+    --bs-primary-hover: #0b5ed7;
+    --bs-primary-rgb: 13, 110, 253;
 
-    --wizz-bg: #020617;
-    --wizz-surface: #0f172a;
-    --wizz-surface-hover: #1e293b;
-    --wizz-card-bg: rgba(56, 189, 248, 0.03);
+    --wizz-secondary: #6c757d;
+    --wizz-secondary-hover: #5a6268;
+    --wizz-secondary-light: rgba(108, 117, 125, 0.15);
+    --wizz-secondary-border: #495057;
 
-    --wizz-text: #f8fafc;
-    --wizz-text-secondary: #cbd5e1;
-    --wizz-text-muted: #94a3b8;
-    --wizz-text-on-primary: #0f172a;
+    --wizz-bg: #121212;
+    --wizz-surface: #1e1e1e;
+    --wizz-surface-hover: #2d2d2d;
+    --wizz-card-bg: rgba(13, 110, 253, 0.03);
 
-    --wizz-border: #334155;
-    --wizz-border-light: #1e293b;
+    --wizz-text: #e0e0e0;
+    --wizz-text-secondary: #b0b0b0;
+    --wizz-text-muted: #808080;
+    --wizz-text-on-primary: #ffffff;
 
-    --wizz-success: #34d399;
-    --wizz-success-light: rgba(52, 211, 153, 0.15);
-    --wizz-danger: #f87171;
-    --wizz-danger-light: rgba(248, 113, 113, 0.15);
-    --wizz-warning: #fbbf24;
-    --wizz-warning-light: rgba(251, 191, 36, 0.15);
+    --wizz-border: #333333;
+    --wizz-border-light: #2d2d2d;
 
-    --wizz-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4),
-                   0 2px 4px -1px rgba(0, 0, 0, 0.3);
-    --wizz-shadow-hover: 0 8px 16px -2px rgba(0, 0, 0, 0.5),
-                         0 4px 8px -2px rgba(0, 0, 0, 0.4);
+    --wizz-success: #28a745;
+    --wizz-success-light: rgba(40, 167, 69, 0.15);
+    --wizz-danger: #dc3545;
+    --wizz-danger-light: rgba(220, 53, 69, 0.15);
+    --wizz-warning: #ffc107;
+    --wizz-warning-light: rgba(255, 193, 7, 0.15);
+
+    --wizz-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5),
+                   0 2px 4px -1px rgba(0, 0, 0, 0.4);
+    --wizz-shadow-hover: 0 8px 16px -2px rgba(0, 0, 0, 0.6),
+                         0 4px 8px -2px rgba(0, 0, 0, 0.5);
   }
 }
 
@@ -1360,30 +1375,116 @@ html[data-theme="dark"] .form-select,
     flex-shrink: 0;
 }
 
-/* أيقونات SVG داخلية بدلاً من الإيموجيات子孙 */
-.svg-icon {
-    display: inline-block;
-    width: 1.25rem;
-    height: 1.25rem;
-    vertical-align: middle;
-    margin-left: 0.25rem;
+/* ============================================================
+   21. AI Chat — أزرار الإرسال والمحدد مجمعة في صندوق واحد
+   ============================================================ */
+.ai-composer {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    margin-top: 1rem;
+    background: var(--wizz-surface);
+    border: 1px solid var(--wizz-border);
+    border-radius: var(--wizz-radius-sm);
+    box-shadow: var(--wizz-shadow);
+    overflow: hidden;
 }
 
-.svg-icon-sm {
-    width: 1rem;
-    height: 1rem;
+.ai-composer .form-control {
+    flex: 1;
+    min-height: 3.5rem;
+    border: none;
+    border-right: 1px solid var(--wizz-border);
+    border-radius: 0;
+    background: transparent;
+    color: var(--wizz-text);
+    resize: none;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    line-height: 1.4;
 }
 
-/* شارة الجهة في المحادثة — محسّنة */
+.ai-composer .form-control:focus {
+    outline: none;
+    box-shadow: none;
+    background: var(--wizz-surface-hover);
+}
+
+.ai-composer .form-control::placeholder {
+    color: var(--wizz-text-muted);
+    opacity: 0.7;
+}
+
+.ai-composer .model-selector {
+    flex-shrink: 0;
+    border-right: 1px solid var(--wizz-border);
+    padding: 0.25rem;
+    background: transparent;
+}
+
+.ai-composer .btn-send {
+    flex-shrink: 0;
+    height: 3.5rem;
+    min-width: 80px;
+    padding: 0 1.5rem;
+    border: none;
+    border-radius: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--wizz-primary);
+    color: #ffffff;
+    font-weight: 600;
+    transition: var(--wizz-transition);
+    white-space: nowrap;
+}
+
+.ai-composer .btn-send:hover:not(:disabled) {
+    background: var(--wizz-primary-hover) !important;
+    box-shadow: var(--wizz-shadow-hover);
+}
+
+.ai-composer .btn-send:disabled {
+    background: var(--wizz-secondary) !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+    cursor: not-allowed;
+}
+
+/* إجبار تطبيق اللون الكحلي على جميع أزرار principale — تحديدية أقوى */
+button.btn.btn-primary,
+button.wizz-btn-primary,
+.ai-composer button.btn-send,
+.btn.btn-primary {
+    background-color: var(--wizz-primary) !important;
+    border-color: var(--wizz-primary-border) !important;
+    color: #ffffff !important;
+}
+
+button.btn.btn-primary:hover:not(:disabled),
+button.wizz-btn-primary:hover,
+.ai-composer button.btn-send:hover:not(:disabled),
+.btn.btn-primary:hover:not(:disabled) {
+    background-color: var(--wizz-primary-hover) !important;
+    border-color: var(--wizz-primary-hover) !important;
+    color: #ffffff !important;
+}
+
+/* علامات المسارات (tags) — منع overflow وعرض احترافي */
 .msg-route-chip {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    font-size: 0.7rem;
-    font-weight: 600;
-    padding: 0.2rem 0.55rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.18rem 0.5rem;
     border-radius: var(--wizz-radius-sm);
     margin-top: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
 }
 
 .msg-route-chip.built-in {
@@ -1410,19 +1511,71 @@ html[data-theme="dark"] .form-select,
     border: 1px solid var(--wizz-warning);
 }
 
-/* إزالة الإيموجيات الصبيانية من شارات واجهة المستخدم — استخدام نص نقي */
-.emoji-free {
-    font-family: var(--wizz-font-system);
+/* شارة اختيار الجهة في الشريط أسفل مربع الإرسال */
+.badge.bg-light.text-dark.border {
+    background: var(--wizz-surface-hover) !important;
+    color: var(--wizz-text-secondary) !important;
+    border-color: var(--wizz-border) !important;
+    font-weight: 600;
+    font-size: 0.78rem;
 }
 
-/* equal height columns for dashboard */
-.row.equal-cols {
-    display: flex;
-    flex-wrap: wrap;
+/* تأثيرات تمرير محسّنة للوضع الفاتح — مسات تجميلية */
+@media (prefers-color-scheme: light), html[data-theme="light"], html[data-theme="system"] {
+  html[data-theme="light"], html:not([data-theme="dark"]) {
+    --wizz-primary-hover: #14324f;
+    --wizz-shadow-sm: 0 2px 4px -1px rgba(30, 58, 95, 0.06);
+    --wizz-shadow-md: 0 4px 6px -1px rgba(30, 58, 95, 0.08), 0 2px 4px -1px rgba(30, 58, 95, 0.04);
+  }
 }
 
-.row.equal-cols > [class*="col-"] {
+/* أيقونات SVG داخلية محسّنة */
+.svg-icon {
+    display: inline-block;
+    width: 1.25rem;
+    height: 1.25rem;
+    vertical-align: middle;
+    margin-left: 0.25rem;
+    flex-shrink: 0;
+}
+
+.svg-icon-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* قسم المظهر في الإعدادات — بطاقة محسّنة */
+.theme-section-card {
+    border: 1px solid var(--wizz-border);
+    border-radius: var(--wizz-radius);
+    overflow: hidden;
+}
+
+.theme-section-card .card-header {
+    background: var(--wizz-surface-hover);
+    border-bottom: 1px solid var(--wizz-border);
+    padding: 0.9rem 1.2rem;
+}
+
+.theme-section-card .form-check-label {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: var(--wizz-transition);
+}
+
+.theme-section-card .form-check-label:hover {
+    color: var(--wizz-primary);
+}
+
+.theme-section-card .form-check-input:checked {
+    background-color: var(--wizz-primary);
+    border-color: var(--wizz-primary);
+}
+
+.theme-section-card .form-check-input:checked + .form-check-label {
+    font-weight: 600;
+    color: var(--wizz-primary);
 }
 
