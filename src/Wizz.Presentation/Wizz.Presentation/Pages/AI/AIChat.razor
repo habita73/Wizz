@@ -95,13 +95,14 @@
                                    Disabled="@sending"
                                    OnAsk="SendQuickQuestion" />
 
-                <div class="ai-composer">
+                <div class="ai-composer input-group">
                     <textarea class="form-control" rows="1" @bind="userInput" @bind:event="oninput"
                               placeholder="اكتب سؤالك هنا… (Enter إرسال · Shift+Enter سطر جديد · Esc مسح)"
                               @onkeydown="OnInputKeyDown" disabled="@sending"></textarea>
 
-                    <!-- محدد الجهة/النموذج داخل الصندوق (مفصول عن زر الإرسال) -->
-                    <div class="model-selector">
+                    <!-- مجموعة أزرار موحدة: محدد الجهة + زر الإرسال -->
+                    <div class="input-group-append btn-group" role="group" aria-label="إجراءات الإرسال">
+                        <!-- محدد الجهة/النموذج -->
                         <ModelSelectorPopover RouteMode="@routeMode"
                                               RouteModeChanged="OnRouteModeChanged"
                                               AvailableModels="availableModels"
@@ -111,11 +112,12 @@
                                               CloudAvailable="routeStatus.CloudAvailable"
                                               LoadingModels="loadingModels"
                                               OnRefreshModels="RefreshModels" />
-                    </div>
 
-                    <button type="button" class="btn btn-primary btn-send" @onclick="SendMessage" disabled="@(sending || string.IsNullOrWhiteSpace(userInput))" style="background-color: var(--wizz-primary); border-color: var(--wizz-primary-border); color: var(--wizz-text-on-primary);">
-                        إرسال
-                    </button>
+                        <!-- زر الإرسال -->
+                        <button type="button" class="btn btn-primary btn-send" @onclick="SendMessage" disabled="@(sending || string.IsNullOrWhiteSpace(userInput))">
+                            إرسال
+                        </button>
+                    </div>
                 </div>
                 <div class="form-text small">
                     <div class="d-flex flex-wrap align-items-center gap-2 mb-1">

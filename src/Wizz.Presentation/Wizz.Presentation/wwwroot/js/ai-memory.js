@@ -98,5 +98,23 @@ window.wizzAiMemory = {
     clearPrefs: function () {
         try { localStorage.removeItem(this.prefsKey); return true; }
         catch { return false; }
+    },
+
+    // Dropdown toggle for ModelSelectorPopover
+    dropdown: {
+        toggle: function (show) {
+            try {
+                const menus = document.querySelectorAll('.dropdown-menu');
+                menus.forEach(menu => {
+                    if (show) {
+                        menu.classList.add('show');
+                    } else {
+                        menu.classList.remove('show');
+                    }
+                });
+            } catch {
+                // تجاهل الأخطاء
+            }
+        }
     }
 };

@@ -1,10 +1,12 @@
 @namespace Wizz.Presentation.Pages.AI
+@inject IJSRuntime JS
 
 <div class="position-relative">
-    <button type="button" class="btn btn-outline-secondary h-100 px-2 d-flex align-items-center gap-1"
+    <button type="button" class="h-100 px-3 d-flex align-items-center gap-1 dropdown-toggle"
             title="@($"الجهة الحالية: {CurrentLabel}{(RouteMode == "local" && !string.IsNullOrWhiteSpace(SelectedLocalModel) ? $" — {SelectedLocalModel}" : string.Empty)} | اضغط للتبديل")"
             aria-label="اختيار الجهة المُجيبة — الحالية: @CurrentLabel"
-            aria-haspopup="true" aria-expanded="@IsOpen"
+            aria-haspopup="true"
+            data-bs-toggle="dropdown"
             @onclick="ToggleDropdown">
         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
             <path d="M5 0a.5.5 0 0 1 .5.5V2h1V.5a.5.5 0 0 1 1 0V2h1V.5a.5.5 0 0 1 1 0V2A2.5 2.5 0 0 1 11 4.5h1.5a.5.5 0 0 1 0 1H11v1h1.5a.5.5 0 0 1 0 1H11v1h1.5a.5.5 0 0 1 0 1H11v1h1.5a.5.5 0 0 1 0 1H11A2.5 2.5 0 0 1 8.5 14v1.5a.5.5 0 0 1-1 0V14h-1v1.5a.5.5 0 0 1-1 0V14h-1v1.5a.5.5 0 0 1-1 0V14A2.5 2.5 0 0 1 1 11.5H.5a.5.5 0 0 1 0-1H1V9.5H.5a.5.5 0 0 1 0-1H1V7.5H.5a.5.5 0 0 1 0-1H1V5.5H.5a.5.5 0 0 1 0-1H1A2.5 2.5 0 0 1 3.5 2V.5a.5.5 0 0 1 .5-.5zM3.5 3A1.5 1.5 0 0 0 2 4.5v7A1.5 1.5 0 0 0 3.5 13h7a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 10.5 3h-7z" />
@@ -13,83 +15,80 @@
         <span class="small text-nowrap">@CurrentLabel</span>
     </button>
 
-    @if (IsOpen)
-    {
-        <div class="dropdown-menu show p-2 shadow"
-             style="position: absolute; bottom: 100%; left: 0; min-width: 280px; z-index: 1080; margin-bottom: 4px;">
-            <div class="dropdown-header fw-bold small text-muted d-flex justify-content-between align-items-center">
-                <span>اختيار الجهة المُجيبة</span>
-                <span class="badge bg-secondary" title="الاختيار الحالي">@CurrentLabel</span>
-            </div>
-
-            @foreach (var option in RouteOptions)
-            {
-                <button type="button"
-                        class="dropdown-item d-flex justify-content-between align-items-center @(option.IsDisabled ? "disabled" : "") @(option.Value == RouteMode ? "active fw-bold" : "")"
-                        disabled="@option.IsDisabled"
-                        aria-pressed="@((option.Value == RouteMode) ? "true" : "false")"
-                        title="@(option.IsDisabled ? $"{option.Label} — غير متاح الآن" : option.Label)"
-                        @onclick="() => SelectRoute(option.Value)">
-                    <span>@option.Label</span>
-                    @if (option.Value == RouteMode)
-                    {
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
-                            <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425z" />
-                        </svg>
-                    }
-                </button>
-            }
-
-            <div class="dropdown-divider"></div>
-            <div class="dropdown-item-text text-muted small">
-                «تلقائي» يختار حسب أولويتك في الإعدادات وجودة المسار.
-                <span class="d-block">🔒 أسئلة الأرقام (مبيعات/ديون/أسعار) يجيب عنها المدمج دائماً لضمان الدقة.</span>
-            </div>
-
-            @if (RouteMode == "local")
-            {
-                <div class="dropdown-divider"></div>
-                <div class="dropdown-header fw-bold small text-muted d-flex justify-content-between align-items-center">
-                    <span>النموذج المحلي</span>
-                    <button type="button"
-                            class="btn btn-sm btn-outline-secondary ai-mini-btn"
-                            title="تحديث قائمة النماذج المثبتة"
-                            aria-label="تحديث قائمة النماذج المثبتة"
-                            @onclick="RefreshModels"
-                            disabled="@LoadingModels">
-                        @(LoadingModels ? "…" : "🔄")
-                    </button>
-                </div>
-                @if (AvailableModels.Count > 0)
-                {
-                    @foreach (var model in AvailableModels)
-                    {
-                        <button type="button"
-                                class="dropdown-item d-flex justify-content-between align-items-center @(SelectedLocalModel == model ? "active" : "")"
-                                @onclick="() => SelectLocalModel(model)">
-                            <span class="text-truncate" style="max-width: 200px;">@model</span>
-                            @if (SelectedLocalModel == model)
-                            {
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
-                                    <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425z" />
-                                </svg>
-                            }
-                        </button>
-                    }
-                }
-                else
-                {
-                    <div class="dropdown-item-text text-muted small">لا توجد نماذج محلية مثبتة.</div>
-                }
-            }
-
-            @if (RouteMode == "cloud" && !CloudAvailable)
-            {
-                <div class="dropdown-divider"></div>
-                <div class="dropdown-item-text text-warning small">السحابة غير متاحة — تحقق من المفتاح في الإعدادات.</div>
-            }
+    <div class="dropdown-menu dropdown-menu-end p-2 shadow"
+         style="min-width: 280px; z-index: 1080;">
+        <div class="dropdown-header fw-bold small text-muted d-flex justify-content-between align-items-center">
+            <span>اختيار الجهة المُجيبة</span>
+            <span class="badge bg-secondary" title="الاختيار الحالي">@CurrentLabel</span>
         </div>
-    }
+
+        @foreach (var option in RouteOptions)
+        {
+            <button type="button"
+                    class="dropdown-item d-flex justify-content-between align-items-center @(option.IsDisabled ? "disabled" : "") @(option.Value == RouteMode ? "active fw-bold" : "")"
+                    disabled="@option.IsDisabled"
+                    aria-pressed="@((option.Value == RouteMode) ? "true" : "false")"
+                    title="@(option.IsDisabled ? $"{option.Label} — غير متاح الآن" : option.Label)"
+                    @onclick="() => SelectRoute(option.Value)">
+                <span>@option.Label</span>
+                @if (option.Value == RouteMode)
+                {
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425z" />
+                    </svg>
+                }
+            </button>
+        }
+
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-item-text text-muted small">
+            «تلقائي» يختار حسب أولويتك في الإعدادات وجودة المسار.
+            <span class="d-block">أسئلة الأرقام (مبيعات/ديون/أسعار) يجيب عنها المدمج دائماً لضمان الدقة.</span>
+        </div>
+
+        @if (RouteMode == "local")
+        {
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-header fw-bold small text-muted d-flex justify-content-between align-items-center">
+                <span>النموذج المحلي</span>
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary ai-mini-btn"
+                        title="تحديث قائمة النماذج المثبتة"
+                        aria-label="تحديث قائمة النماذج المثبتة"
+                        @onclick="RefreshModels"
+                        disabled="@LoadingModels">
+                    @(LoadingModels ? "…" : "🔄")
+                </button>
+            </div>
+            @if (AvailableModels.Count > 0)
+            {
+                @foreach (var model in AvailableModels)
+                {
+                    <button type="button"
+                            class="dropdown-item d-flex justify-content-between align-items-center @(SelectedLocalModel == model ? "active" : "")"
+                            @onclick="() => SelectLocalModel(model)">
+                        <span class="text-truncate" style="max-width: 200px;">@model</span>
+                        @if (SelectedLocalModel == model)
+                        {
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                                <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425z" />
+                            </svg>
+                        }
+                    </button>
+                }
+            }
+            else
+            {
+                <div class="dropdown-item-text text-muted small">لا توجد نماذج محلية مثبتة.</div>
+            }
+        }
+
+        @if (RouteMode == "cloud" && !CloudAvailable)
+        {
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item-text text-warning small">السحابة غير متاحة — تحقق من المفتاح في الإعدادات.</div>
+        }
+    </div>
 </div>
 
 @code {
@@ -107,7 +106,7 @@
     /// <summary>يُستدعى لطلب تحديث قائمة النماذج المثبتة.</summary>
     [Parameter] public EventCallback OnRefreshModels { get; set; }
 
-    private bool IsOpen { get; set; }
+    private bool _isOpen;
 
     /// <summary>اسم الاختيار الحالي كما يظهر على الزر وفي رأس القائمة.</summary>
     private string CurrentLabel => RouteMode switch
@@ -130,21 +129,20 @@
 
     private void ToggleDropdown()
     {
-        IsOpen = !IsOpen;
+        _isOpen = !_isOpen;
+        _ = JS.InvokeVoidAsync("wizzAiMemory.dropdown.toggle", _isOpen);
     }
 
     private async Task SelectRoute(string value)
     {
         RouteMode = value;
         await RouteModeChanged.InvokeAsync(value);
-        IsOpen = false;
     }
 
     private async Task SelectLocalModel(string model)
     {
         SelectedLocalModel = model;
         await SelectedLocalModelChanged.InvokeAsync(model);
-        IsOpen = false;
     }
 
     /// <summary>يطلب تحديث قائمة النماذج المثبتة (زر مصغّر 🔄).</summary>

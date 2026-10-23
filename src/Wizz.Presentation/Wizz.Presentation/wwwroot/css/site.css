@@ -56,91 +56,91 @@ html[data-theme="system"] {
   --wizz-transition: all 0.22s ease;
 }
 
-/* الوضع الداكن الصريح — أقرب لويندوز الداكن (رمادي داكن محايد، أزرق محايد) */
+/* الوضع الداكن الصريح — أقرب لويندوز الداكن الفعلي (رمادي محايد نقي، ألوان مريحة للعين) */
 html[data-theme="dark"] {
-  --wizz-primary: #0d6efd;
-  --wizz-primary-hover: #0b5ed7;
-  --wizz-primary-light: rgba(13, 110, 253, 0.15);
-  --wizz-primary-border: #0d6efd;
+  --wizz-primary: #0078d4;
+  --wizz-primary-hover: #106ebe;
+  --wizz-primary-light: rgba(0, 120, 212, 0.15);
+  --wizz-primary-border: #0078d4;
 
   /* ربط متغيرات Bootstrap بألوان Wizz للوضع الداكن */
-  --bs-primary: #0d6efd;
-  --bs-primary-hover: #0b5ed7;
-  --bs-primary-rgb: 13, 110, 253;
+  --bs-primary: #0078d4;
+  --bs-primary-hover: #106ebe;
+  --bs-primary-rgb: 0, 120, 212;
 
-  --wizz-secondary: #6c757d;
-  --wizz-secondary-hover: #5a6268;
-  --wizz-secondary-light: rgba(108, 117, 125, 0.15);
-  --wizz-secondary-border: #495057;
+  --wizz-secondary: #8a8a8a;
+  --wizz-secondary-hover: #7a7a7a;
+  --wizz-secondary-light: rgba(138, 138, 138, 0.15);
+  --wizz-secondary-border: #484848;
 
-  --wizz-bg: #121212;           /* خلفية قريبة لويندوز الداكن */
-  --wizz-surface: #1e1e1e;      /* بطاقات قريبة لويندوز الداكن */
-  --wizz-surface-hover: #2d2d2d;
-  --wizz-card-bg: rgba(13, 110, 253, 0.03);
+  --wizz-bg: #1f1f1f;           /* خلفية ويندوز الداكن الحقيقي */
+  --wizz-surface: #252526;      /* بطاقات VS Code / ويندوز */
+  --wizz-surface-hover: #2d2d30;
+  --wizz-card-bg: rgba(0, 120, 212, 0.04);
 
-  --wizz-text: #e0e0e0;
-  --wizz-text-secondary: #b0b0b0;
-  --wizz-text-muted: #808080;
+  --wizz-text: #ffffff;
+  --wizz-text-secondary: #cccccc;
+  --wizz-text-muted: #969696;
   --wizz-text-on-primary: #ffffff;
 
-  --wizz-border: #333333;
-  --wizz-border-light: #2d2d2d;
+  --wizz-border: #3e3e42;
+  --wizz-border-light: #333333;
 
-  --wizz-success: #28a745;
-  --wizz-success-light: rgba(40, 167, 69, 0.15);
-  --wizz-danger: #dc3545;
-  --wizz-danger-light: rgba(220, 53, 69, 0.15);
-  --wizz-warning: #ffc107;
-  --wizz-warning-light: rgba(255, 193, 7, 0.15);
+  --wizz-success: #4ec94e;
+  --wizz-success-light: rgba(78, 201, 78, 0.15);
+  --wizz-danger: #f14c4c;
+  --wizz-danger-light: rgba(241, 76, 76, 0.15);
+  --wizz-warning: #ffcc00;
+  --wizz-warning-light: rgba(255, 204, 0, 0.15);
 
-  --wizz-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5),
-                 0 2px 4px -1px rgba(0, 0, 0, 0.4);
-  --wizz-shadow-hover: 0 8px 16px -2px rgba(0, 0, 0, 0.6),
-                       0 4px 8px -2px rgba(0, 0, 0, 0.5);
+  --wizz-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.6),
+                 0 2px 4px -1px rgba(0, 0, 0, 0.5);
+  --wizz-shadow-hover: 0 8px 16px -2px rgba(0, 0, 0, 0.7),
+                       0 4px 8px -2px rgba(0, 0, 0, 0.6);
 }
 
 /* تفعيل الوضع الداكن عندما يفضله النظام */
 @media (prefers-color-scheme: dark) {
   html[data-theme="system"] {
-    --wizz-primary: #0d6efd;
-    --wizz-primary-hover: #0b5ed7;
-    --wizz-primary-light: rgba(13, 110, 253, 0.15);
-    --wizz-primary-border: #0d6efd;
+    --wizz-primary: #0078d4;
+    --wizz-primary-hover: #106ebe;
+    --wizz-primary-light: rgba(0, 120, 212, 0.15);
+    --wizz-primary-border: #0078d4;
 
     /* ربط متغيرات Bootstrap بألوان Wizz للوضع الداكن (تفضيل النظام) */
-    --bs-primary: #0d6efd;
-    --bs-primary-hover: #0b5ed7;
-    --bs-primary-rgb: 13, 110, 253;
+    --bs-primary: #0078d4;
+    --bs-primary-hover: #106ebe;
+    --bs-primary-rgb: 0, 120, 212;
 
-    --wizz-secondary: #6c757d;
-    --wizz-secondary-hover: #5a6268;
-    --wizz-secondary-light: rgba(108, 117, 125, 0.15);
-    --wizz-secondary-border: #495057;
+    --wizz-secondary: #8a8a8a;
+    --wizz-secondary-hover: #7a7a7a;
+    --wizz-secondary-light: rgba(138, 138, 138, 0.15);
+    --wizz-secondary-border: #484848;
 
-    --wizz-bg: #121212;
-    --wizz-surface: #1e1e1e;
-    --wizz-surface-hover: #2d2d2d;
-    --wizz-card-bg: rgba(13, 110, 253, 0.03);
+    --wizz-bg: #1f1f1f;
+    --wizz-surface: #252526;
+    --wizz-surface-hover: #2d2d30;
+    --wizz-card-bg: rgba(0, 120, 212, 0.04);
 
-    --wizz-text: #e0e0e0;
-    --wizz-text-secondary: #b0b0b0;
-    --wizz-text-muted: #808080;
+    --wizz-text: #ffffff;
+    --wizz-text-secondary: #cccccc;
+    --wizz-text-muted: #969696;
     --wizz-text-on-primary: #ffffff;
 
-    --wizz-border: #333333;
-    --wizz-border-light: #2d2d2d;
+    --wizz-border: #3e3e42;
+    --wizz-border-light: #333333;
 
-    --wizz-success: #28a745;
-    --wizz-success-light: rgba(40, 167, 69, 0.15);
-    --wizz-danger: #dc3545;
-    --wizz-danger-light: rgba(220, 53, 69, 0.15);
-    --wizz-warning: #ffc107;
-    --wizz-warning-light: rgba(255, 193, 7, 0.15);
+    --wizz-success: #4ec94e;
+    --wizz-success-light: rgba(78, 201, 78, 0.15);
+    --wizz-danger: #f14c4c;
+    --wizz-danger-light: rgba(241, 76, 76, 0.15);
+    --wizz-warning: #ffcc00;
+    --wizz-warning-light: rgba(255, 204, 0, 0.15);
 
-    --wizz-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5),
-                   0 2px 4px -1px rgba(0, 0, 0, 0.4);
-    --wizz-shadow-hover: 0 8px 16px -2px rgba(0, 0, 0, 0.6),
-                         0 4px 8px -2px rgba(0, 0, 0, 0.5);
+    --wizz-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.6),
+                   0 2px 4px -1px rgba(0, 0, 0, 0.5);
+    --wizz-shadow-hover: 0 8px 16px -2px rgba(0, 0, 0, 0.7),
+                         0 4px 8px -2px rgba(0, 0, 0, 0.6);
   }
 }
 
@@ -320,27 +320,162 @@ label.form-label {
     font-size: 0.875rem;
 }
 
-/* RTL Input Groups */
-.input-group {
-    direction: rtl;
-}
-
-.input-group > .form-control {
-    text-align: right;
-}
-
-.input-group .form-control + .btn {
-    border-top-left-radius: var(--wizz-radius-sm);
-    border-bottom-left-radius: var(--wizz-radius-sm);
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-}
-
 .input-group .btn + .form-control {
     border-top-right-radius: var(--wizz-radius-sm);
     border-bottom-right-radius: var(--wizz-radius-sm);
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
+}
+
+/* ============================================================
+   AI Composer — input-group مع btn-group موحد
+   ============================================================ */
+.ai-composer {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+}
+
+.ai-composer .form-control {
+    flex: 1;
+    min-height: 3.5rem;
+    border: 1px solid var(--wizz-border);
+    border-left: none;
+    border-radius: 0;
+    background: var(--wizz-surface);
+    color: var(--wizz-text);
+    resize: none;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+.ai-composer .form-control:focus {
+    outline: none;
+    box-shadow: none;
+    border-color: var(--wizz-primary);
+    background: var(--wizz-surface);
+}
+
+.ai-composer .form-control::placeholder {
+    color: var(--wizz-text-muted);
+    opacity: 0.7;
+}
+
+.ai-composer .input-group-append {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+}
+
+.ai-composer .btn-group {
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    flex: 0 0 auto;
+}
+
+.ai-composer .btn-group > button,
+.ai-composer .btn-group > .dropdown-toggle {
+    height: 100%;
+    min-width: 48px;
+    padding: 0 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--wizz-border);
+    background: var(--wizz-surface);
+    color: var(--wizz-text);
+    transition: var(--wizz-transition);
+    border-radius: 0;
+}
+
+.ai-composer .btn-group > button:first-child,
+.ai-composer .btn-group > .dropdown-toggle:first-child {
+    border-right: none;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-top-right-radius: var(--wizz-radius-sm);
+    border-bottom-right-radius: var(--wizz-radius-sm);
+}
+
+.ai-composer .btn-group > button:last-child {
+    border-left: none;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-top-left-radius: var(--wizz-radius-sm);
+    border-bottom-left-radius: var(--wizz-radius-sm);
+}
+
+.ai-composer .btn-group > button:hover:not(:disabled),
+.ai-composer .btn-group > .dropdown-toggle:hover {
+    background: var(--wizz-primary-light);
+    color: var(--wizz-primary);
+    border-color: var(--wizz-primary);
+}
+
+.ai-composer .btn-group > button:disabled,
+.ai-composer .btn-group > .dropdown-toggle:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.ai-composer .btn-send {
+    background: var(--wizz-primary) !important;
+    border-color: var(--wizz-primary-border) !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    min-width: 80px;
+}
+
+.ai-composer .btn-send:hover:not(:disabled) {
+    background: var(--wizz-primary-hover) !important;
+    border-color: var(--wizz-primary-hover) !important;
+    color: #ffffff !important;
+    box-shadow: var(--wizz-shadow-hover);
+}
+
+.ai-composer .btn-send:disabled {
+    background: var(--wizz-secondary) !important;
+    border-color: var(--wizz-secondary-border) !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* dropdown menu في الـ btn-group */
+.ai-composer .dropdown-menu {
+    border: 1px solid var(--wizz-border);
+    background: var(--wizz-surface);
+    box-shadow: var(--wizz-shadow-hover);
+}
+
+.ai-composer .dropdown-item {
+    color: var(--wizz-text);
+    border-radius: var(--wizz-radius-sm);
+    padding: 0.5rem 1rem;
+    transition: var(--wizz-transition);
+}
+
+.ai-composer .dropdown-item:hover,
+.ai-composer .dropdown-item:focus {
+    background: var(--wizz-primary-light);
+    color: var(--wizz-primary);
+}
+
+.ai-composer .dropdown-item.active {
+    background: var(--wizz-primary);
+    color: #fff;
+}
+
+.ai-composer .dropdown-divider {
+    border-color: var(--wizz-border);
+}
+
+.ai-composer .dropdown-header {
+    color: var(--wizz-text-muted);
+}
+
+.ai-composer .dropdown-item-text {
+    color: var(--wizz-text-muted);
 }
 
 /* Custom input style (wizz-input) — mantenida para compatibilidad */
