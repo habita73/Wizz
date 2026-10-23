@@ -1,6 +1,57 @@
-/* Wizz POS - RTL Arabic Styles */
+/* Wizz POS - RTL Arabic Styles — Professional Theme (2026-10-23) */
 
-/* Base RTL Support */
+/* ============================================================
+   1. Design tokens (لوحة الألوان المهنية)
+   ============================================================ */
+:root {
+  /* Primary — أزرق كحلي داكن للأزرار الرئيسية والترويسات */
+  --wizz-primary: #1e3a5f;
+  --wizz-primary-hover: #14324f;
+  --wizz-primary-light: rgba(30, 58, 95, 0.10);
+  --wizz-primary-border: #1e3a5f;
+
+  /* Secondary — رمادي أزرق للأزرار الثانوية والنصوص المساعدة */
+  --wizz-secondary: #64748b;
+  --wizz-secondary-hover: #475569;
+  --wizz-secondary-light: rgba(100, 116, 139, 0.10);
+  --wizz-secondary-border: #94a3b8;
+
+  /* Surfaces */
+  --wizz-bg: #f1f5f9;           /* خلفية الصفحة العامة */
+  --wizz-surface: #ffffff;      /* خلفية البطاقات والنوافذ */
+  --wizz-surface-hover: #f8fafc;
+
+  /* Text */
+  --wizz-text: #0f172a;         /* النص الأساسي والعناوين */
+  --wizz-text-secondary: #475569; /* النص الثانوي والوصف */
+  --wizz-text-muted: #64748b;   /* النصوص المساعدة الخافتة */
+  --wizz-text-on-primary: #ffffff;
+
+  /* Borders & dividers */
+  --wizz-border: #e2e8f0;
+  --wizz-border-light: #f1f5f9;
+
+  /* Semantic colors */
+  --wizz-success: #059669;
+  --wizz-success-light: rgba(5, 150, 105, 0.10);
+  --wizz-danger: #dc2626;
+  --wizz-danger-light: rgba(220, 38, 38, 0.10);
+  --wizz-warning: #d97706;
+  --wizz-warning-light: rgba(217, 119, 6, 0.10);
+
+  /* Shape & motion */
+  --wizz-radius: 12px;
+  --wizz-radius-sm: 8px;
+  --wizz-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08),
+                 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --wizz-shadow-hover: 0 8px 16px -2px rgba(0, 0, 0, 0.12),
+                       0 4px 8px -2px rgba(0, 0, 0, 0.06);
+  --wizz-transition: all 0.22s ease;
+}
+
+/* ============================================================
+   2. Base RTL Support
+   ============================================================ */
 html[dir="rtl"] {
     direction: rtl;
     text-align: right;
@@ -8,11 +59,73 @@ html[dir="rtl"] {
 
 body {
     font-family: 'Segoe UI', 'Tahoma', 'Arial', sans-serif;
-    background-color: #f8f9fa;
+    background-color: var(--wizz-bg);
+    color: var(--wizz-text);
     direction: rtl;
+    margin: 0;
 }
 
-/* Sidebar */
+/* Links */
+a, .btn-link {
+    color: var(--wizz-primary);
+    text-decoration: none;
+    transition: var(--wizz-transition);
+}
+
+a:hover, .btn-link:hover {
+    color: var(--wizz-primary-hover);
+    text-decoration: underline;
+}
+
+/* Focus states — تباين عالي للوصول (accessibility) */
+.btn:focus,
+.btn:active:focus,
+.btn-link.nav-link:focus,
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem #ffffff, 0 0 0 0.25rem var(--wizz-primary);
+  outline: none;
+}
+
+/* ============================================================
+   3. Typography (الخطوط — محلية فقط، لا تحميلات خارجية)
+   ============================================================ */
+.arabic-font,
+body {
+    font-family: 'Segoe UI', 'Cairo', 'Tahoma', 'Traditional Arabic', 'Arial', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
+    color: var(--wizz-text);
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+h1:focus {
+    outline: none;
+}
+
+.text-muted {
+    color: var(--wizz-text-muted) !important;
+}
+
+/* ============================================================
+   4. Layout (التخطيط العام)
+   ============================================================ */
+.content {
+    padding-top: 1.1rem;
+}
+
+/* صفحة رئيسية — الهيكل */
+.page {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* ============================================================
+   5. Sidebar (الشريط الجانبي)
+   ============================================================ */
 #sidebar-wrapper {
     min-height: 100vh;
     transition: all 0.3s ease;
@@ -20,26 +133,35 @@ body {
 
 .sidebar-heading {
     font-size: 1.25rem;
-    font-weight: 600;
+    font-weight: 700;
+    color: var(--wizz-text-on-primary);
 }
 
+/* عناصر القائمة الجانبية */
 .list-group-item {
     background-color: transparent;
-    border-color: #444;
-    color: #fff;
-    transition: all 0.2s;
+    border-color: transparent;
+    color: var(--wizz-text-secondary);
+    transition: var(--wizz-transition);
+    margin-bottom: 0.25rem;
+    border-left: 3px solid transparent;
 }
 
 .list-group-item:hover,
 .list-group-item.active {
-    background-color: #0d6efd !important;
-    color: white;
-    border-color: #0d6efd;
+    background-color: var(--wizz-primary-light) !important;
+    color: var(--wizz-primary) !important;
+    border-color: var(--wizz-primary-border);
+    border-left-color: var(--wizz-primary);
 }
 
 .list-group-item .me-2 {
-    margin-left: 0.5rem;
-    margin-right: 0;
+    margin-left: 0;
+    margin-right: 0.5rem;
+}
+
+.wizz-sidebar {
+    background: var(--wizz-primary);
 }
 
 @media (max-width: 768px) {
@@ -60,25 +182,334 @@ body {
     }
 }
 
-/* RTL Form Elements */
+/* ============================================================
+   6. Forms (الحقول والنماذج)
+   ============================================================ */
+.form-control {
+    background-color: var(--wizz-surface);
+    border: 1px solid var(--wizz-border);
+    color: var(--wizz-text);
+    border-radius: var(--wizz-radius-sm);
+    transition: var(--wizz-transition);
+}
+
+.form-control:focus {
+    border-color: var(--wizz-primary);
+    box-shadow: 0 0 0 0.25rem var(--wizz-primary-light);
+    background-color: var(--wizz-surface);
+}
+
+.form-select {
+    background-color: var(--wizz-surface);
+    border: 1px solid var(--wizz-border);
+    color: var(--wizz-text);
+    border-radius: var(--wizz-radius-sm);
+    transition: var(--wizz-transition);
+}
+
+.form-select:focus {
+    border-color: var(--wizz-primary);
+    box-shadow: 0 0 0 0.25rem var(--wizz-primary-light);
+}
+
+label.form-label {
+    text-align: right;
+    display: block;
+    color: var(--wizz-text-secondary);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.form-text {
+    color: var(--wizz-text-muted);
+    font-size: 0.875rem;
+}
+
+/* RTL Input Groups */
+.input-group {
+    direction: rtl;
+}
+
 .input-group > .form-control {
     text-align: right;
 }
 
 .input-group .form-control + .btn {
-    border-top-left-radius: 0.375rem;
-    border-bottom-left-radius: 0.375rem;
+    border-top-left-radius: var(--wizz-radius-sm);
+    border-bottom-left-radius: var(--wizz-radius-sm);
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
 }
 
 .input-group .btn + .form-control {
-    border-top-right-radius: 0.375rem;
-    border-bottom-right-radius: 0.375rem;
+    border-top-right-radius: var(--wizz-radius-sm);
+    border-bottom-right-radius: var(--wizz-radius-sm);
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
 }
 
+/* Custom input style (wizz-input) — mantenida para compatibilidad */
+.wizz-input {
+    border-radius: var(--wizz-radius-sm);
+    border: 1px solid var(--wizz-border);
+    padding: 0.75rem 1rem;
+    transition: var(--wizz-transition);
+    background-color: var(--wizz-surface);
+    color: var(--wizz-text);
+}
+
+.wizz-input:focus {
+    border-color: var(--wizz-primary);
+    box-shadow: 0 0 0 0.25rem var(--wizz-primary-light);
+}
+
+/* Checkboxes & radios */
+.form-check-input {
+    border: 1px solid var(--wizz-border);
+    background-color: var(--wizz-surface);
+    transition: var(--wizz-transition);
+}
+
+.form-check-input:checked {
+    background-color: var(--wizz-primary);
+    border-color: var(--wizz-primary);
+}
+
+.form-check-label {
+    color: var(--wizz-text-secondary);
+}
+
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.25rem var(--wizz-primary-light);
+    border-color: var(--wizz-primary);
+}
+
+.darker-border-checkbox.form-check-input {
+    border-color: var(--wizz-border);
+}
+
+/* ============================================================
+   7. Buttons (الأزرار — واجهة المستخدم الموحدة)
+   ============================================================ */
+.btn {
+    border-radius: var(--wizz-radius-sm);
+    font-weight: 600;
+    transition: var(--wizz-transition);
+    border: 1px solid transparent;
+}
+
+/* زر رئيسي — خلفية كحلي، نص أبيض */
+.btn-primary {
+    color: var(--wizz-text-on-primary);
+    background-color: var(--wizz-primary);
+    border-color: var(--wizz-primary-border);
+}
+
+.btn-primary:hover {
+    color: var(--wizz-text-on-primary);
+    background-color: var(--wizz-primary-hover);
+    border-color: var(--wizz-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--wizz-shadow-hover);
+}
+
+.btn-primary:focus,
+.btn-primary:active {
+    background-color: var(--wizz-primary-hover);
+    border-color: var(--wizz-primary-hover);
+    box-shadow: 0 0 0 0.25rem var(--wizz-primary-light);
+}
+
+.btn-outline-primary {
+    color: var(--wizz-primary);
+    border-color: var(--wizz-primary-border);
+    background-color: transparent;
+}
+
+.btn-outline-primary:hover {
+    color: var(--wizz-text-on-primary);
+    background-color: var(--wizz-primary);
+    border-color: var(--wizz-primary);
+    transform: translateY(-1px);
+}
+
+.btn-outline-secondary {
+    color: var(--wizz-secondary);
+    border-color: var(--wizz-secondary-border);
+    background-color: transparent;
+}
+
+.btn-outline-secondary:hover {
+    color: var(--wizz-text-on-primary);
+    background-color: var(--wizz-secondary-hover);
+    border-color: var(--wizz-secondary-hover);
+}
+
+/* زر خطر — للحذف والإلغاء */
+.btn-danger {
+    color: var(--wizz-danger);
+    border-color: var(--wizz-danger);
+    background-color: transparent;
+}
+
+.btn-danger:hover {
+    color: var(--wizz-text-on-primary);
+    background-color: var(--wizz-danger);
+    border-color: var(--wizz-danger);
+}
+
+/* تخصيصات Wizz الحالية — تُوحد تحت اللوحة الجديدة */
+.wizz-btn-primary {
+    background: var(--wizz-primary);
+    border: none;
+    border-radius: var(--wizz-radius-sm);
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    color: var(--wizz-text-on-primary);
+    transition: var(--wizz-transition);
+}
+
+.wizz-btn-primary:hover {
+    background: var(--wizz-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--wizz-shadow-hover);
+}
+
+.btn-sm {
+    border-radius: var(--wizz-radius-sm);
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+/* ============================================================
+   8. Cards (البطاقات الموحدة)
+   ============================================================ */
+.card {
+    background-color: var(--wizz-surface);
+    border: 1px solid var(--wizz-border);
+    border-radius: var(--wizz-radius);
+    box-shadow: var(--wizz-shadow);
+    transition: var(--wizz-transition);
+}
+
+.card:hover {
+    box-shadow: var(--wizz-shadow-hover);
+    border-color: var(--wizz-border-light);
+}
+
+.card-header {
+    background-color: var(--wizz-surface-hover);
+    border-bottom: 1px solid var(--wizz-border);
+    border-top-right-radius: calc(var(--wizz-radius) - 1px);
+    border-top-left-radius: calc(var(--wizz-radius) - 1px);
+    text-align: right;
+    padding: 0.9rem 1.2rem;
+}
+
+.card-body {
+    padding: 1.2rem;
+}
+
+.card-footer {
+    background-color: var(--wizz-surface-hover);
+    border-top: 1px solid var(--wizz-border);
+    border-bottom-right-radius: calc(var(--wizz-radius) - 1px);
+    border-bottom-left-radius: calc(var(--wizz-radius) - 1px);
+    text-align: right;
+    padding: 0.9rem 1.2rem;
+}
+
+/* تخصيص Wizz current — تُوحد */
+.wizz-card {
+    border: none;
+    box-shadow: var(--wizz-shadow);
+    border-radius: var(--wizz-radius);
+}
+
+/* ============================================================
+   9. Tables (الجداول)
+   ============================================================ */
+.table {
+    color: var(--wizz-text);
+}
+
+.table th,
+.table td {
+    text-align: right;
+    border-color: var(--wizz-border);
+    color: var(--wizz-text-secondary);
+}
+
+.table th {
+    color: var(--wizz-text);
+    font-weight: 600;
+    background-color: var(--wizz-surface-hover);
+}
+
+.table th:first-child,
+.table td:first-child {
+    text-align: right;
+}
+
+.table th:last-child,
+.table td:last-child {
+    text-align: left;
+}
+
+.table-hover tbody tr:hover {
+    background-color: var(--wizz-surface-hover);
+}
+
+/* ============================================================
+   10. Badges & Alerts (الشارات والتنبيهات)
+   ============================================================ */
+.badge {
+    direction: ltr;
+    font-weight: 600;
+    border-radius: var(--wizz-radius-sm);
+}
+
+.bg-success { background-color: var(--wizz-success) !important; color: #fff !important; }
+.bg-danger  { background-color: var(--wizz-danger) !important; color: #fff !important; }
+.bg-warning { background-color: var(--wizz-warning) !important; color: #fff !important; }
+.bg-primary { background-color: var(--wizz-primary) !important; color: #fff !important; }
+.bg-secondary { background-color: var(--wizz-secondary) !important; color: #fff !important; }
+.bg-light { background-color: var(--wizz-surface-hover) !important; color: var(--wizz-text-secondary) !important; }
+.bg-info { background-color: rgba(13, 110, 253, 0.10) !important; color: #0d6efd !important; }
+
+.alert {
+    text-align: right;
+    border: 1px solid transparent;
+    border-radius: var(--wizz-radius-sm);
+}
+
+.alert-success {
+    background-color: var(--wizz-success-light);
+    border-color: var(--wizz-success);
+    color: var(--wizz-success);
+}
+
+.alert-danger {
+    background-color: var(--wizz-danger-light);
+    border-color: var(--wizz-danger);
+    color: var(--wizz-danger);
+}
+
+.alert-warning {
+    background-color: var(--wizz-warning-light);
+    border-color: var(--wizz-warning);
+    color: var(--wizz-warning);
+}
+
+.alert-info {
+    background-color: var(--wizz-primary-light);
+    border-color: var(--wizz-primary);
+    color: var(--wizz-primary);
+}
+
+/* ============================================================
+   11. RTL Tables / Modals / Dropdowns / Pagination
+   ============================================================ */
 /* RTL Tables */
 .table th,
 .table td {
@@ -101,9 +532,44 @@ body {
     margin-right: 0;
 }
 
+.modal-content {
+    background-color: var(--wizz-surface);
+    border: 1px solid var(--wizz-border);
+    border-radius: var(--wizz-radius);
+    box-shadow: var(--wizz-shadow-hover);
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--wizz-border);
+    color: var(--wizz-text);
+}
+
+.modal-body {
+    color: var(--wizz-text-secondary);
+}
+
+.modal-footer {
+    border-top: 1px solid var(--wizz-border);
+    background-color: var(--wizz-surface-hover);
+}
+
 /* RTL Dropdown */
 .dropdown-menu {
     text-align: right;
+    background-color: var(--wizz-surface);
+    border: 1px solid var(--wizz-border);
+    border-radius: var(--wizz-radius-sm);
+    box-shadow: var(--wizz-shadow-hover);
+}
+
+.dropdown-item {
+    color: var(--wizz-text);
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+    background-color: var(--wizz-primary-light);
+    color: var(--wizz-primary);
 }
 
 /* RTL Pagination */
@@ -111,31 +577,41 @@ body {
     direction: rtl;
 }
 
+.page-link {
+    color: var(--wizz-text-secondary);
+    border-color: var(--wizz-border);
+    background-color: var(--wizz-surface);
+}
+
+.page-link:hover {
+    color: var(--wizz-primary);
+    background-color: var(--wizz-primary-light);
+    border-color: var(--wizz-primary);
+}
+
+.page-item.active .page-link {
+    background-color: var(--wizz-primary);
+    border-color: var(--wizz-primary);
+    color: #fff;
+}
+
 .page-item:first-child .page-link {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
-    border-top-right-radius: 0.375rem;
-    border-bottom-right-radius: 0.375rem;
+    border-top-right-radius: var(--wizz-radius-sm);
+    border-bottom-right-radius: var(--wizz-radius-sm);
 }
 
 .page-item:last-child .page-link {
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
-    border-top-left-radius: 0.375rem;
-    border-bottom-left-radius: 0.375rem;
+    border-top-left-radius: var(--wizz-radius-sm);
+    border-bottom-left-radius: var(--wizz-radius-sm);
 }
 
-/* RTL Badge in table */
-.badge {
-    direction: ltr;
-}
-
-/* RTL Card */
-.card-header {
-    text-align: right;
-}
-
-/* RTL Navbar */
+/* ============================================================
+   12. RTL Navbar / Card / Scrollbar
+   ============================================================ */
 .navbar-nav {
     direction: rtl;
 }
@@ -143,16 +619,49 @@ body {
 .navbar-nav .nav-link {
     padding-right: 1rem;
     padding-left: 0.5rem;
+    color: var(--wizz-text-secondary);
 }
 
-/* Arabic Numbers */
-.arabic-numbers {
-    font-family: 'Amiri', 'Traditional Arabic', serif;
-    direction: ltr;
-    unicode-bidi: bidi-override;
+.navbar-nav .nav-link:hover {
+    color: var(--wizz-primary);
 }
 
-/* Print Styles for Arabic Receipts */
+.card-header {
+    text-align: right;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--wizz-secondary);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--wizz-text-muted);
+}
+
+/* ============================================================
+   13. Chat Messages RTL (المساعد الذكي)
+   ============================================================ */
+#chatMessages {
+    direction: rtl;
+}
+
+#chatMessages .text-end {
+    text-align: left !important;
+}
+
+/* ============================================================
+   14. Print Styles for Arabic Receipts (الفواتير — بلا تغيير)
+   ============================================================ */
 @media print {
     @page {
         size: 80mm auto;
@@ -163,6 +672,7 @@ body {
         font-family: 'Amiri', 'Traditional Arabic', serif;
         font-size: 12px;
         direction: rtl;
+        background: #fff !important;
     }
 
     .no-print {
@@ -199,142 +709,335 @@ body {
         font-weight: bold;
         font-size: 14px;
     }
+
+    .receipt-print {
+        font-family: 'Amiri', monospace;
+        font-size: 12px;
+        line-height: 1.4;
+        direction: rtl;
+        width: 80mm;
+    }
+
+    .receipt-print .header {
+        text-align: center;
+        border-bottom: 1px dashed #000;
+        padding-bottom: 5px;
+        margin-bottom: 5px;
+    }
+
+    .receipt-print .item {
+        display: flex;
+        justify-content: space-between;
+        margin: 3px 0;
+    }
+
+    .receipt-print .totals {
+        border-top: 1px dashed #000;
+        padding-top: 5px;
+        margin-top: 5px;
+    }
 }
 
-/* Chat Messages RTL */
-#chatMessages {
-    direction: rtl;
-}
-
-#chatMessages .text-end {
-    text-align: left !important;
-}
-
-/* Form Labels RTL */
-label.form-label {
-    text-align: right;
-    display: block;
-}
-
-/* RTL Input Groups */
-.input-group {
-    direction: rtl;
-}
-
-/* Custom Scrollbar for RTL */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: #f1f1f1;
-}
-
-::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #555;
-}
-
-/* Focus Styles */
-.form-control:focus,
-.form-select:focus {
-    border-color: #0d6efd;
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-}
-
-/* Arabic Font Stack — local-first: no external font requests */
-.arabic-font,
-body {
-    font-family: 'Segoe UI', 'Cairo', 'Tahoma', 'Traditional Arabic', 'Arial', sans-serif;
-}
-
-/* RTL Alert */
-.alert {
-    text-align: right;
-}
-
-/* RTL Progress */
-.progress {
-    direction: rtl;
-}
-
-/* RTL Tooltip */
-.tooltip {
-    direction: rtl;
-}
-
-/* RTL Popover */
-.popover {
-    direction: rtl;
-    text-align: right;
-}
-
-/* Custom Styles for Wizz */
-.wizz-sidebar {
-    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
-}
-
-.wizz-card {
-    border: none;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    border-radius: 12px;
-}
-
-.wizz-btn-primary {
-    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
-    border: none;
-    border-radius: 8px;
-    padding: 0.75rem 1.5rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.wizz-btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(13, 110, 253, 0.4);
-}
-
+/* ============================================================
+   15. Custom Wizz Components (المكونات المخصصة — محدثة للوحة الجديدة)
+   ============================================================ */
 .wizz-input {
-    border-radius: 8px;
-    border: 1px solid #dee2e6;
+    border-radius: var(--wizz-radius-sm);
+    border: 1px solid var(--wizz-border);
     padding: 0.75rem 1rem;
-    transition: all 0.3s ease;
+    transition: var(--wizz-transition);
+    background-color: var(--wizz-surface);
+    color: var(--wizz-text);
 }
 
 .wizz-input:focus {
-    border-color: #0d6efd;
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+    border-color: var(--wizz-primary);
+    box-shadow: 0 0 0 0.25rem var(--wizz-primary-light);
 }
 
-/* Receipt Printing Styles */
-.receipt-print {
-    font-family: 'Amiri', monospace;
-    font-size: 12px;
-    line-height: 1.4;
-    direction: rtl;
-    width: 80mm;
+/* Quick questions chips (أسئلة جاهزة) */
+.quick-question-chip {
+    border-radius: var(--wizz-radius-sm);
+    padding: 0.15rem 0.75rem;
+    font-size: 0.85rem;
+    max-width: 100%;
+    background-color: var(--wizz-surface);
+    border: 1px solid var(--wizz-border);
+    color: var(--wizz-text-secondary);
+    transition: var(--wizz-transition);
 }
 
-.receipt-print .header {
+.quick-question-chip:hover {
+    border-color: var(--wizz-primary);
+    color: var(--wizz-primary);
+    background-color: var(--wizz-primary-light);
+}
+
+.quick-question-text {
+    display: inline-block;
+    max-width: 18rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+}
+
+.quick-question-side {
+    text-align: start;
+    white-space: normal;
+}
+
+/* لوحة حالة المسارات (Phase 4) */
+.ai-status-card .card-header {
+    padding-top: .4rem;
+    padding-bottom: .4rem;
+}
+
+.ai-status-line {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.ai-status-line .badge {
+    font-size: .7rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 9rem;
+}
+
+.ai-mini-btn {
+    padding: 0 .35rem;
+    line-height: 1.35;
+    font-size: .8rem;
+    border-radius: .35rem;
+}
+
+.ai-status-details summary {
+    cursor: pointer;
+    color: var(--wizz-text-muted);
+    user-select: none;
+}
+
+.ai-status-details summary:hover {
+    color: var(--wizz-primary);
+}
+
+.ai-status-details[open] summary {
+    margin-bottom: .25rem;
+}
+
+/* أولوية مسارات التوجيه التلقائي (Phase 6) */
+.route-priority-row {
+    cursor: grab;
+    user-select: none;
+    transition: background-color .15s ease, border-color .15s ease, opacity .15s ease;
+}
+
+.route-priority-row:active {
+    cursor: grabbing;
+}
+
+.route-priority-row.route-priority-dragging {
+    opacity: .5;
+    background-color: var(--wizz-surface-hover);
+}
+
+.route-priority-row.route-priority-drop {
+    border-color: var(--wizz-primary) !important;
+    background-color: var(--wizz-primary-light);
+}
+
+.route-decision-card .card-header {
+    padding-top: .4rem;
+    padding-bottom: .4rem;
+}
+
+.route-decision-log {
+    max-height: 11rem;
+    overflow-y: auto;
+}
+
+.route-decision-log .small {
+    line-height: 1.35;
+}
+
+/* Artifacts (مخرجات المساعد) */
+.artifact-card {
+    background: var(--wizz-surface);
+    border-color: var(--wizz-border) !important;
+    max-width: 100%;
+    border-radius: var(--wizz-radius-sm);
+    box-shadow: var(--wizz-shadow);
+}
+
+.artifact-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.artifact-preview {
+    background: #fbfbfc;
+    max-height: 420px;
+    overflow: auto;
+    border-radius: var(--wizz-radius-sm);
+    border: 1px solid var(--wizz-border);
+}
+
+.artifact-image {
+    max-width: 100%;
+    border-radius: var(--wizz-radius-sm);
+}
+
+.artifact-html :is(h1, h2, h3) { font-size: 1.05rem; font-weight: 700; }
+.artifact-html table { width: 100%; border-collapse: collapse; }
+.artifact-html th, .artifact-html td { border: 1px solid var(--wizz-border); padding: .25rem .5rem; }
+
+.min-w-0 { min-width: 0; }
+
+/* ============================================================
+   16. Sidebar navigation (الشريط الجانبي وقائمة التنقل)
+   ============================================================ */
+.sidebar {
+    background: var(--wizz-primary);
+    color: var(--wizz-text-on-primary);
+    min-height: 100vh;
+    transition: var(--wizz-transition);
+}
+
+.navbar-dark .navbar-brand,
+.navbar-dark .navbar-brand:hover,
+.navbar-dark .navbar-brand:focus {
+    color: var(--wizz-text-on-primary);
+}
+
+.brand-mark {
+    font-size: 1.5rem;
+    margin-left: 0.5rem;
+}
+
+.brand-text {
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+}
+
+.brand-text small {
+    font-weight: 400;
+    font-size: 0.75rem;
+    opacity: 0.85;
+    display: block;
+    margin-top: 0.1rem;
+}
+
+/* عناصر القائمة في الشريط الجانبي */
+.nav-item {
+    margin-bottom: 0.15rem;
+}
+
+.nav-link {
+    color: rgba(255, 255, 255, 0.85) !important;
+    padding: 0.75rem 1rem !important;
+    border-radius: var(--wizz-radius-sm) !important;
+    margin: 0 0.25rem !important;
+    transition: var(--wizz-transition) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    border: 1px solid transparent !important;
+}
+
+.nav-link:hover,
+.nav-link:focus {
+    color: #ffffff !important;
+    background-color: var(--wizz-primary-light) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    transform: translateX(-4px);
+}
+
+.nav-link.active,
+.nav-link[aria-current="page"] {
+    color: #ffffff !important;
+    background-color: var(--wizz-primary-hover) !important;
+    border-color: var(--wizz-text-on-primary) !important;
+    box-shadow: 0 0 0 0.25rem var(--wizz-primary-light);
+}
+
+.nav-icon {
+    font-size: 1.25rem;
+    width: 1.5rem;
     text-align: center;
-    border-bottom: 1px dashed #000;
-    padding-bottom: 5px;
-    margin-bottom: 5px;
+    display: inline-flex;
+    justify-content: center;
 }
 
-.receipt-print .item {
+/* شريط التمرير للمحتوى القابل للتمرير في الشريط الجانبي */
+.nav-scrollable {
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+    padding-top: 0.5rem;
+}
+
+/* ============================================================
+   17. Page title & section headings (عناوين الصفحات والأقسام)
+   ============================================================ */
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+    color: var(--wizz-text);
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+
+h1, .h1 {
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+}
+
+h2, .h2 {
+    font-size: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+
+h3, .h3 {
+    font-size: 1.25rem;
+    margin-bottom: 0.75rem;
+}
+
+h4, .h4 {
+    font-size: 1.1rem;
+    margin-bottom: 0.6rem;
+}
+
+h5, .h5 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+h6, .h6 {
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+}
+
+.section-title {
     display: flex;
-    justify-content: space-between;
-    margin: 3px 0;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--wizz-border);
 }
 
-.receipt-print .totals {
-    border-top: 1px dashed #000;
-    padding-top: 5px;
-    margin-top: 5px;
+.section-title h2,
+.section-title h3,
+.section-title .h2,
+.section-title .h3 {
+    margin: 0;
+}
+
+.section-icon {
+    font-size: 1.5rem;
 }

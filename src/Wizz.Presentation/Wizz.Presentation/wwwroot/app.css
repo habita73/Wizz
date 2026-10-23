@@ -1,19 +1,19 @@
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Segoe UI', 'Tahoma', 'Arial', sans-serif;
 }
 
 a, .btn-link {
-    color: #006bb7;
+    color: var(--wizz-primary);
 }
 
 .btn-primary {
     color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
+    background-color: var(--wizz-primary);
+    border-color: var(--wizz-primary-border);
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+  box-shadow: 0 0 0 0.1rem #ffffff, 0 0 0 0.25rem var(--wizz-primary-light);
 }
 
 .content {
@@ -59,7 +59,7 @@ h1:focus {
     text-align: start;
 }
 
-/* ---- AI chat messages ---- */
+/* ---- AI chat messages (تحديث للوحة المهنية) ---- */
 .msg-content {
     white-space: pre-wrap;
     word-break: break-word;
@@ -70,11 +70,65 @@ h1:focus {
     min-width: 0;
 }
 
+/* فقاعة رسالة المستخدم */
+.msg-user {
+    background: var(--wizz-primary);
+    color: #ffffff;
+    border-radius: var(--wizz-radius) var(--wizz-radius) 4px var(--wizz-radius);
+    padding: 0.75rem 1rem;
+    margin: 0.5rem 0;
+    box-shadow: var(--wizz-shadow);
+}
+
+/* فقاعة رسالة المساعد */
+.msg-assistant {
+    background: var(--wizz-surface);
+    color: var(--wizz-text);
+    border: 1px solid var(--wizz-border);
+    border-radius: var(--wizz-radius) var(--wizz-radius) var(--wizz-radius) 4px;
+    padding: 0.75rem 1rem;
+    margin: 0.5rem 0;
+    box-shadow: var(--wizz-shadow);
+}
+
+/* شارة المصدر (إنترنت / مدمج / محلي / سحابي) */
+.msg-route-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--wizz-radius-sm);
+    margin-top: 0.25rem;
+    display: inline-block;
+}
+
+.msg-route-badge.built-in {
+    background: var(--wizz-success-light);
+    color: var(--wizz-success);
+}
+
+.msg-route-badge.web {
+    background: var(--wizz-primary-light);
+    color: var(--wizz-primary);
+    border: 1px solid var(--wizz-primary);
+}
+
+.msg-route-badge.local {
+    background: var(--wizz-success-light);
+    color: var(--wizz-success);
+}
+
+.msg-route-badge.cloud {
+    background: var(--wizz-warning-light);
+    color: var(--wizz-warning);
+}
+
 /* ---- Artifacts (مخرجات المساعد) ---- */
 .artifact-card {
-    background: #fff;
-    border-color: #dee2e6 !important;
+    background: var(--wizz-surface);
+    border-color: var(--wizz-border) !important;
     max-width: 100%;
+    border-radius: var(--wizz-radius-sm);
+    box-shadow: var(--wizz-shadow);
 }
 
 .artifact-icon {
@@ -83,19 +137,21 @@ h1:focus {
 }
 
 .artifact-preview {
-    background: #fbfbfc;
+    background: var(--wizz-surface-hover);
     max-height: 420px;
     overflow: auto;
+    border-radius: var(--wizz-radius-sm);
+    border: 1px solid var(--wizz-border);
 }
 
 .artifact-image {
     max-width: 100%;
-    border-radius: .375rem;
+    border-radius: var(--wizz-radius-sm);
 }
 
 .artifact-html :is(h1, h2, h3) { font-size: 1.05rem; font-weight: 700; }
 .artifact-html table { width: 100%; border-collapse: collapse; }
-.artifact-html th, .artifact-html td { border: 1px solid #ced4da; padding: .25rem .5rem; }
+.artifact-html th, .artifact-html td { border: 1px solid var(--wizz-border); padding: .25rem .5rem; }
 
 .min-w-0 { min-width: 0; }
 
@@ -106,10 +162,20 @@ h1:focus {
 }
 
 .quick-question-chip {
-    border-radius: 1rem;
+    border-radius: var(--wizz-radius-sm);
     padding: .15rem .75rem;
     font-size: .85rem;
     max-width: 100%;
+    background-color: var(--wizz-surface);
+    border: 1px solid var(--wizz-border);
+    color: var(--wizz-text-secondary);
+    transition: var(--wizz-transition);
+}
+
+.quick-question-chip:hover {
+    border-color: var(--wizz-primary);
+    color: var(--wizz-primary);
+    background-color: var(--wizz-primary-light);
 }
 
 .quick-question-text {
@@ -158,12 +224,12 @@ h1:focus {
 
 .ai-status-details summary {
     cursor: pointer;
-    color: var(--bs-secondary-color, #6c757d);
+    color: var(--wizz-text-muted);
     user-select: none;
 }
 
 .ai-status-details summary:hover {
-    color: var(--bs-primary, #0d6efd);
+    color: var(--wizz-primary);
 }
 
 .ai-status-details[open] summary {
@@ -183,12 +249,12 @@ h1:focus {
 
 .route-priority-row.route-priority-dragging {
     opacity: .5;
-    background-color: #f8f9fa;
+    background-color: var(--wizz-surface-hover);
 }
 
 .route-priority-row.route-priority-drop {
-    border-color: #0d6efd !important;
-    background-color: rgba(13, 110, 253, .06);
+    border-color: var(--wizz-primary) !important;
+    background-color: var(--wizz-primary-light);
 }
 
 .route-decision-card .card-header {
