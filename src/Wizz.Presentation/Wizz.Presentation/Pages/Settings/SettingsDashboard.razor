@@ -427,43 +427,6 @@
                     <button class="btn btn-outline-secondary btn-sm flex-fill" @onclick="ResetAiPreferences">↺ الافتراضي</button>
                 </div>
 
-                <!-- قسم المظهر والوضع اللوني -->
-                <div class="card theme-section-card mb-4">
-                    <div class="card-body theme-section-card">
-                        <h6 class="mb-3"><svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:0.5rem;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 1 21 12.79Z"/></svg> المظهر والوضع اللوني</h6>
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="radio" name="theme" id="themeLight"
-                                   checked="@(themeMode == "light")"
-                                   @onchange="SetThemeLight" />
-                            <label class="form-check-label" for="themeLight">
-                                <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                                الوضع الفاتح
-                            </label>
-                        </div>
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="radio" name="theme" id="themeDark"
-                                   checked="@(themeMode == "dark")"
-                                   @onchange="SetThemeDark" />
-                            <label class="form-check-label" for="themeDark">
-                                <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 1 21 12.79Z"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                                الوضع الداكن
-                            </label>
-                        </div>
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="radio" name="theme" id="themeSystem"
-                                   checked="@(themeMode == "system")"
-                                   @onchange="SetThemeSystem" />
-                            <label class="form-check-label" for="themeSystem">
-                                <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-                                seguit النظام (تلقائي)
-                            </label>
-                        </div>
-                        <div class="form-text">
-                            عند اختيار «النظام» سيfollow الواجهة تفضيلات نظام التشغيل (الوضع الليلي إذا كان مفعلاً في ويندوز/الجهاز).
-                        </div>
-                    </div>
-                </div>
-
                 <RoutePriorityEditor />
 
                 <div class="d-flex gap-2 mb-3">
@@ -487,6 +450,45 @@
         </div>
     </div>
 </div>
+
+    <!-- المظهر والوضع اللوني -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header"><h5 class="mb-0"><svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 1 21 12.79Z"/></svg> المظهر والوضع اللوني</h5></div>
+            <div class="card-body">
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="theme" id="themeLight"
+                           checked="@(themeMode == "light")"
+                           @onchange="SetThemeLight" />
+                    <label class="form-check-label" for="themeLight">
+                        <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                        الوضع الفاتح
+                    </label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="theme" id="themeDark"
+                           checked="@(themeMode == "dark")"
+                           @onchange="SetThemeDark" />
+                    <label class="form-check-label" for="themeDark">
+                        <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 1 21 12.79Z"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                        الوضع الداكن
+                    </label>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="radio" name="theme" id="themeSystem"
+                           checked="@(themeMode == "system")"
+                           @onchange="SetThemeSystem" />
+                    <label class="form-check-label" for="themeSystem">
+                        <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                        تبع النظام (تلقائي)
+                    </label>
+                </div>
+                <div class="form-text">
+                    عند اختيار «النظام» ستتبع الواجهة تفضيلات نظام التشغيل (الوضع الليلي إذا كان مفعلاً في ويندوز/الجهاز).
+                </div>
+            </div>
+        </div>
+    </div>
 
 <!-- نافذة المتجر -->
 @if (showStoreModal)

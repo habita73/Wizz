@@ -2,12 +2,14 @@
 @inject IJSRuntime JS
 
 <div class="dropdown position-relative">
-    <button type="button" class="h-100 px-3 d-flex align-items-center gap-1 dropdown-toggle"
+    <button type="button" class="h-100 px-3 d-flex align-items-center gap-1"
             title="@($"الجهة الحالية: {CurrentLabel}{(RouteMode == "local" && !string.IsNullOrWhiteSpace(SelectedLocalModel) ? $" — {SelectedLocalModel}" : string.Empty)} | اضغط للتبديل")"
             aria-label="اختيار الجهة المُجيبة — الحالية: @CurrentLabel"
             aria-haspopup="true"
             data-bs-auto-close="outside"
-            @onclick="ToggleDropdown">
+            @onclick:preventDefault="true"
+            @onclick="@(() => ToggleDropdown())"
+            @onkeydown="@(() => { })">
         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
             <path d="M5 0a.5.5 0 0 1 .5.5V2h1V.5a.5.5 0 0 1 1 0V2h1V.5a.5.5 0 0 1 1 0V2A2.5 2.5 0 0 1 11 4.5h1.5a.5.5 0 0 1 0 1H11v1h1.5a.5.5 0 0 1 0 1H11v1h1.5a.5.5 0 0 1 0 1H11v1h1.5a.5.5 0 0 1 0 1H11A2.5 2.5 0 0 1 8.5 14v1.5a.5.5 0 0 1-1 0V14h-1v1.5a.5.5 0 0 1-1 0V14h-1v1.5a.5.5 0 0 1-1 0V14A2.5 2.5 0 0 1 1 11.5H.5a.5.5 0 0 1 0-1H1V9.5H.5a.5.5 0 0 1 0-1H1V7.5H.5a.5.5 0 0 1 0-1H1V5.5H.5a.5.5 0 0 1 0-1H1A2.5 2.5 0 0 1 3.5 2V.5a.5.5 0 0 1 .5-.5zM3.5 3A1.5 1.5 0 0 0 2 4.5v7A1.5 1.5 0 0 0 3.5 13h7a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 10.5 3h-7z" />
             <path d="M4 4h8v8H4z" fill="none" />
