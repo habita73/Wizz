@@ -8,7 +8,7 @@
 @inject Wizz.Application.UseCases.Receipt.GenerateReceiptUseCase GenerateReceiptUseCase
 @inject IJSRuntime JS
 
-<h2>📋 سجل المبيعات</h2>
+<h2>🛒 المبيعات</h2>
 
 <div class="row mb-3 g-2">
     <div class="col-md-3">
@@ -30,7 +30,8 @@
         </select>
     </div>
     <div class="col-md-3 d-flex align-items-end">
-        <button class="btn btn-primary w-100" @onclick="Reload">🔍 تحديث</button>
+        <a href="/sales/new" class="btn btn-success w-100">➕ بيع جديد</a>
+        <button class="btn btn-outline-secondary w-100 ms-2" @onclick="Reload">🔍 تحديث</button>
     </div>
 </div>
 
