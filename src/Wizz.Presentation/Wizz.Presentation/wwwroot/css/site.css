@@ -338,16 +338,16 @@ label.form-label {
 
 .ai-composer .form-control {
     flex: 1;
-    min-height: 2.5rem;
+    min-height: 2.25rem;
     border: 1px solid var(--wizz-border);
     border-left: none;
     border-radius: 0;
     background: var(--wizz-surface);
     color: var(--wizz-text);
     resize: none;
-    padding: 0.5rem 1rem;
-    font-size: 0.95rem;
-    line-height: 1.4;
+    padding: 0.375rem 0.875rem;
+    font-size: 0.9rem;
+    line-height: 1.35;
 }
 
 .ai-composer .form-control:focus {
@@ -378,8 +378,8 @@ label.form-label {
 .ai-composer .btn-group > button,
 .ai-composer .btn-group > .dropdown-toggle {
     height: 100%;
-    min-width: 44px;
-    padding: 0 0.75rem;
+    min-width: 40px;
+    padding: 0 0.625rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -425,7 +425,7 @@ label.form-label {
     border-color: var(--wizz-primary-border) !important;
     color: #ffffff !important;
     font-weight: 600;
-    min-width: 72px;
+    min-width: 64px;
 }
 
 .ai-composer .btn-send:hover:not(:disabled) {
@@ -1475,39 +1475,7 @@ html[data-theme="dark"] .form-select,
     margin-bottom: 1rem;
 }
 
-.dashboard-card.action-card .card-icon {
-    background: var(--wizz-secondary-light);
-    color: var(--wizz-secondary);
-}
-
-/* ============================================================
-   21. AI Chat — فصل أزرار الإرسال والمحدد (لا grouping)
-   ============================================================ */
-.ai-composer {
-    display: flex;
-    align-items: flex-end;
-    gap: 0.5rem;
-    margin-top: 1rem;
-}
-
-.ai-composer .form-control {
-    flex: 1;
-    min-height: 3.5rem;
-    border-radius: var(--wizz-radius-sm);
-}
-
-.ai-composer .btn-send {
-    min-width: 80px;
-    height: 3.5rem;
-    padding: 0.75rem 1.5rem;
-    border-radius: var(--wizz-radius-sm);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.ai-composer .model-selector {
-    flex-shrink: 0;
+.color: var(--wizz-secondary);
 }
 
 /* ============================================================
@@ -1527,22 +1495,23 @@ html[data-theme="dark"] .form-select,
 
 .ai-composer .form-control {
     flex: 1;
-    min-height: 3.5rem;
-    border: none;
-    border-right: 1px solid var(--wizz-border);
+    min-height: 2.25rem;
+    border: 1px solid var(--wizz-border);
+    border-left: none;
     border-radius: 0;
-    background: transparent;
+    background: var(--wizz-surface);
     color: var(--wizz-text);
     resize: none;
-    padding: 0.75rem 1rem;
-    font-size: 0.95rem;
-    line-height: 1.4;
+    padding: 0.375rem 0.875rem;
+    font-size: 0.9rem;
+    line-height: 1.35;
 }
 
 .ai-composer .form-control:focus {
     outline: none;
     box-shadow: none;
-    background: var(--wizz-surface-hover);
+    border-color: var(--wizz-primary);
+    background: var(--wizz-surface);
 }
 
 .ai-composer .form-control::placeholder {
@@ -1550,61 +1519,123 @@ html[data-theme="dark"] .form-select,
     opacity: 0.7;
 }
 
-.ai-composer .model-selector {
-    flex-shrink: 0;
-    border-right: 1px solid var(--wizz-border);
-    padding: 0.25rem;
-    background: transparent;
+.ai-composer .input-group-append {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
 }
 
-.ai-composer .btn-send {
-    flex-shrink: 0;
-    height: 3.5rem;
-    min-width: 80px;
-    padding: 0 1.5rem;
-    border: none;
-    border-radius: 0;
+.ai-composer .btn-group {
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    flex: 0 0 auto;
+}
+
+.ai-composer .btn-group > button,
+.ai-composer .btn-group > .dropdown-toggle {
+    height: 100%;
+    min-width: 40px;
+    padding: 0 0.625rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: var(--wizz-primary);
-    color: #ffffff;
-    font-weight: 600;
+    border: 1px solid var(--wizz-border);
+    background: var(--wizz-surface);
+    color: var(--wizz-text);
     transition: var(--wizz-transition);
-    white-space: nowrap;
+    border-radius: 0;
+}
+
+.ai-composer .btn-group > button:first-child,
+.ai-composer .btn-group > .dropdown-toggle:first-child {
+    border-right: none;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-top-right-radius: var(--wizz-radius-sm);
+    border-bottom-right-radius: var(--wizz-radius-sm);
+}
+
+.ai-composer .btn-group > button:last-child {
+    border-left: none;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-top-left-radius: var(--wizz-radius-sm);
+    border-bottom-left-radius: var(--wizz-radius-sm);
+}
+
+.ai-composer .btn-group > button:hover:not(:disabled),
+.ai-composer .btn-group > .dropdown-toggle:hover {
+    background: var(--wizz-primary-light);
+    color: var(--wizz-primary);
+    border-color: var(--wizz-primary);
+}
+
+.ai-composer .btn-group > button:disabled,
+.ai-composer .btn-group > .dropdown-toggle:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.ai-composer .btn-send {
+    background: var(--wizz-primary) !important;
+    border-color: var(--wizz-primary-border) !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    min-width: 64px;
 }
 
 .ai-composer .btn-send:hover:not(:disabled) {
     background: var(--wizz-primary-hover) !important;
+    border-color: var(--wizz-primary-hover) !important;
+    color: #ffffff !important;
     box-shadow: var(--wizz-shadow-hover);
 }
 
 .ai-composer .btn-send:disabled {
     background: var(--wizz-secondary) !important;
+    border-color: var(--wizz-secondary-border) !important;
     color: rgba(255, 255, 255, 0.5) !important;
-    cursor: not-allowed;
 }
 
-/* إجبار تطبيق اللون الكحلي على جميع أزرار principale — تحديدية أقوى */
-button.btn.btn-primary,
-button.wizz-btn-primary,
-.ai-composer button.btn-send,
-.btn.btn-primary {
-    background-color: var(--wizz-primary) !important;
-    border-color: var(--wizz-primary-border) !important;
-    color: #ffffff !important;
+/* dropdown menu في الـ btn-group */
+.ai-composer .dropdown-menu {
+    border: 1px solid var(--wizz-border);
+    background: var(--wizz-surface);
+    box-shadow: var(--wizz-shadow-hover);
 }
 
-button.btn.btn-primary:hover:not(:disabled),
-button.wizz-btn-primary:hover,
-.ai-composer button.btn-send:hover:not(:disabled),
-.btn.btn-primary:hover:not(:disabled) {
-    background-color: var(--wizz-primary-hover) !important;
-    border-color: var(--wizz-primary-hover) !important;
-    color: #ffffff !important;
+.ai-composer .dropdown-item {
+    color: var(--wizz-text);
+    border-radius: var(--wizz-radius-sm);
+    padding: 0.5rem 1rem;
+    transition: var(--wizz-transition);
 }
 
-/* علامات المسارات (tags) — منع overflow وعرض احترافي */
+.ai-composer .dropdown-item:hover,
+.ai-composer .dropdown-item:focus {
+    background: var(--wizz-primary-light);
+    color: var(--wizz-primary);
+}
+
+.ai-composer .dropdown-item.active {
+    background: var(--wizz-primary);
+    color: #fff;
+}
+
+.ai-composer .dropdown-divider {
+    border-color: var(--wizz-border);
+}
+
+.ai-composer .dropdown-header {
+    color: var(--wizz-text-muted);
+}
+
+.ai-composer .dropdown-item-text {
+    color: var(--wizz-text-muted);
+}
+
+/* Custom input style (wizz-input) — mantenida para compatibilidad */
 .msg-route-chip {
     display: inline-flex;
     align-items: center;
