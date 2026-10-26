@@ -14,4 +14,7 @@ public interface IProductRepository
     void Remove(Product product);
     Task<bool> ExistsBarcodeAsync(string barcode, Guid? excludeId = null, CancellationToken ct = default);
     Task<int> CountAsync(CancellationToken ct = default);
+
+    /// <summary>المنتجات (غير الخدمات) التي بلغت أو تجاوزت حد إعادة الطلب.</summary>
+    Task<IReadOnlyList<Product>> GetLowStockAsync(CancellationToken ct = default);
 }

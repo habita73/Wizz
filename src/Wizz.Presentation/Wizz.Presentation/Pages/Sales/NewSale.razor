@@ -332,7 +332,8 @@
             p.Id, p.Name, p.Barcode, p.Description, p.RetailPrice, p.WholesalePrice,
             p.IsService, p.IsActive,
             p.Units.Select(u => new Wizz.Application.DTOs.UnitOfMeasureDto(u.Id, u.Name, u.Symbol, u.BaseQuantity, u.IsBaseUnit)).ToList(),
-            p.GetBaseUnit() is { } bu ? new Wizz.Application.DTOs.UnitOfMeasureDto(bu.Id, bu.Name, bu.Symbol, bu.BaseQuantity, true) : null
+            p.GetBaseUnit() is { } bu ? new Wizz.Application.DTOs.UnitOfMeasureDto(bu.Id, bu.Name, bu.Symbol, bu.BaseQuantity, true) : null,
+            p.StockQuantity, p.ReorderLevel
         )).ToList();
 
     /// <summary>فلترة فورية في الذاكرة — لا تتطلب أي استعلام جديد ولا تُفرغ القائمة.</summary>

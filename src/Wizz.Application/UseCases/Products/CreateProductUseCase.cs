@@ -22,7 +22,8 @@ public sealed class CreateProductUseCase
                 return Result<ProductDto>.Failure("باركود مستخدم بالفعل");
         }
 
-        var product = new Product(input.Name, input.RetailPrice, input.WholesalePrice, input.IsService, input.Barcode, input.Description);
+        var product = new Product(input.Name, input.RetailPrice, input.WholesalePrice, input.IsService, input.Barcode, input.Description,
+            input.StockQuantity, input.ReorderLevel);
 
         // إضافة الوحدات
         if (input.Units != null && input.Units.Count > 0)
@@ -48,5 +49,6 @@ public sealed class CreateProductUseCase
         p.Id, p.Name, p.Barcode, p.Description, p.RetailPrice, p.WholesalePrice,
         p.IsService, p.IsActive,
         p.Units.Select(u => new UnitOfMeasureDto(u.Id, u.Name, u.Symbol, u.BaseQuantity, u.IsBaseUnit)).ToList(),
-        p.GetBaseUnit() is { } bu ? new UnitOfMeasureDto(bu.Id, bu.Name, bu.Symbol, bu.BaseQuantity, true) : null);
+        p.GetBaseUnit() is { } bu ? new UnitOfMeasureDto(bu.Id, bu.Name, bu.Symbol, bu.BaseQuantity, true) : null,
+        p.StockQuantity, p.ReorderLevel);
 }

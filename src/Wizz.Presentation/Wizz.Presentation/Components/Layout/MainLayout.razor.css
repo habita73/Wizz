@@ -10,8 +10,9 @@ main {
 }
 
 .sidebar {
-    background: var(--wizz-primary);
+    background: var(--wizz-sidebar-bg, var(--wizz-primary));
     color: var(--wizz-text-on-primary);
+    border-inline-end: 1px solid var(--wizz-sidebar-border, transparent);
     min-height: 100vh;
     transition: var(--wizz-transition);
 }

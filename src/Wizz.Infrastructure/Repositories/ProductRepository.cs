@@ -53,4 +53,20 @@ public sealed class ProductRepository : IProductRepository
 
     public async Task<int> CountAsync(CancellationToken ct = default)
         => await _db.Products.CountAsync(ct);
+
+    /// <summary>
+    /// تُنفَّذ المقارنة في الذاكرة لأن SQLite لا يدعم مقارنات decimal داخل الاستعلام.
+    /// </summary>
+    public async Task<IReadOnlyList<Product>> GetLowStockAsync(CancellationToken ct = default)
+    {
+        var products = await _db.Products.Include(p => p.Units)
+            .Where(p => !p.IsService)
+            .ToListAsync(ct);
+
+        return products
+            .Where(p => p.IsLowStock)
+            .OrderBy(p => p.StockQuantity)
+            .ThenBy(p => p.Name)
+            .ToList();
+    }
 }

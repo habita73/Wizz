@@ -46,6 +46,18 @@
     </div>
 </div>
 
+@if (LowStockCount > 0)
+{
+    <div class="stock-alert mt-2 mb-2" role="alert">
+        <WizzIcon Icon="alert" Size="20" Class="stock-alert-icon" />
+        <div class="flex-grow-1">
+            <div class="fw-bold small">تنبيه المخزون: @LowStockCount @(LowStockCount == 1 ? "منتج" : "منتجات") بلغت حد إعادة الطلب</div>
+            <div class="stock-alert-list">@LowStockNames</div>
+        </div>
+        <a href="/products?lowStock=true" class="btn btn-sm btn-outline-warning flex-shrink-0">عرض المنتجات</a>
+    </div>
+}
+
 <div class="row g-3 my-4 equal-cols">
     <div class="col-md-3">
         <div class="dashboard-card stats-card">
@@ -172,6 +184,8 @@
     private int TodayCount;
     private decimal TotalRemaining;
     private int ProductCount;
+    private int LowStockCount;
+    private string LowStockNames = "";
 
     private bool showHint;
     private DotNetObjectReference<Index>? selfRef;
@@ -197,6 +211,13 @@
         TodayCount = completed.Count;
         TotalRemaining = await SaleRepo.GetTotalRemainingAsync();
         ProductCount = await ProductRepo.CountAsync();
+
+        var lowStock = await ProductRepo.GetLowStockAsync();
+        LowStockCount = lowStock.Count;
+        LowStockNames = lowStock.Count == 0
+            ? ""
+            : string.Join("، ", lowStock.Take(3).Select(p => $"{p.Name} ({p.StockQuantity.ToString("N2")})"))
+              + (lowStock.Count > 3 ? $"، و{lowStock.Count - 3} أخرى" : "");
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

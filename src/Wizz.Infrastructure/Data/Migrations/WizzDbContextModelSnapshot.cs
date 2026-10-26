@@ -89,8 +89,14 @@ namespace Wizz.Infrastructure.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
+                    b.Property<decimal>("ReorderLevel")
+                        .HasColumnType("decimal(18,4)");
+
                     b.Property<decimal>("RetailPrice")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("StockQuantity")
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("TEXT");

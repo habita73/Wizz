@@ -20,8 +20,14 @@ public sealed record ProductDto(
     bool IsService,
     bool IsActive,
     IReadOnlyList<UnitOfMeasureDto> Units,
-    UnitOfMeasureDto? BaseUnit
-);
+    UnitOfMeasureDto? BaseUnit,
+    decimal StockQuantity = 0m,
+    decimal ReorderLevel = 0m
+)
+{
+    /// <summary>منتج (لا خدمة) بلغ أو تجاوز حد إعادة الطلب.</summary>
+    public bool IsLowStock => !IsService && ReorderLevel > 0 && StockQuantity <= ReorderLevel;
+}
 
 /// <summary>بيانات إنشاء/تحديث منتج.</summary>
 public sealed record ProductInputDto(
@@ -31,7 +37,9 @@ public sealed record ProductInputDto(
     bool IsService,
     string? Barcode,
     string? Description,
-    IReadOnlyList<UnitInputDto>? Units
+    IReadOnlyList<UnitInputDto>? Units,
+    decimal StockQuantity = 0m,
+    decimal ReorderLevel = 0m
 );
 
 /// <summary>وحدة إدخال.</summary>

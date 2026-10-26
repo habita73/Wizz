@@ -28,6 +28,8 @@ public sealed class WizzDbContext : DbContext
             b.Property(p => p.Description).HasMaxLength(1000);
             b.Property(p => p.RetailPrice).HasColumnType("decimal(18,2)");
             b.Property(p => p.WholesalePrice).HasColumnType("decimal(18,2)");
+            b.Property(p => p.StockQuantity).HasColumnType("decimal(18,4)");
+            b.Property(p => p.ReorderLevel).HasColumnType("decimal(18,4)");
             b.HasIndex(p => p.Barcode).IsUnique().HasFilter("[Barcode] IS NOT NULL");
             b.HasIndex(p => p.Name);
             b.HasMany(p => p.Units).WithOne().HasForeignKey(u => u.ProductId).OnDelete(DeleteBehavior.Cascade);

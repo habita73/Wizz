@@ -116,11 +116,11 @@ else
     <nav aria-label="صفحات">
         <ul class="pagination justify-content-center">
             <li class="page-item @(currentPage == 1 ? "disabled" : "")">
-                <a class="page-link" href="#" @onclick="() => ChangePage(currentPage - 1)">السابق</a>
+                <button type="button" class="page-link" disabled="@(currentPage == 1)" @onclick="() => ChangePage(currentPage - 1)">السابق</button>
             </li>
             <li class="page-item disabled"><span class="page-link">صفحة @currentPage من @totalPages</span></li>
             <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
-                <a class="page-link" href="#" @onclick="() => ChangePage(currentPage + 1)">التالي</a>
+                <button type="button" class="page-link" disabled="@(currentPage >= totalPages)" @onclick="() => ChangePage(currentPage + 1)">التالي</button>
             </li>
         </ul>
     </nav>

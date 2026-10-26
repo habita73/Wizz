@@ -5,14 +5,13 @@
 @inject Wizz.Application.UseCases.Products.CreateProductUseCase CreateProductUseCase
 @inject Wizz.Application.UseCases.Products.UpdateProductUseCase UpdateProductUseCase
 @inject IJSRuntime JS
-
 <h2 class="d-flex align-items-center gap-2">
     <WizzIcon Icon="package" Size="24" />
     <span>إدارة المنتجات</span>
 </h2>
 
 <div class="row mb-3">
-    <div class="col-md-6">
+    <div class="col-md-5">
         <div class="input-group">
             <input type="text" class="form-control" placeholder="بحث بالاسم أو الباركود..." @bind="searchQuery" @bind:event="oninput" @bind:after="SearchProducts" @onkeydown="OnSearchKeyDown" />
             @if (!string.IsNullOrWhiteSpace(searchQuery))
@@ -27,12 +26,19 @@
             </button>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <select class="form-select" @bind="filterActive" @bind:after="SearchProducts">
             <option value="">الكل</option>
             <option value="true">نشط فقط</option>
             <option value="false">غير نشط فقط</option>
         </select>
+    </div>
+    <div class="col-md-2">
+        <button class="btn w-100 @(lowStockOnly ? "btn-warning" : "btn-outline-warning")" @onclick="ToggleLowStockFilter"
+                title="عرض المنتجات التي بلغت حد إعادة الطلب">
+            <WizzIcon Icon="alert" Size="16" />
+            <span>مخزون منخفض</span>
+        </button>
     </div>
     <div class="col-md-3 text-end">
         <button class="btn btn-success" @onclick="NewProduct">
@@ -63,6 +69,8 @@ else
                     <th>الاسم</th>
                     <th>الباركود</th>
                     <th>النوع</th>
+                    <th>المخزون</th>
+                    <th>حد التنبيه</th>
                     <th>سعر التجزئة</th>
                     <th>سعر الجملة</th>
                     <th>الوحدة الأساسية</th>
@@ -73,10 +81,28 @@ else
             <tbody>
                 @foreach (var product in products)
                 {
-                    <tr>
+                    <tr class="@(product.IsLowStock ? "table-warning" : "")">
                         <td>@product.Name</td>
                         <td>@(product.Barcode ?? "—")</td>
                         <td>@(product.IsService ? "خدمة" : "منتج")</td>
+                        <td>
+                            @if (product.IsService)
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                            else
+                            {
+                                <span class="fw-semibold">@product.StockQuantity.ToString("N2")</span>
+                                @if (product.IsLowStock)
+                                {
+                                    <span class="badge bg-warning text-dark ms-1" title="بلغ حد إعادة الطلب">
+                                        <WizzIcon Icon="alert" Size="12" />
+                                        <span>@(product.StockQuantity <= 0 ? "نفد" : "منخفض")</span>
+                                    </span>
+                                }
+                            }
+                        </td>
+                        <td>@(product.IsService ? "—" : product.ReorderLevel.ToString("N2"))</td>
                         <td>@product.RetailPrice.ToString("N2") د.ج</td>
                         <td>@product.WholesalePrice.ToString("N2") د.ج</td>
                         <td>@(product.BaseUnit?.Symbol ?? "—")</td>
@@ -104,11 +130,11 @@ else
     <nav aria-label="صفحات">
         <ul class="pagination justify-content-center">
             <li class="page-item @(currentPage == 1 ? "disabled" : "")">
-                <a class="page-link" href="#" @onclick="() => ChangePage(currentPage - 1)">السابق</a>
+                <button type="button" class="page-link" disabled="@(currentPage == 1)" @onclick="() => ChangePage(currentPage - 1)">السابق</button>
             </li>
             <li class="page-item disabled"><span class="page-link">صفحة @currentPage من @totalPages</span></li>
             <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
-                <a class="page-link" href="#" @onclick="() => ChangePage(currentPage + 1)">التالي</a>
+                <button type="button" class="page-link" disabled="@(currentPage == totalPages)" @onclick="() => ChangePage(currentPage + 1)">التالي</button>
             </li>
         </ul>
     </nav>
@@ -159,6 +185,21 @@ else
                             </div>
                         </div>
                         <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">الكمية في المخزون</label>
+                                <input type="number" step="0.01" min="0" class="form-control" @bind="form.StockQuantity" disabled="@form.IsService" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">حد التنبيه (إعادة الطلب)</label>
+                                <input type="number" step="0.01" min="0" class="form-control" @bind="form.ReorderLevel" disabled="@form.IsService" />
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <div class="form-text mb-2">
+                                    ينبّهك النظام عندما تصبح الكمية أقل من أو تساوي حد التنبيه. لا يُخصم المخزون تلقائياً عند البيع.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
                             <div class="col-md-12">
                                 <label class="form-label">الوحدات</label>
                                 @foreach (var unit in form.Units)
@@ -197,10 +238,15 @@ else
     private List<Wizz.Application.DTOs.ProductDto> products = new();
     private string searchQuery = "";
     private bool? filterActive = null;
+    private bool lowStockOnly = false;
     private int currentPage = 1;
     private int pageSize = 20;
     private int totalPages = 1;
     private int filteredCount;
+
+    /// <summary>فلتر قادم من الرابط، مثل /products?lowStock=true من بطاقة لوحة التحكم.</summary>
+    [SupplyParameterFromQuery(Name = "lowStock")]
+    public bool? LowStockQuery { get; set; }
 
     private bool showCreateModal = false;
     private Wizz.Application.DTOs.ProductDto? editingProduct = null;
@@ -209,6 +255,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        lowStockOnly = LowStockQuery == true;
         await LoadProducts();
     }
 
@@ -220,7 +267,8 @@ else
             p.Id, p.Name, p.Barcode, p.Description, p.RetailPrice, p.WholesalePrice,
             p.IsService, p.IsActive,
             p.Units.Select(u => new Wizz.Application.DTOs.UnitOfMeasureDto(u.Id, u.Name, u.Symbol, u.BaseQuantity, u.IsBaseUnit)).ToList(),
-            p.GetBaseUnit() is { } bu ? new Wizz.Application.DTOs.UnitOfMeasureDto(bu.Id, bu.Name, bu.Symbol, bu.BaseQuantity, true) : null
+            p.GetBaseUnit() is { } bu ? new Wizz.Application.DTOs.UnitOfMeasureDto(bu.Id, bu.Name, bu.Symbol, bu.BaseQuantity, true) : null,
+            p.StockQuantity, p.ReorderLevel
         )).OrderBy(p => p.Name).ToList();
 
         ApplyFilters();
@@ -241,6 +289,11 @@ else
         if (filterActive.HasValue)
         {
             filtered = filtered.Where(p => p.IsActive == filterActive.Value);
+        }
+
+        if (lowStockOnly)
+        {
+            filtered = filtered.Where(p => p.IsLowStock);
         }
 
         var list = filtered.ToList();
@@ -276,6 +329,13 @@ else
         ApplyFilters();
     }
 
+    private void ToggleLowStockFilter()
+    {
+        lowStockOnly = !lowStockOnly;
+        currentPage = 1;
+        ApplyFilters();
+    }
+
     private async Task ChangePage(int page)
     {
         if (page >= 1 && page <= totalPages)
@@ -305,6 +365,8 @@ else
             RetailPrice = product.RetailPrice,
             WholesalePrice = product.WholesalePrice,
             IsService = product.IsService,
+            StockQuantity = product.StockQuantity,
+            ReorderLevel = product.ReorderLevel,
             Units = product.Units.Select(u => new UnitForm { Name = u.Name, Symbol = u.Symbol, BaseQuantity = u.BaseQuantity }).ToList()
         };
         if (form.Units.Count == 0) form.Units.Add(new UnitForm { Name = "قطعة", Symbol = "قطعة", BaseQuantity = 1 });
@@ -319,7 +381,8 @@ else
             var input = new Wizz.Application.DTOs.ProductInputDto(
                 form.Name, form.RetailPrice, form.WholesalePrice,
                 form.IsService, form.Barcode, form.Description,
-                form.Units.Select(u => new Wizz.Application.DTOs.UnitInputDto(u.Name, u.Symbol, u.BaseQuantity)).ToList()
+                form.Units.Select(u => new Wizz.Application.DTOs.UnitInputDto(u.Name, u.Symbol, u.BaseQuantity)).ToList(),
+                form.StockQuantity, form.ReorderLevel
             );
 
             if (editingProduct != null)
@@ -395,6 +458,8 @@ else
         public decimal RetailPrice { get; set; }
         public decimal WholesalePrice { get; set; }
         public bool IsService { get; set; }
+        public decimal StockQuantity { get; set; }
+        public decimal ReorderLevel { get; set; }
         public List<UnitForm> Units { get; set; } = new();
     }
 

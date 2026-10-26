@@ -41,5 +41,6 @@ public sealed class SearchProductsUseCase
         p.Id, p.Name, p.Barcode, p.Description, p.RetailPrice, p.WholesalePrice,
         p.IsService, p.IsActive,
         p.Units.Select(u => new UnitOfMeasureDto(u.Id, u.Name, u.Symbol, u.BaseQuantity, u.IsBaseUnit)).ToList(),
-        p.GetBaseUnit() is { } bu ? new UnitOfMeasureDto(bu.Id, bu.Name, bu.Symbol, bu.BaseQuantity, true) : null);
+        p.GetBaseUnit() is { } bu ? new UnitOfMeasureDto(bu.Id, bu.Name, bu.Symbol, bu.BaseQuantity, true) : null,
+        p.StockQuantity, p.ReorderLevel);
 }

@@ -26,7 +26,8 @@ public sealed class UpdateProductUseCase
                 return Result<ProductDto>.Failure("باركود مستخدم بالفعل");
         }
 
-        product.UpdateDetails(input.Name, input.RetailPrice, input.WholesalePrice, input.IsService, input.Barcode, input.Description);
+        product.UpdateDetails(input.Name, input.RetailPrice, input.WholesalePrice, product.IsActive, input.IsService, input.Barcode, input.Description,
+            input.StockQuantity, input.ReorderLevel);
         _unitOfWork.Products.Update(product);
         await _unitOfWork.SaveChangesAsync(ct);
 
@@ -37,5 +38,6 @@ public sealed class UpdateProductUseCase
         p.Id, p.Name, p.Barcode, p.Description, p.RetailPrice, p.WholesalePrice,
         p.IsService, p.IsActive,
         p.Units.Select(u => new UnitOfMeasureDto(u.Id, u.Name, u.Symbol, u.BaseQuantity, u.IsBaseUnit)).ToList(),
-        p.GetBaseUnit() is { } bu ? new UnitOfMeasureDto(bu.Id, bu.Name, bu.Symbol, bu.BaseQuantity, true) : null);
+        p.GetBaseUnit() is { } bu ? new UnitOfMeasureDto(bu.Id, bu.Name, bu.Symbol, bu.BaseQuantity, true) : null,
+        p.StockQuantity, p.ReorderLevel);
 }

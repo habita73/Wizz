@@ -84,7 +84,7 @@
 }
 
 .nav-item ::deep .nav-link {
-    color: rgba(255, 255, 255, 0.85) !important;
+    color: var(--wizz-sidebar-link, rgba(255, 255, 255, 0.85)) !important;
     background: transparent;
     border: 1px solid transparent;
     border-radius: var(--wizz-radius-sm);
@@ -99,15 +99,15 @@
 }
 
 .nav-item ::deep a.active {
-    background-color: var(--wizz-primary-hover) !important;
-    color: #ffffff !important;
+    background-color: var(--wizz-sidebar-active-bg, var(--wizz-primary-hover)) !important;
+    color: var(--wizz-sidebar-active-text, #ffffff) !important;
     font-weight: 600;
-    border: 1px solid var(--wizz-text-on-primary) !important;
+    border: 1px solid var(--wizz-sidebar-active-border, var(--wizz-text-on-primary)) !important;
 }
 
 .nav-item ::deep .nav-link:hover {
-    background-color: var(--wizz-primary-light) !important;
-    color: #ffffff !important;
+    background-color: var(--wizz-sidebar-hover-bg, var(--wizz-primary-light)) !important;
+    color: var(--wizz-sidebar-link-hover, #ffffff) !important;
 }
 
 .nav-scrollable {
