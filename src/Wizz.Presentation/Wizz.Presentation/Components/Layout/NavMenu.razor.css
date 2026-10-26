@@ -22,7 +22,9 @@
 
 .top-row {
     min-height: 3.5rem;
-    background-color: var(--wizz-surface);
+    /* خلفية شفافة لتأخذ لون الشريط الجانبي الكحلي بدل شريط أبيض يُخفي الشعار */
+    background-color: transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.10);
 }
 
 .navbar-brand {
