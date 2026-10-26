@@ -151,15 +151,15 @@ else
                     <button type="button" class="btn-close" @onclick="CloseModal"></button>
                 </div>
                 <div class="modal-body">
-                    <form>
+                    <form id="productForm" @onsubmit="SaveProduct" @onsubmit:preventDefault>
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">الاسم <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" @bind="form.Name" required />
+                                <input type="text" class="form-control" @bind="form.Name" @bind:event="oninput" required />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">الباركود</label>
-                                <input type="text" class="form-control" @bind="form.Barcode" />
+                                <input type="text" class="form-control" @bind="form.Barcode" @bind:event="oninput" />
                             </div>
                         </div>
                         <div class="row mb-3">
@@ -171,11 +171,11 @@ else
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <label class="form-label">سعر التجزئة <span class="text-danger">*</span></label>
-                                <input type="number" step="0.01" min="0" class="form-control" @bind="form.RetailPrice" required />
+                                <input type="number" step="0.01" min="0" class="form-control" @bind="form.RetailPrice" @bind:event="oninput" required />
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">سعر الجملة <span class="text-danger">*</span></label>
-                                <input type="number" step="0.01" min="0" class="form-control" @bind="form.WholesalePrice" required />
+                                <input type="number" step="0.01" min="0" class="form-control" @bind="form.WholesalePrice" @bind:event="oninput" required />
                             </div>
                             <div class="col-md-4">
                                 <div class="form-check mt-4">
@@ -187,11 +187,11 @@ else
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <label class="form-label">الكمية في المخزون</label>
-                                <input type="number" step="0.01" min="0" class="form-control" @bind="form.StockQuantity" disabled="@form.IsService" />
+                                <input type="number" step="0.01" min="0" class="form-control" @bind="form.StockQuantity" @bind:event="oninput" disabled="@form.IsService" />
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">حد التنبيه (إعادة الطلب)</label>
-                                <input type="number" step="0.01" min="0" class="form-control" @bind="form.ReorderLevel" disabled="@form.IsService" />
+                                <input type="number" step="0.01" min="0" class="form-control" @bind="form.ReorderLevel" @bind:event="oninput" disabled="@form.IsService" />
                             </div>
                             <div class="col-md-4 d-flex align-items-end">
                                 <div class="form-text mb-2">
@@ -205,9 +205,9 @@ else
                                 @foreach (var unit in form.Units)
                                 {
                                     <div class="input-group mb-2">
-                                        <input type="text" class="form-control" placeholder="اسم الوحدة (مثال: كجم)" @bind="unit.Name" />
-                                        <input type="text" class="form-control" placeholder="الرمز (مثال: كجم)" @bind="unit.Symbol" style="width: 80px;" />
-                                        <input type="number" step="0.001" min="0.001" class="form-control" placeholder="الكمية الأساسية" @bind="unit.BaseQuantity" style="width: 100px;" />
+                                        <input type="text" class="form-control" placeholder="اسم الوحدة (مثال: كجم)" @bind="unit.Name" @bind:event="oninput" />
+                                        <input type="text" class="form-control" placeholder="الرمز (مثال: كجم)" @bind="unit.Symbol" @bind:event="oninput" style="width: 80px;" />
+                                        <input type="number" step="0.001" min="0.001" class="form-control" placeholder="الكمية الأساسية" @bind="unit.BaseQuantity" @bind:event="oninput" style="width: 100px;" />
                                         <button class="btn btn-outline-danger" type="button" @onclick="() => form.Units.Remove(unit)">
                                             <WizzIcon Icon="x" Size="14" Title="حذف الوحدة" />
                                         </button>
@@ -222,8 +222,8 @@ else
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="CloseModal">إلغاء</button>
-                    <button class="btn btn-primary" @onclick="SaveProduct" disabled="@saving">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">إلغاء</button>
+                    <button type="submit" form="productForm" class="btn btn-primary" disabled="@saving">
                         @if (saving) { <span class="spinner-border spinner-border-sm me-2"></span> }
                         @(editingProduct != null ? "حفظ التغييرات" : "إنشاء المنتج")
                     </button>
