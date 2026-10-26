@@ -8,7 +8,12 @@
 @inject Wizz.Application.UseCases.Receipt.GenerateReceiptUseCase GenerateReceiptUseCase
 @inject IJSRuntime JS
 
-<h2>🛒 المبيعات</h2>
+<h2 class="d-flex align-items-center gap-2">
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .49.598l-1 5a.5.5 0 0 1-.465.401l-9.397.472L4.415 11H13a.5.5 0 0 1 0 1H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5M3.102 4l.84 4.479 9.144-.459L13.89 4zM5 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4m7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4m-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2m7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2" />
+    </svg>
+    المبيعات
+</h2>
 
 <div class="row mb-3 g-2">
     <div class="col-md-3">
@@ -29,9 +34,20 @@
             <option value="3">ملغية</option>
         </select>
     </div>
-    <div class="col-md-3 d-flex align-items-end">
-        <a href="/sales/new" class="btn btn-success w-100">➕ بيع جديد</a>
-        <button class="btn btn-outline-secondary w-100 ms-2" @onclick="Reload">🔍 تحديث</button>
+    <div class="col-md-3 d-flex align-items-end gap-2">
+        <a href="/sales/new" class="btn btn-success w-100 d-inline-flex align-items-center justify-content-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                <path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2" />
+            </svg>
+            بيع جديد
+        </a>
+        <button class="btn btn-outline-secondary w-100 d-inline-flex align-items-center justify-content-center gap-1" @onclick="Reload">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z" />
+                <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466" />
+            </svg>
+            تحديث
+        </button>
     </div>
 </div>
 

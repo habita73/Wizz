@@ -1,15 +1,13 @@
 @namespace Wizz.Presentation.Pages.AI
 @inject IJSRuntime JS
 
-<div class="dropdown position-relative">
-    <button type="button" class="h-100 px-3 d-flex align-items-center gap-1"
+<div class="dropdown dropup position-relative">
+    <button type="button" class="h-100 px-3 d-flex align-items-center gap-1 dropdown-toggle"
             title="@($"الجهة الحالية: {CurrentLabel}{(RouteMode == "local" && !string.IsNullOrWhiteSpace(SelectedLocalModel) ? $" — {SelectedLocalModel}" : string.Empty)} | اضغط للتبديل")"
             aria-label="اختيار الجهة المُجيبة — الحالية: @CurrentLabel"
             aria-haspopup="true"
-            data-bs-auto-close="outside"
             @onclick:preventDefault="true"
-            @onclick="@(() => ToggleDropdown())"
-            @onkeydown="@(() => { })">
+            @onclick="@(() => ToggleDropdown())">
         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
             <path d="M5 0a.5.5 0 0 1 .5.5V2h1V.5a.5.5 0 0 1 1 0V2h1V.5a.5.5 0 0 1 1 0V2A2.5 2.5 0 0 1 11 4.5h1.5a.5.5 0 0 1 0 1H11v1h1.5a.5.5 0 0 1 0 1H11v1h1.5a.5.5 0 0 1 0 1H11v1h1.5a.5.5 0 0 1 0 1H11A2.5 2.5 0 0 1 8.5 14v1.5a.5.5 0 0 1-1 0V14h-1v1.5a.5.5 0 0 1-1 0V14h-1v1.5a.5.5 0 0 1-1 0V14A2.5 2.5 0 0 1 1 11.5H.5a.5.5 0 0 1 0-1H1V9.5H.5a.5.5 0 0 1 0-1H1V7.5H.5a.5.5 0 0 1 0-1H1V5.5H.5a.5.5 0 0 1 0-1H1A2.5 2.5 0 0 1 3.5 2V.5a.5.5 0 0 1 .5-.5zM3.5 3A1.5 1.5 0 0 0 2 4.5v7A1.5 1.5 0 0 0 3.5 13h7a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 10.5 3h-7z" />
             <path d="M4 4h8v8H4z" fill="none" />
@@ -59,7 +57,17 @@
                         aria-label="تحديث قائمة النماذج المثبتة"
                         @onclick="RefreshModels"
                         disabled="@LoadingModels">
-                    @(LoadingModels ? "…" : "🔄")
+                    @if (LoadingModels)
+                    {
+                        <span>…</span>
+                    }
+                    else
+                    {
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                            <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z" />
+                            <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z" />
+                        </svg>
+                    }
                 </button>
             </div>
             @if (AvailableModels.Count > 0)
@@ -110,6 +118,47 @@
 
     private bool _isOpen;
 
+    /// <summary>يشغّل/يغلق قائمة اختيار الجهة (Bootstrap JS غير محمّل، لذا نتحكم بالصنف show).</summary>
+    private async Task ToggleDropdown()
+    {
+        _isOpen = !_isOpen;
+        try
+        {
+            await JS.InvokeVoidAsync("wizzAiMemory.dropdown.toggle", _isOpen);
+        }
+        catch (JSException)
+        {
+            // لا نُعطّل الواجهة إن تعذّر تحميل السكربت.
+        }
+    }
+
+    /// <summary>يغلق القائمة فوراً بعد الاختيار.</summary>
+    private async Task CloseDropdown()
+    {
+        _isOpen = false;
+        try
+        {
+            await JS.InvokeVoidAsync("wizzAiMemory.dropdown.closeAll");
+        }
+        catch (JSException)
+        {
+            // تجاهل
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            await JS.InvokeVoidAsync("wizzAiMemory.initDropdownCloseOnClickOutside");
+        }
+        catch (JSException)
+        {
+            // تجاهل
+        }
+    }
+
     /// <summary>اسم الاختيار الحالي كما يظهر على الزر وفي رأس القائمة.</summary>
     private string CurrentLabel => RouteMode switch
     {
@@ -129,22 +178,18 @@
         new("cloud", "السحابي", "", !CloudAvailable),
     };
 
-    private async Task ToggleDropdown()
-    {
-        _isOpen = !_isOpen;
-        await JS.InvokeVoidAsync("wizzAiMemory.dropdown.toggle", _isOpen);
-    }
-
     private async Task SelectRoute(string value)
     {
         RouteMode = value;
         await RouteModeChanged.InvokeAsync(value);
+        await CloseDropdown();
     }
 
     private async Task SelectLocalModel(string model)
     {
         SelectedLocalModel = model;
         await SelectedLocalModelChanged.InvokeAsync(model);
+        await CloseDropdown();
     }
 
     /// <summary>يطلب تحديث قائمة النماذج المثبتة (زر مصغّر 🔄).</summary>

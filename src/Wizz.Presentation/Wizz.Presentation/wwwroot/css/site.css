@@ -327,157 +327,6 @@ label.form-label {
     border-bottom-left-radius: 0;
 }
 
-/* ============================================================
-   AI Composer — input-group مع btn-group موحد
-   ============================================================ */
-.ai-composer {
-    display: flex;
-    align-items: stretch;
-    gap: 0;
-}
-
-.ai-composer .form-control {
-    flex: 1;
-    min-height: 2.25rem;
-    border: 1px solid var(--wizz-border);
-    border-left: none;
-    border-radius: 0;
-    background: var(--wizz-surface);
-    color: var(--wizz-text);
-    resize: none;
-    padding: 0.375rem 0.875rem;
-    font-size: 0.9rem;
-    line-height: 1.35;
-}
-
-.ai-composer .form-control:focus {
-    outline: none;
-    box-shadow: none;
-    border-color: var(--wizz-primary);
-    background: var(--wizz-surface);
-}
-
-.ai-composer .form-control::placeholder {
-    color: var(--wizz-text-muted);
-    opacity: 0.7;
-}
-
-.ai-composer .input-group-append {
-    display: flex;
-    align-items: stretch;
-    gap: 0;
-}
-
-.ai-composer .btn-group {
-    display: flex;
-    flex-direction: row;
-    gap: 0;
-    flex: 0 0 auto;
-}
-
-.ai-composer .btn-group > button,
-.ai-composer .btn-group > .dropdown-toggle {
-    height: 100%;
-    min-width: 40px;
-    padding: 0 0.625rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--wizz-border);
-    background: var(--wizz-surface);
-    color: var(--wizz-text);
-    transition: var(--wizz-transition);
-    border-radius: 0;
-}
-
-.ai-composer .btn-group > button:first-child,
-.ai-composer .btn-group > .dropdown-toggle:first-child {
-    border-right: none;
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-    border-top-right-radius: var(--wizz-radius-sm);
-    border-bottom-right-radius: var(--wizz-radius-sm);
-}
-
-.ai-composer .btn-group > button:last-child {
-    border-left: none;
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-    border-top-left-radius: var(--wizz-radius-sm);
-    border-bottom-left-radius: var(--wizz-radius-sm);
-}
-
-.ai-composer .btn-group > button:hover:not(:disabled),
-.ai-composer .btn-group > .dropdown-toggle:hover {
-    background: var(--wizz-primary-light);
-    color: var(--wizz-primary);
-    border-color: var(--wizz-primary);
-}
-
-.ai-composer .btn-group > button:disabled,
-.ai-composer .btn-group > .dropdown-toggle:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.ai-composer .btn-send {
-    background: var(--wizz-primary) !important;
-    border-color: var(--wizz-primary-border) !important;
-    color: #ffffff !important;
-    font-weight: 600;
-    min-width: 64px;
-}
-
-.ai-composer .btn-send:hover:not(:disabled) {
-    background: var(--wizz-primary-hover) !important;
-    border-color: var(--wizz-primary-hover) !important;
-    color: #ffffff !important;
-    box-shadow: var(--wizz-shadow-hover);
-}
-
-.ai-composer .btn-send:disabled {
-    background: var(--wizz-secondary) !important;
-    border-color: var(--wizz-secondary-border) !important;
-    color: rgba(255, 255, 255, 0.5) !important;
-}
-
-/* dropdown menu في الـ btn-group */
-.ai-composer .dropdown-menu {
-    border: 1px solid var(--wizz-border);
-    background: var(--wizz-surface);
-    box-shadow: var(--wizz-shadow-hover);
-}
-
-.ai-composer .dropdown-item {
-    color: var(--wizz-text);
-    border-radius: var(--wizz-radius-sm);
-    padding: 0.5rem 1rem;
-    transition: var(--wizz-transition);
-}
-
-.ai-composer .dropdown-item:hover,
-.ai-composer .dropdown-item:focus {
-    background: var(--wizz-primary-light);
-    color: var(--wizz-primary);
-}
-
-.ai-composer .dropdown-item.active {
-    background: var(--wizz-primary);
-    color: #fff;
-}
-
-.ai-composer .dropdown-divider {
-    border-color: var(--wizz-border);
-}
-
-.ai-composer .dropdown-header {
-    color: var(--wizz-text-muted);
-}
-
-.ai-composer .dropdown-item-text {
-    color: var(--wizz-text-muted);
-}
-
 /* Custom input style (wizz-input) — mantenida para compatibilidad */
 .wizz-input {
     border-radius: var(--wizz-radius-sm);
@@ -1475,9 +1324,6 @@ html[data-theme="dark"] .form-select,
     margin-bottom: 1rem;
 }
 
-.color: var(--wizz-secondary);
-}
-
 /* ============================================================
    21. AI Chat — أزرار الإرسال والمحدد مجمعة في صندوق واحد
    ============================================================ */
@@ -1490,7 +1336,7 @@ html[data-theme="dark"] .form-select,
     border: 1px solid var(--wizz-border);
     border-radius: var(--wizz-radius-sm);
     box-shadow: var(--wizz-shadow);
-    overflow: hidden;
+    /* بلا overflow: hidden — وإلا انقصّت قائمة اختيار الجهة المُنسدلة */
 }
 
 .ai-composer .form-control {
@@ -1605,6 +1451,15 @@ html[data-theme="dark"] .form-select,
     box-shadow: var(--wizz-shadow-hover);
 }
 
+/* صندوق الكتابة أسفل الصفحة — لذلك تُفتح القائمة للأعلى بدل الأسفل */
+.ai-composer .dropdown.dropup .dropdown-menu {
+    top: auto;
+    bottom: calc(100% + 0.4rem);
+    margin: 0;
+    max-height: 55vh;
+    overflow-y: auto;
+}
+
 .ai-composer .dropdown-item {
     color: var(--wizz-text);
     border-radius: var(--wizz-radius-sm);
@@ -1635,7 +1490,7 @@ html[data-theme="dark"] .form-select,
     color: var(--wizz-text-muted);
 }
 
-/* Custom input style (wizz-input) — mantenida para compatibilidad */
+/* شارة الجهة المُجيبة التي أجابت عن الرسالة (لا تتجاوز عرض الفقاعة) */
 .msg-route-chip {
     display: inline-flex;
     align-items: center;

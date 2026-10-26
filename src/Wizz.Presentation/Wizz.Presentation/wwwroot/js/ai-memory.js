@@ -100,12 +100,12 @@ window.wizzAiMemory = {
         catch { return false; }
     },
 
-    // Dropdown toggle for ModelSelectorPopover
+    // قائمة اختيار الجهة المُجيبة في مساعد الذكاء الاصطناعي.
+    // Bootstrap JS غير محمّل في التطبيق، لذا نتحكم بفتح/إغلاق القائمة يدوياً عبر صنف show.
     dropdown: {
         toggle: function (show) {
             try {
-                const menus = document.querySelectorAll('.dropdown-menu');
-                menus.forEach(menu => {
+                document.querySelectorAll('.dropdown-menu').forEach(menu => {
                     if (show) {
                         menu.classList.add('show');
                     } else {
@@ -113,8 +113,37 @@ window.wizzAiMemory = {
                     }
                 });
             } catch {
+                // تجاهل الأخطاء — لا نُعطّل الواجهة.
+            }
+        },
+        closeAll: function () {
+            try {
+                document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
+                    menu.classList.remove('show');
+                });
+            } catch {
                 // تجاهل الأخطاء
             }
         }
+    },
+
+    // يُسجَّل مرة واحدة فقط: إغلاق القائمة عند النقر خارجها أو الضغط على Escape.
+    initDropdownCloseOnClickOutside: function () {
+        if (window.wizzAiMemory._clickOutsideBound) return;
+        window.wizzAiMemory._clickOutsideBound = true;
+
+        document.addEventListener('click', function (event) {
+            document.querySelectorAll('.dropdown').forEach(dropdown => {
+                if (dropdown.contains(event.target)) return;
+                const menu = dropdown.querySelector('.dropdown-menu');
+                if (menu) menu.classList.remove('show');
+            });
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                window.wizzAiMemory.dropdown.closeAll();
+            }
+        });
     }
 };
