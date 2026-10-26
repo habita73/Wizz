@@ -24,7 +24,9 @@
                 <h5 class="mb-0">إضافة منتجات</h5>
                 <div class="input-group" style="max-width: 360px;">
                     <input type="text" @bind="searchQuery" @bind:event="oninput" @bind:after="ApplyFilter"
-                           placeholder="بحث بالاسم أو الباركود..." class="form-control" @onkeydown="OnSearchKeyDown" />
+                           @ref="searchInput"
+                           placeholder="بحث بالاسم أو الباركود… (Enter إضافة · F2 مسح)"
+                           class="form-control" @onkeydown="OnSearchKeyDown" />
                     <button class="btn btn-outline-secondary" @onclick="ScanBarcode" title="مسح باركود (F2)" aria-label="مسح باركود">
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
                             <path d="M1 1.5A.5.5 0 0 1 1.5 1H3a.5.5 0 0 1 0 1H2v1a.5.5 0 0 1-1 0zm14 0a.5.5 0 0 0-.5-.5H13a.5.5 0 0 0 0 1h1v1a.5.5 0 0 0 1 0zM1 13.5a.5.5 0 0 0 .5.5H3a.5.5 0 0 0 0-1H2v-1a.5.5 0 0 0-1 0zm14 0a.5.5 0 0 1-.5.5H13a.5.5 0 0 1 0-1h1v-1a.5.5 0 0 1 1 0zM3 4h10v8H3z" />
@@ -53,7 +55,10 @@
 
                 @if (!string.IsNullOrWhiteSpace(justAdded))
                 {
-                    <div class="alert alert-success py-1 px-2 small mb-2">✅ تمت إضافة «@justAdded» إلى السلة.</div>
+                    <div class="alert alert-success py-1 px-2 small mb-2 d-flex align-items-center gap-2">
+                        <WizzIcon Icon="check-circle" Size="16" />
+                        <span>تمت إضافة «@justAdded» إلى السلة.</span>
+                    </div>
                 }
 
                 @if (filteredProducts.Count == 0)
@@ -133,8 +138,8 @@
                                         </td>
                                         <td class="text-end fw-bold">@item.LineTotal.ToString("N2") د.ج</td>
                                         <td class="text-end">
-                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveFromCart(item)">
-                                                🗑️
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveFromCart(item)" title="حذف من السلة">
+                                                <WizzIcon Icon="trash" Size="14" Title="حذف من السلة" />
                                             </button>
                                         </td>
                                     </tr>
@@ -168,7 +173,7 @@
                 <div class="mb-3">
                     <label class="form-label">الخصم</label>
                     <input type="number" step="0.01" min="0" max="@Subtotal" class="form-control"
-                           @bind="discount" @bind:event="oninput" />
+                           @bind="discount" @bind:event="oninput" @onkeydown="OnFormKeyDown" />
                     @if (discount > Subtotal)
                     {
                         <div class="text-danger small mt-1">الخصم لا يمكن أن يتجاوز المجموع الفرعي.</div>
@@ -195,7 +200,7 @@
                 <div class="mb-3">
                     <label class="form-label">المبلغ المدفوع</label>
                     <input type="number" step="0.01" min="0" class="form-control form-control-lg fw-bold"
-                           @bind="paidAmount" @bind:event="oninput" />
+                           @bind="paidAmount" @bind:event="oninput" @onkeydown="OnFormKeyDown" />
                     @if (Remaining > 0)
                     {
                         <div class="text-danger small mt-1">المتبقي: @Remaining.ToString("N2") د.ج</div>
@@ -210,9 +215,13 @@
                 {
                     <div class="mb-3">
                         <label class="form-label">تاريخ الاستحقاق</label>
-                        <input type="date" class="form-control" @bind="dueDate" />
+                        <input type="date" class="form-control" @bind="dueDate" @onkeydown="OnFormKeyDown" />
                     </div>
                 }
+
+                <div class="small text-muted mb-2">
+                    <kbd>Enter</kbd> لإتمام البيع · <kbd>Esc</kbd> لمسح البحث · <kbd>F2</kbd> لمسح الباركود
+                </div>
 
                 <div class="d-grid gap-2">
                     <button class="btn btn-success btn-lg" @onclick="CompleteSale" disabled="@(!CanCompleteSale || savingSale)">
@@ -243,6 +252,7 @@
 
 @code {
     private string searchQuery = "";
+    private ElementReference searchInput;
     private List<Wizz.Application.DTOs.ProductDto> allProducts = new();
     private List<Wizz.Application.DTOs.ProductDto> filteredProducts = new();
     private string? justAdded;
@@ -272,6 +282,36 @@
     {
         await ResolveCashierAsync();
         await LoadInitialProducts();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await FocusSearchAsync();
+        }
+    }
+
+    /// <summary>يعيد المؤشر إلى حقل البحث — أساس العمل بالباركود ولوحة المفاتيح.</summary>
+    private async Task FocusSearchAsync()
+    {
+        try
+        {
+            await searchInput.FocusAsync();
+        }
+        catch
+        {
+            // الحقل غير مرسوم بعد — لا نُفشل الصفحة.
+        }
+    }
+
+    /// <summary>Enter في حقول الدفع: تنفيذ الإجراء الافتراضي (إتمام البيع) عند اكتمال الشروط.</summary>
+    private async Task OnFormKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && CanCompleteSale && !savingSale)
+        {
+            await CompleteSale();
+        }
     }
 
     private async Task ResolveCashierAsync()
@@ -332,10 +372,14 @@
             var target = barcodeMatch ?? (filteredProducts.Count == 1 ? filteredProducts[0] : null);
             if (target != null)
             {
-                AddToCart(target);
+                await AddToCart(target);
             }
             ApplyFilter();
-            await Task.CompletedTask;
+        }
+        else if (e.Key == "Escape")
+        {
+            ClearFilter();
+            await FocusSearchAsync();
         }
         else if (e.Key == "F2")
         {
@@ -356,12 +400,12 @@
         var match = filteredProducts.FirstOrDefault();
         if (match != null)
         {
-            AddToCart(match);
+            await AddToCart(match);
         }
         StateHasChanged();
     }
 
-    private void AddToCart(Wizz.Application.DTOs.ProductDto product)
+    private async Task AddToCart(Wizz.Application.DTOs.ProductDto product)
     {
         var existing = cartItems.FirstOrDefault(c => c.ProductId == product.Id && !c.IsWholesale);
         if (existing != null)
@@ -392,6 +436,9 @@
         searchQuery = "";
         ApplyFilter();
         StateHasChanged();
+
+        // المؤشر يعود للبحث تلقائياً — يسمح بتمرير منتجات متتالية بلا فأرة.
+        await FocusSearchAsync();
     }
 
     private void UpdateCartItem(CartItem item)

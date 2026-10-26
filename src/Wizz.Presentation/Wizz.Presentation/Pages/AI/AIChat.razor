@@ -13,7 +13,7 @@
 @inject RouteDecisionLog DecisionLog
 @inject IJSRuntime JS
 
-<h2>🤖 مساعد Wizz الذكي</h2>
+<h2 class="d-flex align-items-center gap-2"><WizzIcon Icon="brain" Size="24" /><span>مساعد Wizz الذكي</span></h2>
 <p class="text-muted">
     يعمل المساعد المدمج دائماً وبسرعة وبدون إنترنت. عند توفر نموذج محلي أو سحابي مجاني، يمكن للموجه اختيار الأنسب لسؤالك.
 </p>
@@ -22,11 +22,12 @@
     <div class="col-lg-8">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <h5 class="mb-0">💬 المحادثة</h5>
+                <h5 class="mb-0 d-inline-flex align-items-center gap-2"><WizzIcon Icon="message" Size="18" /><span>المحادثة</span></h5>
                 <div class="d-flex gap-2 align-items-center">
-                    <span class="badge bg-success" title="يعمل دون نموذج أو إنترنت">⚡ المدمج جاهز</span>
+                    <span class="badge bg-success" title="يعمل دون نموذج أو إنترنت"><WizzIcon Icon="zap" Size="12" /> المدمج جاهز</span>
                     <span class="badge @(routeStatus.RouteCount > 1 ? "bg-primary" : "bg-secondary")">
-                        @(routeStatus.RouteCount > 1 ? $@"🔀 {routeStatus.RouteCount} مسار" : "🔀 مسار واحد")
+                        <WizzIcon Icon="route" Size="12" />
+                        @(routeStatus.RouteCount > 1 ? $"{routeStatus.RouteCount} مسار" : "مسار واحد")
                     </span>
                 </div>
             </div>
@@ -146,7 +147,7 @@
                         <span>
                             المساعد المدمج يجيب فوراً من بيانات متجرك.
                             <span class="text-muted ms-1"
-                                  title="الأسئلة الحرة (شرح، توصيات، صياغة نصوص) تحتاج نموذجاً محلياً أو سحابياً — بدّل الجهة من محدد الجهة داخل صندوق الإدخال، أو فعّل السحابة من الإعدادات.">ℹ️</span>
+                                  title="الأسئلة الحرة (شرح، توصيات، صياغة نصوص) تحتاج نموذجاً محلياً أو سحابياً — بدّل الجهة من محدد الجهة داخل صندوق الإدخال، أو فعّل السحابة من الإعدادات."><WizzIcon Icon="help" Size="14" /></span>
                         </span>
                     }
                 </div>
@@ -166,7 +167,7 @@
     <div class="col-lg-4">
         <div class="card mb-3">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0">⚡ أسئلة جاهزة</h6>
+                <h6 class="mb-0 d-inline-flex align-items-center gap-2"><WizzIcon Icon="sparkles" Size="16" /><span>أسئلة جاهزة</span></h6>
                 @if (history is not null && history.Count > 0)
                 {
                     <span class="badge bg-secondary" title="عدد الأسئلة المسجّلة من استخدامك">@history.Count</span>
@@ -198,7 +199,7 @@
 
         <div class="card route-decision-card mb-3">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span class="fw-bold small">🧭 قرارات التوجيه</span>
+                <span class="fw-bold small d-inline-flex align-items-center gap-1"><WizzIcon Icon="route" Size="15" /><span>قرارات التوجيه</span></span>
                 <span class="badge bg-secondary" title="عدد القرارات في هذه الجلسة">@DecisionLog.Count</span>
             </div>
             <div class="card-body py-2">
@@ -219,7 +220,7 @@
                             </div>
                         }
                     </div>
-                    <button class="btn btn-outline-secondary btn-sm w-100 mt-2" @onclick="ClearDecisionLog">🧹 مسح السجل</button>
+                    <button class="btn btn-outline-secondary btn-sm w-100 mt-2" @onclick="ClearDecisionLog"><WizzIcon Icon="x-circle" Size="14" /> مسح السجل</button>
                 }
             </div>
         </div>
@@ -227,7 +228,7 @@
         <div class="card">
             <div class="card-header py-2">
                 <div class="d-flex align-items-center justify-content-between gap-2">
-                    <span class="fw-bold small">📊 الجلسة</span>
+                    <span class="fw-bold small d-inline-flex align-items-center gap-1"><WizzIcon Icon="chart" Size="15" /><span>الجلسة</span></span>
                     <span class="ai-status-line" title="آخر مورّد استُخدم: @providerName">
                         <span class="badge @GetRouteBadgeClass(lastRouteType)">@lastRouteTypeLabel</span>
                         <span class="badge bg-secondary">@messages.Count رسالة</span>
@@ -235,14 +236,14 @@
                 </div>
             </div>
             <div class="card-body py-2 d-grid gap-2">
-                <button class="btn btn-outline-danger btn-sm" @onclick="ClearChat">🗑️ مسح المحادثة</button>
-                <button class="btn btn-outline-secondary btn-sm" @onclick="ClearHistory">🧹 مسح تاريخ الأسئلة الجاهزة</button>
+                <button class="btn btn-outline-danger btn-sm" @onclick="ClearChat"><WizzIcon Icon="trash" Size="14" /> مسح المحادثة</button>
+                <button class="btn btn-outline-secondary btn-sm" @onclick="ClearHistory"><WizzIcon Icon="x-circle" Size="14" /> مسح تاريخ الأسئلة الجاهزة</button>
                 <button class="btn btn-outline-secondary btn-sm"
                         title="يمسح ما يحفظه المساعد من محادثة سابقة ومن آخر منتج تذكّره — لا يمسح تفضيلاتك (من الإعدادات)"
-                        @onclick="ClearMemory">🧠 مسح الذاكرة</button>
+                        @onclick="ClearMemory"><WizzIcon Icon="brain" Size="14" /> مسح الذاكرة</button>
                 @if (!string.IsNullOrWhiteSpace(rememberedSubject))
                 {
-                    <div class="small text-muted">🧠 يتذكّر الآن: <strong>@rememberedSubject</strong></div>
+                    <div class="small text-muted d-inline-flex align-items-center gap-1"><WizzIcon Icon="brain" Size="14" /><span>يتذكّر الآن:</span> <strong>@rememberedSubject</strong></div>
                 }
             </div>
         </div>
@@ -320,23 +321,23 @@
     /// <summary>اسم الاختيار الحالي للجهة المُجيبة (يظهر تحت صندوق الإرسال).</summary>
     private string CurrentRouteLabel => routeMode switch
     {
-        "built-in" => "⚡ المدمج (مُثبَّت)",
-        "local" => "🟢 المحلي (مُثبَّت)",
-        "cloud" => "☁️ السحابي (مُثبَّت)",
+        "built-in" => "المدمج (مُثبَّت)",
+        "local" => "المحلي (مُثبَّت)",
+        "cloud" => "السحابي (مُثبَّت)",
         _ => "تلقائي"
     };
 
-    /// <summary>ترتيب الأولوية المحفوظ كنص عربي: «⚡ المدمج ← 🟢 المحلي ← ☁️ السحابي».</summary>
+    /// <summary>ترتيب الأولوية المحفوظ كنص عربي: «المدمج ← المحلي ← السحابي».</summary>
     private string PriorityOrderText
         => string.Join(" ← ", PriorityStore.Priority.Order.Select(RouteText.Display));
 
     /// <summary>عنوان فقاعة الانتظار أثناء تجهيز الرد — يوضّح الجهة المتوقعة.</summary>
     private string PendingLabel => routeMode switch
     {
-        "built-in" => "⚡ المساعد المدمج يجهّز الرد…",
-        "local" => "🟢 النموذج المحلي يكتب…",
-        "cloud" => "☁️ النموذج السحابي يكتب…",
-        _ => "⏳ جاري اختيار الجهة المناسبة…"
+        "built-in" => "المساعد المدمج يجهّز الرد…",
+        "local" => "النموذج المحلي يكتب…",
+        "cloud" => "النموذج السحابي يكتب…",
+        _ => "جارٍ اختيار الجهة المناسبة…"
     };
 
     /// <summary>سطر توضيحي تحت عنوان الانتظار (يُذكّر بمصدر الإجابة).</summary>
@@ -347,11 +348,11 @@
     /// <summary>توضيح الجهة التي ستجيب عند إعادة إرسال سؤال معدَّل.</summary>
     private string BuildRouteHint() => routeMode switch
     {
-        "built-in" => "مُثبَّت يدوياً على ⚡ المدمج — تُعاد الإجابة من بيانات متجرك مباشرة.",
-        "local" => "مُثبَّت يدوياً على 🟢 المحلي" +
+        "built-in" => "مُثبَّت يدوياً على المدمج — تُعاد الإجابة من بيانات متجرك مباشرة.",
+        "local" => "مُثبَّت يدوياً على المحلي" +
                    (string.IsNullOrWhiteSpace(selectedModel) ? string.Empty : $" ({selectedModel})") +
                    " — تُعاد الإجابة من نموذج جهازك.",
-        "cloud" => "مُثبَّت يدوياً على ☁️ السحابي — تُعاد الإجابة عبر الإنترنت.",
+        "cloud" => "مُثبَّت يدوياً على السحابي — تُعاد الإجابة عبر الإنترنت.",
         _ => $"تلقائي — الأولوية الحالية: {PriorityOrderText}. أسئلة الأرقام يجيب عنها المدمج دائماً لضمان الدقة."
     };
 

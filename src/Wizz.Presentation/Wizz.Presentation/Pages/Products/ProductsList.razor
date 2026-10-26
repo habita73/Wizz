@@ -6,7 +6,10 @@
 @inject Wizz.Application.UseCases.Products.UpdateProductUseCase UpdateProductUseCase
 @inject IJSRuntime JS
 
-<h2>📦 إدارة المنتجات</h2>
+<h2 class="d-flex align-items-center gap-2">
+    <WizzIcon Icon="package" Size="24" />
+    <span>إدارة المنتجات</span>
+</h2>
 
 <div class="row mb-3">
     <div class="col-md-6">
@@ -14,9 +17,14 @@
             <input type="text" class="form-control" placeholder="بحث بالاسم أو الباركود..." @bind="searchQuery" @bind:event="oninput" @bind:after="SearchProducts" @onkeydown="OnSearchKeyDown" />
             @if (!string.IsNullOrWhiteSpace(searchQuery))
             {
-                <button class="btn btn-outline-secondary" @onclick="ClearSearch" title="مسح البحث">✖️</button>
+                <button class="btn btn-outline-secondary" @onclick="ClearSearch" title="مسح البحث">
+                    <WizzIcon Icon="x" Size="16" Title="مسح البحث" />
+                </button>
             }
-            <button class="btn btn-outline-secondary" @onclick="SearchProducts">🔍 بحث</button>
+            <button class="btn btn-outline-secondary" @onclick="SearchProducts">
+                <WizzIcon Icon="search" Size="16" />
+                <span>بحث</span>
+            </button>
         </div>
     </div>
     <div class="col-md-3">
@@ -27,7 +35,10 @@
         </select>
     </div>
     <div class="col-md-3 text-end">
-        <button class="btn btn-success" @onclick="NewProduct">➕ منتج جديد</button>
+        <button class="btn btn-success" @onclick="NewProduct">
+            <WizzIcon Icon="plus" Size="16" />
+            <span>منتج جديد</span>
+        </button>
     </div>
 </div>
 
@@ -76,9 +87,11 @@ else
                         </td>
                         <td>
                             <div class="btn-group btn-group-sm">
-                                <button class="btn btn-outline-primary" @onclick="() => EditProduct(product)" title="تعديل">✏️</button>
+                                <button class="btn btn-outline-primary" @onclick="() => EditProduct(product)" title="تعديل">
+                                    <WizzIcon Icon="edit" Size="16" Title="تعديل" />
+                                </button>
                                 <button class="btn btn-outline-danger" @onclick="() => ToggleActive(product)" title="@(product.IsActive ? "تعطيل" : "تفعيل")">
-                                    @(product.IsActive ? "🚫" : "✅")
+                                    <WizzIcon Icon="@(product.IsActive ? "ban" : "check-circle")" Size="16" Title="@(product.IsActive ? "تعطيل" : "تفعيل")" />
                                 </button>
                             </div>
                         </td>
@@ -154,10 +167,15 @@ else
                                         <input type="text" class="form-control" placeholder="اسم الوحدة (مثال: كجم)" @bind="unit.Name" />
                                         <input type="text" class="form-control" placeholder="الرمز (مثال: كجم)" @bind="unit.Symbol" style="width: 80px;" />
                                         <input type="number" step="0.001" min="0.001" class="form-control" placeholder="الكمية الأساسية" @bind="unit.BaseQuantity" style="width: 100px;" />
-                                        <button class="btn btn-outline-danger" type="button" @onclick="() => form.Units.Remove(unit)">✖️</button>
+                                        <button class="btn btn-outline-danger" type="button" @onclick="() => form.Units.Remove(unit)">
+                                            <WizzIcon Icon="x" Size="14" Title="حذف الوحدة" />
+                                        </button>
                                     </div>
                                 }
-                                <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="AddUnit">➕ إضافة وحدة</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="AddUnit">
+                                    <WizzIcon Icon="plus" Size="14" />
+                                    <span>إضافة وحدة</span>
+                                </button>
                             </div>
                         </div>
                     </form>

@@ -23,7 +23,7 @@ public enum ChatKeyAction
 public static class ChatKeymap
 {
     /// <summary>نص التلميح المعروض تحت صندوق الإدخال (يُبنى من نفس القواعد ليبقى متطابقاً).</summary>
-    public const string Hint = "⌨️ Enter إرسال · Shift+Enter سطر جديد · Esc مسح";
+    public const string Hint = "Enter إرسال · Shift+Enter سطر جديد · Esc مسح";
 
     /// <summary>يحدّد الإجراء المناسب للمفتاح المضغوط.</summary>
     /// <param name="key">اسم المفتاح كما يعطيه المتصفح (Enter، Escape…).</param>

@@ -42,6 +42,25 @@ public sealed class SaleRepository : ISaleRepository
             .OrderBy(s => s.SaleDate)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<Sale>> GetOutstandingAsync(bool overdueOnly = false, CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+        var query = _db.Sales
+            .Include(s => s.Items)
+            .Where(s => s.Status != SaleStatus.Cancelled && s.Remaining > 0);
+
+        if (overdueOnly)
+        {
+            query = query.Where(s => s.DueDate != null && s.DueDate < now);
+        }
+
+        return await query
+            .OrderBy(s => s.DueDate == null)
+            .ThenBy(s => s.DueDate)
+            .ThenBy(s => s.SaleDate)
+            .ToListAsync(ct);
+    }
+
     public async Task AddAsync(Sale sale, CancellationToken ct = default)
     {
         await _db.Sales.AddAsync(sale, ct);

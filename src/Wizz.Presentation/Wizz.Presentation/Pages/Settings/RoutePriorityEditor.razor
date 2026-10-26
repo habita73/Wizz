@@ -3,16 +3,16 @@
 
 <div class="border rounded p-3 mb-3">
     <div class="d-flex justify-content-between align-items-center mb-1">
-        <span class="fw-bold small">🧭 أولوية المسارات التلقائية</span>
+        <span class="fw-bold small d-flex align-items-center gap-2"><WizzIcon Icon="route" Size="16" /><span>أولوية المسارات التلقائية</span></span>
         <button class="btn btn-sm btn-outline-secondary" @onclick="ResetAsync" disabled="@saving"
-                title="إعادة الترتيب الافتراضي: المدمج ← المحلي ← السحابي">↺ الافتراضي</button>
+                title="إعادة الترتيب الافتراضي: المدمج ← المحلي ← السحابي"><WizzIcon Icon="refresh" Size="14" /> الافتراضي</button>
     </div>
 
     <p class="small text-muted mb-2">
-        اسحب الصفوف لإعادة الترتيب (أو استخدم ▲ ▼). يُجرَّب المسار الأول أولاً، ثم الذي يليه إن لم يكن متاحاً.
+        اسحب الصفوف لإعادة الترتيب (أو استخدم زرّي الأعلى والأسفل). يُجرَّب المسار الأول أولاً، ثم الذي يليه إن لم يكن متاحاً.
     </p>
     <p class="small text-muted mb-2" title="حماية أسئلة الأرقام: المبيعات والديون والأسعار والأعداد يجيب عنها المدمج دائماً لضمان دقة الرقم، ولا يستبدلها نموذج لغوي">
-        🔒 <strong>حماية أسئلة الأرقام:</strong> أسئلة المبيعات والديون والأسعار والأعداد يجيب عنها «المدمج» دائماً.
+        <WizzIcon Icon="shield" Size="14" /> <strong>حماية أسئلة الأرقام:</strong> أسئلة المبيعات والديون والأسعار والأعداد يجيب عنها «المدمج» دائماً.
         الترتيب يحدد الرد على الأسئلة الحرة والتحليلية وما لا يعرفه المدمج.
     </p>
 
@@ -38,13 +38,13 @@
                     <span class="text-muted" title="اسحب لإعادة الترتيب" aria-hidden="true">⋮⋮</span>
                     <span class="badge bg-secondary" title="المرتبة">@(index + 1)</span>
                     <span class="flex-grow-1 small">
-                        <strong>@row.Icon @row.Label</strong>
+                        <strong class="d-inline-flex align-items-center gap-1"><WizzIcon Icon="@row.Icon" Size="15" /><span>@row.Label</span></strong>
                         <span class="text-muted"> — @row.Description</span>
                     </span>
                     <button class="btn btn-sm btn-outline-secondary" title="أعلى"
-                            disabled="@(index == 0 || saving)" @onclick="() => MoveUpAsync(index)">▲</button>
+                            disabled="@(index == 0 || saving)" @onclick="() => MoveUpAsync(index)"><WizzIcon Icon="chevron-up" Size="14" Title="أعلى" /></button>
                     <button class="btn btn-sm btn-outline-secondary" title="أسفل"
-                            disabled="@(index == ordering.Count - 1 || saving)" @onclick="() => MoveDownAsync(index)">▼</button>
+                            disabled="@(index == ordering.Count - 1 || saving)" @onclick="() => MoveDownAsync(index)"><WizzIcon Icon="chevron-down" Size="14" Title="أسفل" /></button>
                 </li>
             }
         </ol>
@@ -52,7 +52,7 @@
         <div class="small @(justSaved ? "text-success" : "text-muted")">
             @if (justSaved)
             {
-                <span>✅ حُفظ الترتيب — يُطبّق في صفحة المساعد بعد إعادة تحميلها.</span>
+                <span class="d-inline-flex align-items-center gap-1"><WizzIcon Icon="check-circle" Size="14" /><span>حُفظ الترتيب — يُطبّق في صفحة المساعد بعد إعادة تحميلها.</span></span>
             }
             else
             {
@@ -65,9 +65,9 @@
 @code {
     private static readonly Dictionary<RouteType, RouteRow> Rows = new()
     {
-        [RouteType.BuiltIn] = new(RouteType.BuiltIn, "⚡", "المدمج", "قواعد محلية فورية، بلا إنترنت أو نموذج"),
-        [RouteType.Local] = new(RouteType.Local, "🟢", "المحلي", "نموذج Ollama على جهازك (خصوصية، بلا تكلفة)"),
-        [RouteType.Cloud] = new(RouteType.Cloud, "☁️", "السحابي", "OpenRouter المجاني (يتطلب إنترنت)")
+        [RouteType.BuiltIn] = new(RouteType.BuiltIn, "zap", "المدمج", "قواعد محلية فورية، بلا إنترنت أو نموذج"),
+        [RouteType.Local] = new(RouteType.Local, "brain", "المحلي", "نموذج Ollama على جهازك (خصوصية، بلا تكلفة)"),
+        [RouteType.Cloud] = new(RouteType.Cloud, "cloud", "السحابي", "OpenRouter المجاني (يتطلب إنترنت)")
     };
 
     private List<RouteType> ordering = new();

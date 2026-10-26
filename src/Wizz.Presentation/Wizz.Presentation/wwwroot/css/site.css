@@ -1354,6 +1354,48 @@ h6, .h6 {
   --bs-table-border-color: var(--wizz-border);
 }
 
+/* صفوف الجداول الملوّنة (danger/warning/success/info): ألوان Bootstrap الفاتحة الثابتة
+   تكسر الوضع الداكن، لذا نستبدلها بشفافيات السمة مع نص بلون النص العادي. */
+.table-danger,
+.table-warning,
+.table-success,
+.table-info {
+  --bs-table-color: var(--wizz-text);
+  --bs-table-striped-color: var(--wizz-text);
+  --bs-table-active-color: var(--wizz-text);
+  --bs-table-hover-color: var(--wizz-text);
+  --bs-table-border-color: var(--wizz-border);
+  color: var(--wizz-text);
+}
+
+.table-danger {
+  --bs-table-bg: var(--wizz-danger-light);
+  --bs-table-striped-bg: var(--wizz-danger-light);
+  --bs-table-active-bg: var(--wizz-danger-light);
+  --bs-table-hover-bg: var(--wizz-danger-light);
+}
+
+.table-warning {
+  --bs-table-bg: var(--wizz-warning-light);
+  --bs-table-striped-bg: var(--wizz-warning-light);
+  --bs-table-active-bg: var(--wizz-warning-light);
+  --bs-table-hover-bg: var(--wizz-warning-light);
+}
+
+.table-success {
+  --bs-table-bg: var(--wizz-success-light);
+  --bs-table-striped-bg: var(--wizz-success-light);
+  --bs-table-active-bg: var(--wizz-success-light);
+  --bs-table-hover-bg: var(--wizz-success-light);
+}
+
+.table-info {
+  --bs-table-bg: var(--wizz-info-light);
+  --bs-table-striped-bg: var(--wizz-info-light);
+  --bs-table-active-bg: var(--wizz-info-light);
+  --bs-table-hover-bg: var(--wizz-info-light);
+}
+
 /* ---------- الأزرار ---------- */
 .btn-light {
   background-color: var(--wizz-surface-hover);
@@ -1398,6 +1440,8 @@ h6, .h6 {
 .btn-outline-secondary {
   --bs-btn-color: var(--wizz-text-secondary);
   --bs-btn-border-color: var(--wizz-secondary-border);
+  --bs-btn-disabled-color: var(--wizz-text-muted);
+  --bs-btn-disabled-border-color: var(--wizz-border);
 }
 
 /* ---------- عناصر كانت تبقى بيضاء في الوضع الداكن ---------- */
@@ -1440,6 +1484,17 @@ h6, .h6 {
 code,
 kbd {
   color: var(--wizz-code-ink);
+}
+
+/* مفاتيح الاختصار: خلفية السمة بدل عكس لون النص من Bootstrap (يفشل التباين في الوضع الداكن) */
+kbd {
+  padding: 0.1rem 0.35rem;
+  border: 1px solid var(--wizz-border);
+  border-radius: 4px;
+  background-color: var(--wizz-surface-hover);
+  color: var(--wizz-text);
+  font-family: inherit;
+  font-size: 0.85em;
 }
 
 .border,
@@ -1849,6 +1904,13 @@ html:not([data-theme]) {
 }
 
 /* أيقونات SVG داخلية محسّنة */
+/* أيقونات WizzIcon الموحّدة — محاذاة تلقائية مع النص */
+.wizz-icon {
+    display: inline-block;
+    vertical-align: -0.15em;
+    flex-shrink: 0;
+}
+
 .svg-icon {
     display: inline-block;
     width: 1.25rem;
@@ -1896,5 +1958,141 @@ html:not([data-theme]) {
 .theme-section-card .form-check-input:checked + .form-check-label {
     font-weight: 600;
     color: var(--wizz-primary);
+}
+
+/* ============================================================
+   20. شريط الإجراءات السريعة (الصفحة الرئيسية)
+   ============================================================ */
+.quick-actions {
+  background: var(--wizz-surface);
+  border: 1px solid var(--wizz-border);
+  border-radius: var(--wizz-radius);
+  box-shadow: var(--wizz-shadow);
+}
+
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.quick-action {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 52px;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--wizz-border);
+  border-radius: var(--wizz-radius);
+  background: var(--wizz-surface-hover);
+  color: var(--wizz-text);
+  text-decoration: none;
+  transition: var(--wizz-transition);
+}
+
+.quick-action:hover,
+.quick-action:focus {
+  border-color: var(--wizz-primary);
+  background: var(--wizz-primary-light);
+  color: var(--wizz-primary);
+  text-decoration: none;
+}
+
+.quick-action:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--wizz-primary-light);
+}
+
+.quick-action .wizz-icon {
+  flex: 0 0 auto;
+  color: var(--wizz-primary);
+}
+
+.quick-action-label {
+  flex: 1 1 auto;
+  font-size: 0.95rem;
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.quick-action-key {
+  flex: 0 0 auto;
+  padding: 0.15rem 0.4rem;
+  border: 1px solid var(--wizz-border);
+  border-radius: 4px;
+  background: var(--wizz-surface);
+  color: var(--wizz-text-muted);
+  font-family: inherit;
+  font-size: 0.7rem;
+}
+
+@media (max-width: 991.98px) {
+  .quick-actions-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 575.98px) {
+  .quick-actions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-action-key {
+    display: none;
+  }
+}
+
+/* بطاقة اختصارات لوحة المفاتيح في الإعدادات */
+.shortcut-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--wizz-border);
+}
+
+.shortcut-row:last-child {
+  border-bottom: none;
+}
+
+.shortcut-label {
+  color: var(--wizz-text-secondary);
+  font-size: 0.9rem;
+}
+
+.shortcut-keys {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.shortcut-keys kbd {
+  min-width: 1.7rem;
+  text-align: center;
+}
+
+/* ============================================================
+   21. مؤشر التركيز للتنقل بلوحة المفاتيح (Tab)
+   ============================================================ */
+/* !important لازم لتجاوز تصفير Bootstrap لـ outline في .btn و .nav-link */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--wizz-primary) !important;
+  outline-offset: 2px !important;
 }
 

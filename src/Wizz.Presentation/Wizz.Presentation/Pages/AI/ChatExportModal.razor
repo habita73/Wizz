@@ -22,7 +22,7 @@
                             <button type="button" class="btn btn-outline-primary d-flex justify-content-between align-items-center"
                                     disabled="@(!CanExport(format))"
                                     @onclick="() => Download(format)">
-                                <span>@icon @label</span>
+                                <span class="d-inline-flex align-items-center gap-2"><WizzIcon Icon="@icon" Size="15" /><span>@label</span></span>
                                 <span class="badge bg-light text-dark border">.@ArtifactExporter.ExtensionFor(format)</span>
                             </button>
                         }
@@ -30,11 +30,11 @@
                         <hr class="my-1" />
 
                         <button type="button" class="btn btn-outline-secondary d-flex justify-content-between align-items-center" @onclick="Print">
-                            <span>🖨️ طباعة / حفظ PDF</span>
+                            <span class="d-inline-flex align-items-center gap-2"><WizzIcon Icon="printer" Size="15" /><span>طباعة / حفظ PDF</span></span>
                             <span class="badge bg-light text-dark border">A4</span>
                         </button>
                         <button type="button" class="btn btn-outline-secondary d-flex justify-content-between align-items-center" @onclick="OpenInTab">
-                            <span>👁️ عرض في تبويب</span>
+                            <span class="d-inline-flex align-items-center gap-2"><WizzIcon Icon="eye" Size="15" /><span>عرض في تبويب</span></span>
                             <span class="badge bg-light text-dark border">HTML</span>
                         </button>
                     </div>
@@ -57,11 +57,11 @@
 
     private static readonly (ArtifactExportFormat Format, string Label, string Icon)[] Formats =
     {
-        (ArtifactExportFormat.Html, "HTML (صفحة منسّقة)", "🌐"),
-        (ArtifactExportFormat.Markdown, "Markdown", "📝"),
-        (ArtifactExportFormat.Json, "JSON (بيانات)", "🧩"),
-        (ArtifactExportFormat.Csv, "CSV (جدول)", "📊"),
-        (ArtifactExportFormat.Txt, "نص عادي", "📄")
+        (ArtifactExportFormat.Html, "HTML (صفحة منسّقة)", "globe"),
+        (ArtifactExportFormat.Markdown, "Markdown", "file"),
+        (ArtifactExportFormat.Json, "JSON (بيانات)", "code"),
+        (ArtifactExportFormat.Csv, "CSV (جدول)", "table"),
+        (ArtifactExportFormat.Txt, "نص عادي", "file")
     };
 
     private bool CanExport(ArtifactExportFormat format)

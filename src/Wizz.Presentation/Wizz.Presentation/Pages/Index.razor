@@ -2,9 +2,49 @@
 @layout MainLayout
 @inject Wizz.Application.Abstractions.ISaleRepository SaleRepo
 @inject Wizz.Application.Abstractions.IProductRepository ProductRepo
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <h1 class="h3 mb-1">Wizz — نظام نقاط بيع ذكي</h1>
 <p class="text-muted">مرحباً بك. هذه نظرة سريعة على حالة المتجر اليوم.</p>
+
+@if (showHint)
+{
+    <div class="alert alert-info d-flex align-items-start gap-2 mt-3 mb-0" role="note">
+        <WizzIcon Icon="keyboard" Size="18" />
+        <div class="flex-grow-1 small">
+            <strong>اختصارات سريعة:</strong>
+            اضغط <kbd>Alt</kbd>+<kbd>1</kbd> لبيع جديد،
+            <kbd>Alt</kbd>+<kbd>2</kbd> للديون،
+            <kbd>Alt</kbd>+<kbd>3</kbd> للفواتير المتأخرة،
+            <kbd>Alt</kbd>+<kbd>4</kbd> لسجل المبيعات.
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="DismissHintAsync">فهمت</button>
+    </div>
+}
+
+<div class="quick-actions card mt-3 mb-2">
+    <div class="card-body py-3">
+        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+            <span class="fw-bold small d-inline-flex align-items-center gap-2">
+                <WizzIcon Icon="zap" Size="16" />
+                <span>إجراءات سريعة</span>
+            </span>
+            <span class="small text-muted">Alt + 1..4</span>
+        </div>
+        <div class="quick-actions-grid">
+            @foreach (var action in QuickActions)
+            {
+                <a class="quick-action" href="@action.Href" title="@action.Label (Alt+@action.Key)">
+                    <WizzIcon Icon="@action.Icon" Size="20" />
+                    <span class="quick-action-label">@action.Label</span>
+                    <kbd class="quick-action-key">Alt+@action.Key</kbd>
+                </a>
+            }
+        </div>
+    </div>
+</div>
 
 <div class="row g-3 my-4 equal-cols">
     <div class="col-md-3">
@@ -133,6 +173,18 @@
     private decimal TotalRemaining;
     private int ProductCount;
 
+    private bool showHint;
+    private DotNetObjectReference<Index>? selfRef;
+
+    /// <summary>الإجراءات السريعة: الوجهة موجودة ومتحقّقة، والاختصار Alt+الرقم.</summary>
+    private static readonly (string Key, string Icon, string Label, string Href)[] QuickActions =
+    {
+        ("1", "bag", "بيع جديد", "sales/new"),
+        ("2", "credit", "الديون", "debts"),
+        ("3", "alert", "الفواتير المتأخرة", "debts?overdue=true"),
+        ("4", "receipt", "المبيعات", "sales/history")
+    };
+
     protected override async Task OnInitializedAsync()
     {
         var today = DateTime.Today.ToUniversalTime();
@@ -145,5 +197,48 @@
         TodayCount = completed.Count;
         TotalRemaining = await SaleRepo.GetTotalRemainingAsync();
         ProductCount = await ProductRepo.CountAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        try
+        {
+            selfRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("wizzQuickActions.init", selfRef);
+            showHint = await JS.InvokeAsync<bool>("wizzQuickActions.shouldShowHint");
+            StateHasChanged();
+        }
+        catch
+        {
+            // غياب JS لا يمنع عمل الصفحة — تبقى الروابط قابلة للنقر.
+        }
+    }
+
+    /// <summary>ينفّذ اختصار Alt+الرقم القادم من المتصفح.</summary>
+    [JSInvokable]
+    public void NavigateByShortcut(string key)
+    {
+        foreach (var action in QuickActions)
+        {
+            if (action.Key != key) continue;
+            Nav.NavigateTo(action.Href);
+            return;
+        }
+    }
+
+    private async Task DismissHintAsync()
+    {
+        showHint = false;
+        try { await JS.InvokeVoidAsync("wizzQuickActions.dismissHint"); }
+        catch { /* التذكير يبقى مخفياً في هذه الجلسة فقط. */ }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("wizzQuickActions.dispose"); }
+        catch { /* الصفحة تُغادر — لا حاجة لمعالجة الخطأ. */ }
+        selfRef?.Dispose();
     }
 }

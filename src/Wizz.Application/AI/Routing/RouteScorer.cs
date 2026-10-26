@@ -174,15 +174,6 @@ public static class RouteText
         _ => "لا مسار"
     };
 
-    /// <summary>أيقونة المسار.</summary>
-    public static string Icon(RouteType route) => route switch
-    {
-        RouteType.BuiltIn => "⚡",
-        RouteType.Local => "🟢",
-        RouteType.Cloud => "☁️",
-        _ => "⛔"
-    };
-
-    /// <summary>عنوان مركّب للأيقونة والاسم: «⚡ المدمج».</summary>
-    public static string Display(RouteType route) => $"{Icon(route)} {Label(route)}";
+    /// <summary>عنوان مركّب للاسم: «المدمج». (الأيقونات تُرسم في الواجهة بمكوّن WizzIcon.)</summary>
+    public static string Display(RouteType route) => Label(route);
 }

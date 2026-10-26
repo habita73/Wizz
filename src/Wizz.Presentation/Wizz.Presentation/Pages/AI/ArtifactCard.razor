@@ -7,7 +7,7 @@
 <div class="artifact-card border rounded-3 my-2 overflow-hidden">
     <div class="d-flex justify-content-between align-items-center gap-2 px-3 py-2 bg-light border-bottom">
         <div class="d-flex align-items-center gap-2 min-w-0">
-            <span class="artifact-icon">@KindIcon</span>
+            <span class="artifact-icon"><WizzIcon Icon="@KindIcon" Size="20" /></span>
             <div class="min-w-0">
                 <div class="fw-bold text-truncate">@Artifact.Title</div>
                 <div class="small text-muted">@KindLabel@(string.IsNullOrWhiteSpace(Artifact.Description) ? "" : " — " + Artifact.Description)</div>
@@ -110,11 +110,11 @@
 
     private string KindIcon => Artifact.Kind switch
     {
-        ArtifactKind.Table => "📊",
-        ArtifactKind.Image => "🖼️",
-        ArtifactKind.File => "📄",
-        ArtifactKind.Link => "🔗",
-        _ => "📝"
+        ArtifactKind.Table => "table",
+        ArtifactKind.Image => "image",
+        ArtifactKind.File => "file",
+        ArtifactKind.Link => "link",
+        _ => "file"
     };
 
     private string KindLabel => Artifact.Kind switch

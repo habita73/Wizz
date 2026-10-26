@@ -9,25 +9,25 @@
 <div class="card mb-3 ai-status-card">
     <div class="card-header py-2">
         <div class="d-flex align-items-center justify-content-between gap-2">
-            <span class="fw-bold small">🔀 المسارات</span>
+            <span class="fw-bold small d-inline-flex align-items-center gap-1"><WizzIcon Icon="route" Size="15" /><span>المسارات</span></span>
             <div class="d-flex align-items-center gap-1">
                 <span class="ai-status-line" title="@StatusTooltip">
-                    <span class="badge bg-success" title="المساعد المدمج — يعمل دائماً بلا إنترنت">⚡ مدمج</span>
+                    <span class="badge bg-success" title="المساعد المدمج — يعمل دائماً بلا إنترنت"><WizzIcon Icon="zap" Size="12" /> مدمج</span>
                     @if (Status.LocalAvailable)
                     {
-                        <span class="badge bg-success" title="النموذج المحلي (Ollama) — @Status.LocalModel">🟢 @ShortLocalModel</span>
+                        <span class="badge bg-success" title="النموذج المحلي (Ollama) — @Status.LocalModel"><WizzIcon Icon="brain" Size="12" /> @ShortLocalModel</span>
                     }
                     else
                     {
-                        <span class="badge bg-secondary" title="النموذج المحلي (Ollama) غير متاح">⚪ محلي</span>
+                        <span class="badge bg-secondary" title="النموذج المحلي (Ollama) غير متاح">محلي</span>
                     }
                     @if (Status.CloudAvailable)
                     {
-                        <span class="badge bg-success" title="النموذج السحابي — @Status.CloudProvider">☁️ @ShortCloudProvider</span>
+                        <span class="badge bg-success" title="النموذج السحابي — @Status.CloudProvider"><WizzIcon Icon="cloud" Size="12" /> @ShortCloudProvider</span>
                     }
                     else
                     {
-                        <span class="badge bg-secondary" title="النموذج السحابي غير متاح">⚪ سحابي</span>
+                        <span class="badge bg-secondary" title="النموذج السحابي غير متاح">سحابي</span>
                     }
                 </span>
                 <button type="button" class="btn btn-sm btn-outline-secondary ai-mini-btn"
@@ -35,7 +35,14 @@
                         aria-label="تحديث حالة المسارات"
                         @onclick="OnRefresh"
                         disabled="@Loading">
-                    @(Loading ? "…" : "🔄")
+                    @if (Loading)
+                    {
+                        <span class="spinner-border spinner-border-sm"></span>
+                    }
+                    else
+                    {
+                        <WizzIcon Icon="refresh" Size="14" />
+                    }
                 </button>
             </div>
         </div>
@@ -48,16 +55,16 @@
             <div class="mt-2 small">
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <span>
-                        ⚡ المساعد المدمج
-                        <span class="text-muted ms-1" title="مساعد برمجي يجيب من قاعدة بيانات متجرك فوراً، بلا إنترنت وبلا نموذج.">❓</span>
+                        <WizzIcon Icon="zap" Size="14" /> المساعد المدمج
+                        <span class="text-muted ms-1" title="مساعد برمجي يجيب من قاعدة بيانات متجرك فوراً، بلا إنترنت وبلا نموذج."><WizzIcon Icon="help" Size="14" /></span>
                     </span>
                     <span class="badge bg-success">متاح دائماً</span>
                 </div>
 
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <span>
-                        🟢 النموذج المحلي
-                        <span class="text-muted ms-1" title="نموذج على جهازك عبر Ollama — يُستخدم للأسئلة الحرة الطويلة عندما لا يكفي المساعد المدمج.">❓</span>
+                        <WizzIcon Icon="brain" Size="14" /> النموذج المحلي
+                        <span class="text-muted ms-1" title="نموذج على جهازك عبر Ollama — يُستخدم للأسئلة الحرة الطويلة عندما لا يكفي المساعد المدمج."><WizzIcon Icon="help" Size="14" /></span>
                     </span>
                     <span class="d-flex align-items-center gap-1">
                         <span class="badge @(Status.LocalAvailable ? "bg-success" : "bg-secondary")">
@@ -68,15 +75,22 @@
                                 aria-label="اختبار النموذج المحلي"
                                 @onclick="TestLocalAsync"
                                 disabled="@testingLocal">
-                            @(testingLocal ? "…" : "🔄")
+                            @if (testingLocal)
+                            {
+                                <span class="spinner-border spinner-border-sm"></span>
+                            }
+                            else
+                            {
+                                <WizzIcon Icon="refresh" Size="14" />
+                            }
                         </button>
                     </span>
                 </div>
 
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <span>
-                        ☁️ النموذج السحابي
-                        <span class="text-muted ms-1" title="خدمة سحابية اختيارية (OpenRouter) — تُفعَّل من صفحة الإعدادات، وترسل بياناتك خارج المتجر.">❓</span>
+                        <WizzIcon Icon="cloud" Size="14" /> النموذج السحابي
+                        <span class="text-muted ms-1" title="خدمة سحابية اختيارية (OpenRouter) — تُفعَّل من صفحة الإعدادات، وترسل بياناتك خارج المتجر."><WizzIcon Icon="help" Size="14" /></span>
                     </span>
                     <span class="d-flex align-items-center gap-1">
                         <span class="badge @(Status.CloudAvailable ? "bg-success" : "bg-secondary")">
@@ -87,23 +101,36 @@
                                 aria-label="اختبار الاتصال بالسحابة"
                                 @onclick="TestCloudAsync"
                                 disabled="@testingCloud">
-                            @(testingCloud ? "…" : "🔄")
+                            @if (testingCloud)
+                            {
+                                <span class="spinner-border spinner-border-sm"></span>
+                            }
+                            else
+                            {
+                                <WizzIcon Icon="refresh" Size="14" />
+                            }
                         </button>
                     </span>
                 </div>
 
                 @if (!string.IsNullOrWhiteSpace(localTestResult))
                 {
-                    <div class="alert alert-info py-1 px-2 mb-1">@localTestResult</div>
+                    <div class="alert alert-info py-1 px-2 mb-1 d-flex align-items-center gap-2">
+                        <WizzIcon Icon="@(localTestOk == false ? "alert" : "check-circle")" Size="14" />
+                        <span>@localTestResult</span>
+                    </div>
                 }
                 @if (!string.IsNullOrWhiteSpace(cloudTestResult))
                 {
-                    <div class="alert alert-info py-1 px-2 mb-1">@cloudTestResult</div>
+                    <div class="alert alert-info py-1 px-2 mb-1 d-flex align-items-center gap-2">
+                        <WizzIcon Icon="@(cloudTestOk == false ? "alert" : "check-circle")" Size="14" />
+                        <span>@cloudTestResult</span>
+                    </div>
                 }
 
                 <div class="alert alert-info py-1 px-2 mb-2">@Status.SummaryMessage</div>
 
-                <a href="/settings" class="small">⚙️ الإعدادات التفصيلية للمساعد</a>
+                <a href="/settings" class="small d-inline-flex align-items-center gap-1"><WizzIcon Icon="settings" Size="14" /><span>الإعدادات التفصيلية للمساعد</span></a>
             </div>
         </details>
     </div>
@@ -123,6 +150,8 @@
     private bool testingCloud;
     private string localTestResult = "";
     private string cloudTestResult = "";
+    private bool? localTestOk;
+    private bool? cloudTestOk;
 
     /// <summary>اسم مبسّط للنموذج المحلي (بدون بادئة المزوّد).</summary>
     private string ShortLocalModel => ShortModelName(Status.LocalModel);
@@ -147,13 +176,13 @@
         return dash >= 0 && dash < raw.Length - 1 ? raw[(dash + 1)..].Trim() : raw.Trim();
     }
 
-    /// <summary>يضيف رمز الحالة فقط إذا لم يكن موجوداً أصلاً في الرسالة.</summary>
-    private static string WithIcon(string? message, bool ok)
+    /// <summary>يُنظّف نص نتيجة الاختبار ويعطيه نصاً بديلاً عند الفراغ.</summary>
+    private static string NormalizeResult(string? message, bool ok)
     {
         var trimmed = (message ?? string.Empty).Trim();
-        if (trimmed.Length == 0) return ok ? "✅" : "❌";
-        if (trimmed.StartsWith('✅') || trimmed.StartsWith('❌')) return trimmed;
-        return ok ? $"✅ {trimmed}" : $"❌ {trimmed}";
+        return trimmed.Length == 0
+            ? (ok ? "تم الاختبار بنجاح." : "تعذّر إكمال الاختبار.")
+            : trimmed;
     }
 
     /// <summary>نص التلخيص الكامل (يظهر كtooltip على سطر الحالة).</summary>
@@ -165,16 +194,19 @@
     {
         testingLocal = true;
         localTestResult = "";
+        localTestOk = null;
         try
         {
             var status = await Router.GetStatusAsync();
+            localTestOk = status.LocalAvailable;
             localTestResult = status.LocalAvailable
-                ? WithIcon($"النموذج المحلي يعمل — {ShortModelName(status.LocalModel)}", true)
-                : WithIcon("النموذج المحلي غير متاح. تأكّد من تشغيل Ollama ثم ثبّت نموذجاً: ollama pull qwen2.5:0.5b-instruct", false);
+                ? NormalizeResult($"النموذج المحلي يعمل — {ShortModelName(status.LocalModel)}", true)
+                : NormalizeResult("النموذج المحلي غير متاح. تأكّد من تشغيل Ollama ثم ثبّت نموذجاً: ollama pull qwen2.5:0.5b-instruct", false);
         }
         catch (Exception ex)
         {
-            localTestResult = WithIcon($"تعذّر اختبار النموذج المحلي: {ex.Message}", false);
+            localTestOk = false;
+            localTestResult = NormalizeResult($"تعذّر اختبار النموذج المحلي: {ex.Message}", false);
         }
         finally
         {
@@ -189,14 +221,17 @@
     {
         testingCloud = true;
         cloudTestResult = "";
+        cloudTestOk = null;
         try
         {
             var (ok, message) = await Router.TestCloudConnectionAsync();
-            cloudTestResult = WithIcon(message, ok);
+            cloudTestOk = ok;
+            cloudTestResult = NormalizeResult(message, ok);
         }
         catch (Exception ex)
         {
-            cloudTestResult = WithIcon($"تعذّر اختبار السحابة: {ex.Message}", false);
+            cloudTestOk = false;
+            cloudTestResult = NormalizeResult($"تعذّر اختبار السحابة: {ex.Message}", false);
         }
         finally
         {

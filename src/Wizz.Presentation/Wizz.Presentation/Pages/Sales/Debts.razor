@@ -1,0 +1,353 @@
+@page "/debts"
+@layout MainLayout
+@inject Wizz.Application.Abstractions.ISaleRepository SaleRepo
+@inject Wizz.Application.Abstractions.IPrinter Printer
+@inject Wizz.Application.UseCases.Receipt.GenerateReceiptUseCase GenerateReceiptUseCase
+@inject IJSRuntime JS
+
+@* صفحة الديون: كل فاتورة غير مسددة، مع تبويب للفواتير المتأخرة عن تاريخ استحقاقها. *@
+
+<h2 class="d-flex align-items-center gap-2">
+    <WizzIcon Icon="credit" Size="22" />
+    <span>@(showOverdue ? "الفواتير المتأخرة" : "الديون المستحقة")</span>
+</h2>
+<p class="text-muted">
+    @(showOverdue
+        ? "فواتير تجاوزت تاريخ استحقاقها وما زال عليها مبلغ متبقٍ."
+        : "كل الفواتير التي لم تُسدَّد بالكامل، مرتبة حسب تاريخ الاستحقاق.")
+</p>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="dashboard-card stats-card">
+            <div class="card-body">
+                <WizzIcon Icon="credit" Size="20" />
+                <div class="text-muted small">إجمالي الديون</div>
+                <div class="fs-4 fw-bold">@TotalRemaining.ToString("N2") د.ج</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="dashboard-card stats-card">
+            <div class="card-body">
+                <WizzIcon Icon="receipt" Size="20" />
+                <div class="text-muted small">فواتير غير مسددة</div>
+                <div class="fs-4 fw-bold">@DebtCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="dashboard-card stats-card">
+            <div class="card-body">
+                <WizzIcon Icon="alert" Size="20" />
+                <div class="text-muted small">مبلغ متأخر</div>
+                <div class="fs-4 fw-bold @(OverdueRemaining > 0 ? "text-danger" : "")">@OverdueRemaining.ToString("N2") د.ج</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="dashboard-card stats-card">
+            <div class="card-body">
+                <WizzIcon Icon="clock" Size="20" />
+                <div class="text-muted small">فواتير متأخرة</div>
+                <div class="fs-4 fw-bold">@OverdueCount</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <div class="btn-group" role="group" aria-label="تصفية الديون">
+        <button type="button"
+                class="btn @(showOverdue ? "btn-outline-secondary" : "btn-primary")"
+                @onclick="() => SetFilterAsync(false)">
+            <WizzIcon Icon="list" Size="14" />
+            <span>كل الديون</span>
+        </button>
+        <button type="button"
+                class="btn @(showOverdue ? "btn-primary" : "btn-outline-secondary")"
+                @onclick="() => SetFilterAsync(true)">
+            <WizzIcon Icon="alert" Size="14" />
+            <span>المتأخرة فقط</span>
+        </button>
+    </div>
+
+    <div class="input-group" style="max-width: 320px;">
+        <input type="search" class="form-control" placeholder="رقم الفاتورة…"
+               @bind="searchTerm" @bind:event="oninput" @bind:after="ApplyFilter" />
+        @if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            <button class="btn btn-outline-secondary" type="button" title="مسح البحث" @onclick="ClearSearch">
+                <WizzIcon Icon="x" Size="14" Title="مسح البحث" />
+            </button>
+        }
+    </div>
+
+    <button class="btn btn-outline-secondary" @onclick="LoadAsync">
+        <WizzIcon Icon="refresh" Size="14" />
+        <span>تحديث</span>
+    </button>
+</div>
+
+@if (visibleSales.Count == 0)
+{
+    <div class="alert alert-info d-flex align-items-center gap-2">
+        <WizzIcon Icon="check-circle" Size="16" />
+        <span>
+            @(showOverdue
+                ? "لا توجد فواتير متأخرة حالياً."
+                : "لا توجد ديون مستحقة حالياً — كل المبيعات مسددة.")
+        </span>
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>الفاتورة</th>
+                    <th>تاريخ البيع</th>
+                    <th>تاريخ الاستحقاق</th>
+                    <th class="text-end">الإجمالي</th>
+                    <th class="text-end">المدفوع</th>
+                    <th class="text-end">المتبقي</th>
+                    <th>الحالة</th>
+                    <th class="text-end">إجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var sale in visibleSales)
+                {
+                    <tr class="@(IsOverdue(sale) ? "table-danger" : "")">
+                        <td class="font-monospace">@SaleNumber(sale)</td>
+                        <td>@sale.SaleDate.ToLocalTime().ToString("yyyy-MM-dd")</td>
+                        <td>@(sale.DueDate is null ? "—" : sale.DueDate.Value.ToLocalTime().ToString("yyyy-MM-dd"))</td>
+                        <td class="text-end">@sale.Total.ToString("N2") د.ج</td>
+                        <td class="text-end">@sale.Paid.ToString("N2") د.ج</td>
+                        <td class="text-end fw-bold text-danger">@sale.Remaining.ToString("N2") د.ج</td>
+                        <td>@StatusBadge(sale)</td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary" @onclick="() => ViewReceipt(sale.Id)" title="عرض الإيصال">
+                                    <WizzIcon Icon="eye" Size="16" Title="عرض الإيصال" />
+                                </button>
+                                <button class="btn btn-outline-secondary" @onclick="() => PrintReceipt(sale.Id)" title="طباعة">
+                                    <WizzIcon Icon="printer" Size="16" Title="طباعة" />
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (receipt != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">إيصال @receipt.SaleNumber</h5>
+                    <button type="button" class="btn-close" aria-label="إغلاق" @onclick="() => receipt = null"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-2">
+                        <strong>@receipt.Store.Name</strong><br />
+                        <small class="text-muted">@receipt.Store.Address</small><br />
+                        <small class="text-muted">@receipt.Store.Phone</small>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted">
+                        <span>@receipt.SaleDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
+                        <span>@GetPaymentMethodText(receipt.PaymentMethod)</span>
+                    </div>
+                    <hr />
+                    <table class="table table-sm">
+                        <tbody>
+                            @foreach (var line in receipt.Lines)
+                            {
+                                <tr>
+                                    <td>@line.ProductName</td>
+                                    <td class="text-center">@line.Quantity.ToString("0.###") @line.UnitSymbol</td>
+                                    <td class="text-end">@line.LineTotal.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <hr />
+                    <div class="d-flex justify-content-between"><span>المجموع</span><span>@receipt.Subtotal.ToString("N2") د.ج</span></div>
+                    <div class="d-flex justify-content-between text-success"><span>الخصم</span><span>@receipt.Discount.ToString("N2") د.ج</span></div>
+                    <div class="d-flex justify-content-between fw-bold"><span>الإجمالي</span><span>@receipt.Total.ToString("N2") د.ج</span></div>
+                    <div class="d-flex justify-content-between"><span>المدفوع</span><span>@receipt.Paid.ToString("N2") د.ج</span></div>
+                    @if (receipt.Remaining > 0)
+                    {
+                        <div class="d-flex justify-content-between text-danger fw-bold"><span>المتبقي</span><span>@receipt.Remaining.ToString("N2") د.ج</span></div>
+                    }
+                    @if (receipt.DueDate is not null)
+                    {
+                        <div class="d-flex justify-content-between small text-muted"><span>تاريخ الاستحقاق</span><span>@receipt.DueDate.Value.ToLocalTime().ToString("yyyy-MM-dd")</span></div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => receipt = null">إغلاق</button>
+                    <button class="btn btn-primary" @onclick="() => PrintReceipt(receipt.SaleId)">
+                        <WizzIcon Icon="printer" Size="16" />
+                        <span>طباعة</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>فتح الصفحة مباشرة على تبويب المتأخرة عبر /debts?overdue=true.</summary>
+    [SupplyParameterFromQuery(Name = "overdue")]
+    public bool Overdue { get; set; }
+
+    private List<Wizz.Domain.Sale> allOutstanding = new();
+    private List<Wizz.Domain.Sale> visibleSales = new();
+    private bool showOverdue;
+    private string searchTerm = "";
+    private Wizz.Application.DTOs.ReceiptDto? receipt;
+
+    private decimal TotalRemaining => allOutstanding.Sum(s => s.Remaining);
+    private int DebtCount => allOutstanding.Count;
+    private decimal OverdueRemaining => allOutstanding.Where(IsOverdue).Sum(s => s.Remaining);
+    private int OverdueCount => allOutstanding.Count(IsOverdue);
+
+    protected override async Task OnInitializedAsync()
+    {
+        showOverdue = Overdue;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        allOutstanding = (await SaleRepo.GetOutstandingAsync()).ToList();
+        ApplyFilter();
+    }
+
+    private Task SetFilterAsync(bool overdueOnly)
+    {
+        showOverdue = overdueOnly;
+        ApplyFilter();
+        return Task.CompletedTask;
+    }
+
+    private void ApplyFilter()
+    {
+        IEnumerable<Wizz.Domain.Sale> query = allOutstanding;
+
+        if (showOverdue)
+        {
+            query = query.Where(IsOverdue);
+        }
+
+        var term = searchTerm.Trim();
+        if (term.Length > 0)
+        {
+            query = query.Where(s => SaleNumber(s).Contains(term, StringComparison.OrdinalIgnoreCase));
+        }
+
+        visibleSales = query
+            .OrderBy(s => s.DueDate is null)
+            .ThenBy(s => s.DueDate)
+            .ThenBy(s => s.SaleDate)
+            .ToList();
+    }
+
+    private void ClearSearch()
+    {
+        searchTerm = "";
+        ApplyFilter();
+    }
+
+    private static string SaleNumber(Wizz.Domain.Sale sale) => sale.Id.ToString("N")[..8].ToUpperInvariant();
+
+    /// <summary>متأخرة = لها تاريخ استحقاق سابق لتاريخ اليوم المحلي.</summary>
+    private static bool IsOverdue(Wizz.Domain.Sale sale)
+        => sale.DueDate is not null && sale.DueDate.Value.ToLocalTime().Date < DateTime.Today;
+
+    private static RenderFragment StatusBadge(Wizz.Domain.Sale sale) => builder =>
+    {
+        if (IsOverdue(sale))
+        {
+            var days = Math.Max(1, (DateTime.Today - sale.DueDate!.Value.ToLocalTime().Date).Days);
+            builder.OpenElement(0, "span");
+            builder.AddAttribute(1, "class", "badge bg-danger");
+            builder.AddContent(2, $"متأخرة {days} يوم");
+            builder.CloseElement();
+            return;
+        }
+
+        if (sale.DueDate is not null && sale.DueDate.Value.ToLocalTime().Date == DateTime.Today)
+        {
+            builder.OpenElement(0, "span");
+            builder.AddAttribute(1, "class", "badge bg-warning text-dark");
+            builder.AddContent(2, "تستحق اليوم");
+            builder.CloseElement();
+            return;
+        }
+
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class", "badge bg-secondary");
+        builder.AddContent(2, "مستحقة");
+        builder.CloseElement();
+    };
+
+    private static string GetPaymentMethodText(Wizz.Application.DTOs.PaymentMethodDto method) => method switch
+    {
+        Wizz.Application.DTOs.PaymentMethodDto.Cash => "نقدي",
+        Wizz.Application.DTOs.PaymentMethodDto.Card => "بطاقة",
+        Wizz.Application.DTOs.PaymentMethodDto.Credit => "آجل",
+        Wizz.Application.DTOs.PaymentMethodDto.Mobile => "محمول",
+        Wizz.Application.DTOs.PaymentMethodDto.Mixed => "مختلط",
+        _ => "—"
+    };
+
+    private async Task ViewReceipt(Guid saleId)
+    {
+        var result = await GenerateReceiptUseCase.ExecuteAsync(saleId);
+        if (!result.IsSuccess)
+        {
+            await JS.InvokeVoidAsync("alert", $"تعذر عرض الإيصال: {string.Join(" | ", result.Errors)}");
+            return;
+        }
+
+        receipt = result.Value;
+    }
+
+    private async Task PrintReceipt(Guid saleId)
+    {
+        var result = await GenerateReceiptUseCase.ExecuteAsync(saleId);
+        if (!result.IsSuccess)
+        {
+            await JS.InvokeVoidAsync("alert", $"تعذر توليد الإيصال: {string.Join(" | ", result.Errors)}");
+            return;
+        }
+
+        var r = result.Value;
+        var builder = new System.Text.StringBuilder();
+        builder.AppendLine(r.Store.Name);
+        builder.AppendLine(r.Store.Address ?? string.Empty);
+        builder.AppendLine(new string('-', 32));
+        builder.AppendLine($"إيصال: {r.SaleNumber} — {r.SaleDate.ToLocalTime():yyyy-MM-dd HH:mm}");
+        builder.AppendLine(new string('-', 32));
+        foreach (var line in r.Lines)
+        {
+            builder.AppendLine(line.ProductName);
+            builder.AppendLine($"  {line.Quantity:0.###} {line.UnitSymbol} × {line.UnitPrice:N2} = {line.LineTotal:N2}");
+        }
+
+        builder.AppendLine(new string('-', 32));
+        builder.AppendLine($"الإجمالي: {r.Total:N2} — المدفوع: {r.Paid:N2} — المتبقي: {r.Remaining:N2}");
+
+        var printed = await Printer.PrintAsync(builder.ToString());
+        await JS.InvokeVoidAsync("alert", printed
+            ? $"تم إرسال الإيصال إلى: {Printer.DeviceName}"
+            : "تعذرت الطباعة. تحقق من الطابعة.");
+    }
+}

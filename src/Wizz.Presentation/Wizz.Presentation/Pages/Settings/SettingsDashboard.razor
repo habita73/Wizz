@@ -80,8 +80,14 @@
     <div class="col-lg-6 mb-4">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">👥 المستخدمون</h5>
-                <button class="btn btn-sm btn-success" @onclick="NewUser">➕ مستخدم</button>
+                <h5 class="mb-0 d-flex align-items-center gap-2">
+                    <WizzIcon Icon="users" Size="18" />
+                    <span>المستخدمون</span>
+                </h5>
+                <button class="btn btn-sm btn-success" @onclick="NewUser">
+                    <WizzIcon Icon="plus" Size="14" />
+                    <span>مستخدم</span>
+                </button>
             </div>
             <div class="card-body">
                 @if (users.Count == 0)
@@ -117,12 +123,16 @@
                                         <td>@(user.LastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
                                         <td>
                                             <div class="btn-group btn-group-sm">
-                                                <button class="btn btn-outline-primary" title="تعديل" @onclick="() => EditUser(user)">✏️</button>
-                                                <button class="btn btn-outline-warning" title="إعادة تعيين كلمة المرور" @onclick="() => ResetPassword(user)">🔑</button>
+                                                <button class="btn btn-outline-primary" title="تعديل" @onclick="() => EditUser(user)">
+                                                    <WizzIcon Icon="edit" Size="16" Title="تعديل" />
+                                                </button>
+                                                <button class="btn btn-outline-warning" title="إعادة تعيين كلمة المرور" @onclick="() => ResetPassword(user)">
+                                                    <WizzIcon Icon="key" Size="16" Title="إعادة تعيين كلمة المرور" />
+                                                </button>
                                                 <button class="btn btn-outline-@(user.IsActive ? "danger" : "success")"
                                                         title="@(user.IsActive ? "تعطيل" : "تفعيل")"
                                                         @onclick="() => ToggleUserActive(user)">
-                                                    @(user.IsActive ? "🚫" : "✅")
+                                                    <WizzIcon Icon="@(user.IsActive ? "ban" : "check-circle")" Size="16" Title="@(user.IsActive ? "تعطيل" : "تفعيل")" />
                                                 </button>
                                             </div>
                                         </td>
@@ -140,7 +150,10 @@
     <div class="col-lg-6 mb-4">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">💾 النسخ الاحتياطي</h5>
+                <h5 class="mb-0 d-flex align-items-center gap-2">
+                    <WizzIcon Icon="save" Size="18" />
+                    <span>النسخ الاحتياطي</span>
+                </h5>
                 <button class="btn btn-sm btn-primary" @onclick="CreateBackup" disabled="@backupInProgress">
                     @if (backupInProgress)
                     {
@@ -175,8 +188,12 @@
                                         <td class="text-end">@FormatBytes(backup.SizeBytes)</td>
                                         <td>
                                             <div class="btn-group btn-group-sm">
-                                                <button class="btn btn-outline-success" title="استعادة" @onclick="() => RestoreBackup(backup.Path)">↩️</button>
-                                                <button class="btn btn-outline-danger" title="حذف" @onclick="() => DeleteBackup(backup.Path)">🗑️</button>
+                                                <button class="btn btn-outline-success" title="استعادة" @onclick="() => RestoreBackup(backup.Path)">
+                                                    <WizzIcon Icon="undo" Size="16" Title="استعادة" />
+                                                </button>
+                                                <button class="btn btn-outline-danger" title="حذف" @onclick="() => DeleteBackup(backup.Path)">
+                                                    <WizzIcon Icon="trash" Size="16" Title="حذف" />
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -192,7 +209,12 @@
     <!-- معلومات النظام -->
     <div class="col-lg-6 mb-4">
         <div class="card h-100">
-            <div class="card-header"><h5 class="mb-0">ℹ️ معلومات النظام</h5></div>
+            <div class="card-header">
+                <h5 class="mb-0 d-flex align-items-center gap-2">
+                    <WizzIcon Icon="info" Size="18" />
+                    <span>معلومات النظام</span>
+                </h5>
+            </div>
             <div class="card-body">
                 <table class="table table-sm table-borderless mb-0">
                     <tbody>
@@ -212,7 +234,7 @@
     <div class="col-lg-6 mb-4">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">🤖 المساعد الذكي</h5>
+                <h5 class="mb-0 d-flex align-items-center gap-2"><WizzIcon Icon="sparkles" Size="18" /><span>المساعد الذكي</span></h5>
                 <span class="badge @(aiCloudEnabled ? "bg-success" : "bg-secondary")">
                     @(aiCloudEnabled ? "سحابي مجاني مفعل" : "محلي فقط")
                 </span>
@@ -239,7 +261,7 @@
                             <input type="password" class="form-control" @bind="cloudApiKey" placeholder="sk-or-... (اختياري)" />
                             <span class="input-group-text">
                                 <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
-                                    🔗 احصل على مفتاح مجاني
+                                    <WizzIcon Icon="link" Size="14" /> احصل على مفتاح مجاني
                                 </a>
                             </span>
                         </div>
@@ -271,7 +293,7 @@
                         <div class="alert alert-info py-2 small mb-3">
                             <strong>قدرة الجهاز:</strong> @DeviceTierText(deviceAssessment.Tier)
                             <span class="text-muted ms-1"
-                                  title="مستوى الجهاز يُقاس من الذاكرة المتاحة، ويحدّد النموذج المحلي المقترح تلقائياً.">❓</span>
+                                  title="مستوى الجهاز يُقاس من الذاكرة المتاحة، ويحدّد النموذج المحلي المقترح تلقائياً."><WizzIcon Icon="help" Size="14" /></span>
                             <div class="text-muted mt-1">@deviceAssessment.Reason</div>
                         </div>
                     }
@@ -280,7 +302,7 @@
                 <div class="mb-3">
                     <label class="form-label">
                         النموذج المحلي المفضّل
-                        <span class="text-muted" title="النموذج الذي يستخدمه Ollama داخل المتجر. اختر النموذج ثم اضغط «تطبيق». نسخ «coder» غير مخصصة للمحادثة العربية.">❓</span>
+                        <span class="text-muted" title="النموذج الذي يستخدمه Ollama داخل المتجر. اختر النموذج ثم اضغط «تطبيق». نسخ «coder» غير مخصصة للمحادثة العربية."><WizzIcon Icon="help" Size="14" /></span>
                     </label>
                     <div class="input-group input-group-sm">
                         <select class="form-select" @bind="preferredLocalModel" disabled="@(localModels.Count == 0)">
@@ -298,7 +320,14 @@
                         </select>
                         <button class="btn btn-outline-secondary" title="تحديث قائمة النماذج المثبتة"
                                 @onclick="RefreshLocalModels" disabled="@loadingLocalModels">
-                            @(loadingLocalModels ? "…" : "🔄")
+                            @if (loadingLocalModels)
+                            {
+                                <span class="spinner-border spinner-border-sm"></span>
+                            }
+                            else
+                            {
+                                <WizzIcon Icon="refresh" Size="14" />
+                            }
                         </button>
                         <button class="btn btn-outline-primary" title="تفعيل النموذج المختار"
                                 @onclick="ApplyLocalModel"
@@ -318,7 +347,7 @@
                         <ol class="mb-0 mt-2 ps-3">
                             <li>ثبّت Ollama من <code>ollama.com</code></li>
                             <li><code>ollama pull qwen2.5:0.5b-instruct</code></li>
-                            <li>أعد تشغيل التطبيق أو اضغط 🔄</li>
+                            <li>أعد تشغيل التطبيق أو اضغط زر التحديث</li>
                         </ol>
                     </div>
                 }
@@ -334,11 +363,11 @@
                     لا تُرسل أي بيانات من متجرك إلى الإنترنت إلا إذا فعّلت الخيار أعلاه.
                 </div>
 
-                <div class="card card-body bg-light mt-3" style="border: 1px solid #dee2e6;">
-                    <h6 class="mb-2">🔑 للحصول على مفتاح مجاني (اختياري):</h6>
+                <div class="card card-body bg-light mt-3 border">
+                    <h6 class="mb-2"><WizzIcon Icon="key" Size="16" /> للحصول على مفتاح مجاني (اختياري):</h6>
                     <div class="mb-2">
                         <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-sm">
-                            🌐 فتح OpenRouter (مجاني)
+                            <WizzIcon Icon="globe" Size="14" /> فتح OpenRouter (مجاني)
                         </a>
                     </div>
                     <div class="small text-muted">
@@ -349,7 +378,7 @@
                             <li>الصقه هنا ← احفظ ← المساعد يصبح أقوى للأسئلة المعقدة</li>
                         </ol>
                         <div class="text-success small mt-1">
-                            ✅ مجاني تماماً — لا بطاقة بنكية — نماذج عربية مجانية متاحة (Qwen، Gemma، Llama...)
+                            <WizzIcon Icon="check-circle" Size="14" /> مجاني تماماً — لا بطاقة بنكية — نماذج عربية مجانية متاحة (Qwen، Gemma، Llama...)
                         </div>
                     </div>
                 </div>
@@ -376,19 +405,19 @@
 
                 <hr />
 
-                <h6 class="mb-2">🧠 تفضيلات المساعد</h6>
+                <h6 class="mb-2 d-flex align-items-center gap-2"><WizzIcon Icon="brain" Size="16" /><span>تفضيلات المساعد</span></h6>
 
                 <div class="mb-3">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="aiRememberContext" @bind="rememberContext" />
                         <label class="form-check-label" for="aiRememberContext">
                             حفظ سياق المحادثة
-                            <span class="text-muted" title="عند التفعيل يتذكّر المساعد آخر منتج سألت عنه فيجيب عن «كم سعره؟». كل شيء محفوظ على جهازك فقط ويمكن مسحه من صفحة المساعد.">❓</span>
+                            <span class="text-muted" title="عند التفعيل يتذكّر المساعد آخر منتج سألت عنه فيجيب عن «كم سعره؟». كل شيء محفوظ على جهازك فقط ويمكن مسحه من صفحة المساعد."><WizzIcon Icon="help" Size="14" /></span>
                         </label>
                     </div>
                     <div class="form-text">
                         يتذكّر المساعد آخر منتج سألت عنه فيجيب عن أسئلة المتابعة مثل «كم سعره؟». البيانات محفوظة على جهازك فقط،
-                        ويمكن مسحها بزر «🧠 مسح الذاكرة» في صفحة المساعد.
+                        ويمكن مسحها بزر «مسح الذاكرة» في صفحة المساعد.
                     </div>
                 </div>
 
@@ -412,7 +441,7 @@
                         <input class="form-check-input" type="checkbox" id="aiInternetAccess" @bind="allowInternetAccess" />
                         <label class="form-check-label" for="aiInternetAccess">
                             السماح للمساعد المدمج بالبحث في الإنترنت عند الطلب
-                            <span class="text-muted" title="مغلق افتراضياً. عند التفعيل فقط، وإذا كتبت «ابحث عن…» أو «من هو…»، تُرسل كلمات سؤالك إلى خدمة بحث عامة. أسئلة متجرك لا تُرسل أبداً.">❓</span>
+                            <span class="text-muted" title="مغلق افتراضياً. عند التفعيل فقط، وإذا كتبت «ابحث عن…» أو «من هو…»، تُرسل كلمات سؤالك إلى خدمة بحث عامة. أسئلة متجرك لا تُرسل أبداً."><WizzIcon Icon="help" Size="14" /></span>
                         </label>
                     </div>
                     <div class="form-text">
@@ -423,8 +452,8 @@
                 </div>
 
                 <div class="d-flex gap-2 mb-3">
-                    <button class="btn btn-outline-primary btn-sm flex-fill" @onclick="SaveAiPreferences">💾 حفظ التفضيلات</button>
-                    <button class="btn btn-outline-secondary btn-sm flex-fill" @onclick="ResetAiPreferences">↺ الافتراضي</button>
+                    <button class="btn btn-outline-primary btn-sm flex-fill" @onclick="SaveAiPreferences"><WizzIcon Icon="save" Size="14" /> حفظ التفضيلات</button>
+                    <button class="btn btn-outline-secondary btn-sm flex-fill" @onclick="ResetAiPreferences"><WizzIcon Icon="refresh" Size="14" /> الافتراضي</button>
                 </div>
 
                 <RoutePriorityEditor />
@@ -486,6 +515,37 @@
                 <div class="form-text">
                     عند اختيار «النظام» ستتبع الواجهة تفضيلات نظام التشغيل (الوضع الليلي إذا كان مفعلاً في ويندوز/الجهاز).
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- اختصارات لوحة المفاتيح -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0 d-flex align-items-center gap-2">
+                    <WizzIcon Icon="keyboard" Size="18" />
+                    <span>اختصارات لوحة المفاتيح</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-3">
+                    تعمل على الحاسوب. الاختصارات الأربعة الأولى متاحة في الصفحة الرئيسية، وبقية الاختصارات تعمل داخل النماذج والمساعد.
+                </p>
+                <ul class="shortcut-list mb-0">
+                    @foreach (var shortcut in Shortcuts)
+                    {
+                        <li class="shortcut-row">
+                            <span class="shortcut-label">@shortcut.Label</span>
+                            <span class="shortcut-keys">
+                                @foreach (var key in shortcut.Keys)
+                                {
+                                    <kbd>@key</kbd>
+                                }
+                            </span>
+                        </li>
+                    }
+                </ul>
             </div>
         </div>
     </div>
@@ -594,6 +654,19 @@
 @code {
     private Store? store;
     private StoreForm storeForm = new();
+
+    /// <summary>مرجع اختصارات لوحة المفاتيح المعروضة في بطاقة الإعدادات.</summary>
+    private static readonly (string Label, string[] Keys)[] Shortcuts =
+    {
+        ("بيع جديد", new[] { "Alt", "1" }),
+        ("الديون المستحقة", new[] { "Alt", "2" }),
+        ("الفواتير المتأخرة", new[] { "Alt", "3" }),
+        ("سجل المبيعات", new[] { "Alt", "4" }),
+        ("تنفيذ الإجراء الافتراضي في النموذج", new[] { "Enter" }),
+        ("إلغاء / إغلاق النافذة", new[] { "Esc" }),
+        ("سطر جديد في المساعد", new[] { "Shift", "Enter" })
+    };
+
     private bool showStoreModal;
     private bool savingStore;
 
@@ -863,12 +936,12 @@
             // نستكشف Ollama عبر IModelRouter status كمؤشر
             var status = await ModelRouter.GetStatusAsync();
             ollamaTestResult = status.LocalAvailable
-                ? $"✅ Ollama متاح: {status.LocalModel}"
-                : "❌ Ollama غير متاح. تحقق من تشغيل تطبيق Ollama على المنفذ 11434 وثبّت نموذجاً (ollama pull qwen2.5:0.5b-instruct).";
+                ? $"Ollama متاح: {status.LocalModel}"
+                : "Ollama غير متاح. تحقق من تشغيل تطبيق Ollama على المنفذ 11434 وثبّت نموذجاً (ollama pull qwen2.5:0.5b-instruct).";
         }
         catch (Exception ex)
         {
-            ollamaTestResult = $"❌ خطأ: {ex.Message}";
+            ollamaTestResult = $"خطأ: {ex.Message}";
         }
         finally
         {
@@ -889,7 +962,7 @@
         }
         catch (Exception ex)
         {
-            cloudTestResult = $"❌ خطأ: {ex.Message}";
+            cloudTestResult = $"خطأ: {ex.Message}";
         }
         finally
         {

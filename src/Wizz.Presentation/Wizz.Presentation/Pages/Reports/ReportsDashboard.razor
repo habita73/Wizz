@@ -3,7 +3,10 @@
 @inject Wizz.Application.Abstractions.ISaleRepository SaleRepo
 @inject Wizz.Application.Abstractions.IProductRepository ProductRepo
 
-<h2>📊 التقارير ولوحة التحكم</h2>
+<h2 class="d-flex align-items-center gap-2">
+    <WizzIcon Icon="chart" Size="24" />
+    <span>التقارير ولوحة التحكم</span>
+</h2>
 
 <div class="row mb-4">
     <div class="col-md-3">
@@ -21,7 +24,10 @@
         </select>
     </div>
     <div class="col-md-3">
-        <button class="btn btn-primary w-100" @onclick="GenerateReport">🔄 تحديث</button>
+        <button class="btn btn-primary w-100" @onclick="GenerateReport">
+            <WizzIcon Icon="refresh" Size="16" />
+            <span>تحديث</span>
+        </button>
     </div>
 </div>
 
@@ -234,21 +240,21 @@
 
     private string GetPaymentMethodText(Wizz.Domain.PaymentMethod method) => method switch
     {
-        Wizz.Domain.PaymentMethod.Cash => "💵 نقدي",
-        Wizz.Domain.PaymentMethod.Card => "💳 بطاقة",
-        Wizz.Domain.PaymentMethod.Credit => "📝 آجل",
-        Wizz.Domain.PaymentMethod.Mobile => "📱 محمول",
-        Wizz.Domain.PaymentMethod.Mixed => "🔄 مختلط",
+        Wizz.Domain.PaymentMethod.Cash => "نقدي",
+        Wizz.Domain.PaymentMethod.Card => "بطاقة",
+        Wizz.Domain.PaymentMethod.Credit => "آجل",
+        Wizz.Domain.PaymentMethod.Mobile => "محمول",
+        Wizz.Domain.PaymentMethod.Mixed => "مختلط",
         _ => "—"
     };
 
     private string GetPaymentMethodText(Wizz.Application.DTOs.PaymentMethodDto method) => method switch
     {
-        Wizz.Application.DTOs.PaymentMethodDto.Cash => "💵 نقدي",
-        Wizz.Application.DTOs.PaymentMethodDto.Card => "💳 بطاقة",
-        Wizz.Application.DTOs.PaymentMethodDto.Credit => "📝 آجل",
-        Wizz.Application.DTOs.PaymentMethodDto.Mobile => "📱 محمول",
-        Wizz.Application.DTOs.PaymentMethodDto.Mixed => "🔄 مختلط",
+        Wizz.Application.DTOs.PaymentMethodDto.Cash => "نقدي",
+        Wizz.Application.DTOs.PaymentMethodDto.Card => "بطاقة",
+        Wizz.Application.DTOs.PaymentMethodDto.Credit => "آجل",
+        Wizz.Application.DTOs.PaymentMethodDto.Mobile => "محمول",
+        Wizz.Application.DTOs.PaymentMethodDto.Mixed => "مختلط",
         _ => "—"
     };
 }

@@ -90,12 +90,20 @@ else
                         <td>@GetCashierName(sale.CashierId)</td>
                         <td class="text-end">
                             <div class="btn-group btn-group-sm">
-                                <button class="btn btn-outline-primary" @onclick="() => ViewReceipt(sale.Id)" title="عرض الإيصال">👁️</button>
-                                <button class="btn btn-outline-secondary" @onclick="() => PrintReceipt(sale.Id)" title="طباعة">🖨️</button>
+                                <button class="btn btn-outline-primary" @onclick="() => ViewReceipt(sale.Id)" title="عرض الإيصال">
+                                    <WizzIcon Icon="eye" Size="16" Title="عرض الإيصال" />
+                                </button>
+                                <button class="btn btn-outline-secondary" @onclick="() => PrintReceipt(sale.Id)" title="طباعة">
+                                    <WizzIcon Icon="printer" Size="16" Title="طباعة" />
+                                </button>
                                 @if (sale.Status == SaleStatus.Completed && !sale.IsCorrected)
                                 {
-                                    <button class="btn btn-outline-warning" @onclick="() => CorrectSale(sale.Id)" title="تصحيح">✏️</button>
-                                    <button class="btn btn-outline-danger" @onclick="() => CancelSale(sale.Id)" title="إلغاء">❌</button>
+                                    <button class="btn btn-outline-warning" @onclick="() => CorrectSale(sale.Id)" title="تصحيح">
+                                        <WizzIcon Icon="edit" Size="16" Title="تصحيح" />
+                                    </button>
+                                    <button class="btn btn-outline-danger" @onclick="() => CancelSale(sale.Id)" title="إلغاء">
+                                        <WizzIcon Icon="ban" Size="16" Title="إلغاء" />
+                                    </button>
                                 }
                             </div>
                         </td>
@@ -162,7 +170,10 @@ else
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" @onclick="() => receipt = null">إغلاق</button>
-                    <button class="btn btn-primary" @onclick="() => PrintReceipt(receipt.SaleId)">🖨️ طباعة</button>
+                    <button class="btn btn-primary" @onclick="() => PrintReceipt(receipt.SaleId)">
+                        <WizzIcon Icon="printer" Size="16" />
+                        <span>طباعة</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -343,11 +354,11 @@ else
 
     private static string GetPaymentMethodText(Wizz.Domain.PaymentMethod method) => method switch
     {
-        Wizz.Domain.PaymentMethod.Cash => "💵 نقدي",
-        Wizz.Domain.PaymentMethod.Card => "💳 بطاقة",
-        Wizz.Domain.PaymentMethod.Credit => "📝 آجل",
-        Wizz.Domain.PaymentMethod.Mobile => "📱 محمول",
-        Wizz.Domain.PaymentMethod.Mixed => "🔄 مختلط",
+        Wizz.Domain.PaymentMethod.Cash => "نقدي",
+        Wizz.Domain.PaymentMethod.Card => "بطاقة",
+        Wizz.Domain.PaymentMethod.Credit => "آجل",
+        Wizz.Domain.PaymentMethod.Mobile => "محمول",
+        Wizz.Domain.PaymentMethod.Mixed => "مختلط",
         _ => "—",
     };
 }
