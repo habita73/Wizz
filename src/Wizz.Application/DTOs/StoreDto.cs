@@ -10,7 +10,8 @@ public sealed record StoreDto(
     string? CommercialRegister,
     bool AllowCreditSales,
     string Currency,
-    string TimeZone
+    string TimeZone,
+    bool InventoryEnabled = true
 );
 
 /// <summary>إدخال إعدادات المتجر.</summary>
@@ -20,5 +21,6 @@ public sealed record StoreInputDto(
     string? Phone,
     string? TaxNumber,
     string? CommercialRegister,
-    bool AllowCreditSales
+    bool AllowCreditSales,
+    bool InventoryEnabled = true
 );

@@ -216,6 +216,51 @@ namespace Wizz.Infrastructure.Data.Migrations
                     b.ToTable("SaleItems");
                 });
 
+            modelBuilder.Entity("Wizz.Domain.StockMovement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("QuantityAfter")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("QuantityBefore")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("QuantityDelta")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("SaleId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("SaleId");
+
+                    b.ToTable("StockMovements");
+                });
+
             modelBuilder.Entity("Wizz.Domain.Store", b =>
                 {
                     b.Property<Guid>("Id")
@@ -242,6 +287,11 @@ namespace Wizz.Infrastructure.Data.Migrations
                         .HasMaxLength(3)
                         .HasColumnType("TEXT")
                         .HasDefaultValue("DZD");
+
+                    b.Property<bool>("InventoryEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -414,6 +464,17 @@ namespace Wizz.Infrastructure.Data.Migrations
                     b.Navigation("Product");
 
                     b.Navigation("Unit");
+                });
+
+            modelBuilder.Entity("Wizz.Domain.StockMovement", b =>
+                {
+                    b.HasOne("Wizz.Domain.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
                 });
 
             modelBuilder.Entity("Wizz.Domain.UnitOfMeasure", b =>

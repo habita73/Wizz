@@ -40,15 +40,20 @@ public sealed class CreateProductUseCase
         }
 
         await _unitOfWork.Products.AddAsync(product, ct);
+
+        // الرصيد الافتتاحي حركة مخزون موثّقة، لا مجرد رقم في بطاقة المنتج.
+        if (!product.IsService && product.StockQuantity > 0)
+        {
+            await _unitOfWork.StockMovements.AddAsync(new StockMovement(
+                product.Id,
+                StockMovementType.OpeningBalance,
+                product.StockQuantity,
+                0m,
+                "رصيد افتتاحي عند إنشاء المنتج"), ct);
+        }
+
         await _unitOfWork.SaveChangesAsync(ct);
 
-        return Result<ProductDto>.Success(MapToDto(product));
+        return Result<ProductDto>.Success(ProductDto.FromDomain(product));
     }
-
-    private static ProductDto MapToDto(Product p) => new(
-        p.Id, p.Name, p.Barcode, p.Description, p.RetailPrice, p.WholesalePrice,
-        p.IsService, p.IsActive,
-        p.Units.Select(u => new UnitOfMeasureDto(u.Id, u.Name, u.Symbol, u.BaseQuantity, u.IsBaseUnit)).ToList(),
-        p.GetBaseUnit() is { } bu ? new UnitOfMeasureDto(bu.Id, bu.Name, bu.Symbol, bu.BaseQuantity, true) : null,
-        p.StockQuantity, p.ReorderLevel);
 }

@@ -18,12 +18,13 @@ public sealed class InitializeStoreUseCase
         if (exists)
             return Result<StoreDto>.Failure("المتجر معد بالفعل — استخدم التحديث");
 
-        var store = new Store(input.Name, input.Address, input.Phone, input.TaxNumber, input.CommercialRegister, input.AllowCreditSales);
+        var store = new Store(input.Name, input.Address, input.Phone, input.TaxNumber, input.CommercialRegister, input.AllowCreditSales,
+            inventoryEnabled: input.InventoryEnabled);
         await _unitOfWork.Store.AddAsync(store, ct);
         await _unitOfWork.SaveChangesAsync(ct);
 
         return Result<StoreDto>.Success(MapToDto(store));
     }
 
-    private static StoreDto MapToDto(Store s) => new(s.Id, s.Name, s.Address, s.Phone, s.TaxNumber, s.CommercialRegister, s.AllowCreditSales, s.Currency, s.TimeZone);
+    private static StoreDto MapToDto(Store s) => new(s.Id, s.Name, s.Address, s.Phone, s.TaxNumber, s.CommercialRegister, s.AllowCreditSales, s.Currency, s.TimeZone, s.InventoryEnabled);
 }

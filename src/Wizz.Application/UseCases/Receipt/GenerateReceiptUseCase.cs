@@ -32,7 +32,7 @@ public sealed class GenerateReceiptUseCase
             sale.Id.ToString("N")[..8].ToUpper(), // رقم بيع مختصر
             sale.SaleDate,
             new StoreDto(store.Id, store.Name, store.Address, store.Phone, store.TaxNumber, store.CommercialRegister,
-                store.AllowCreditSales, store.Currency, store.TimeZone),
+                store.AllowCreditSales, store.Currency, store.TimeZone, store.InventoryEnabled),
             sale.Items.Select(i => new ReceiptLineDto(
                 i.Product?.Name ?? "منتج غير معروف",
                 i.Quantity,

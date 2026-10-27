@@ -5,6 +5,7 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
 {
     IProductRepository Products { get; }
     ISaleRepository Sales { get; }
+    IStockMovementRepository StockMovements { get; }
     IStoreRepository Store { get; }
     IUserRepository Users { get; }
 

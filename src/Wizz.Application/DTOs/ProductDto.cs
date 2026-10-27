@@ -1,5 +1,7 @@
 namespace Wizz.Application.DTOs;
 
+using Wizz.Domain;
+
 /// <summary>وحدة قياس للمنتج — للعرض والنقل.</summary>
 public sealed record UnitOfMeasureDto(
     Guid Id,
@@ -26,7 +28,18 @@ public sealed record ProductDto(
 )
 {
     /// <summary>منتج (لا خدمة) بلغ أو تجاوز حد إعادة الطلب.</summary>
-    public bool IsLowStock => !IsService && ReorderLevel > 0 && StockQuantity <= ReorderLevel;
+    public bool IsLowStock => !IsService && (StockQuantity < 0 || (ReorderLevel > 0 && StockQuantity <= ReorderLevel));
+
+    /// <summary>نفد رصيد المنتج.</summary>
+    public bool IsOutOfStock => !IsService && StockQuantity <= 0;
+
+    /// <summary>تحويل كيان المنتج إلى DTO للعرض.</summary>
+    public static ProductDto FromDomain(Product p) => new(
+        p.Id, p.Name, p.Barcode, p.Description, p.RetailPrice, p.WholesalePrice,
+        p.IsService, p.IsActive,
+        p.Units.Select(u => new UnitOfMeasureDto(u.Id, u.Name, u.Symbol, u.BaseQuantity, u.IsBaseUnit)).ToList(),
+        p.GetBaseUnit() is { } bu ? new UnitOfMeasureDto(bu.Id, bu.Name, bu.Symbol, bu.BaseQuantity, true) : null,
+        p.StockQuantity, p.ReorderLevel);
 }
 
 /// <summary>بيانات إنشاء/تحديث منتج.</summary>

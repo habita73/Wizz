@@ -2,6 +2,7 @@
 @layout MainLayout
 @inject IJSRuntime JS
 @inject Wizz.Application.Abstractions.IProductRepository ProductRepo
+@inject Wizz.Application.Abstractions.IStoreRepository StoreRepo
 @inject Wizz.Application.Abstractions.IUserRepository UserRepo
 @inject Wizz.Application.UseCases.Sales.CreateSaleUseCase CreateSaleUseCase
 @inject Wizz.Application.UseCases.Receipt.GenerateReceiptUseCase GenerateReceiptUseCase
@@ -83,6 +84,12 @@
                                         <span class="fw-bold text-success">@product.RetailPrice.ToString("N2") د.ج</span>
                                         <span class="text-muted">/ @(product.BaseUnit?.Symbol ?? "قطعة")</span>
                                     </div>
+                                    @if (inventoryEnabled && !product.IsService)
+                                    {
+                                        <div class="small mt-1 @(product.IsOutOfStock ? "text-danger" : "text-muted")">
+                                            المتوفر: @product.StockQuantity.ToString("N2") @(product.BaseUnit?.Symbol ?? "")
+                                        </div>
+                                    }
                                 </button>
                             </div>
                         }
@@ -122,8 +129,20 @@
                             <tbody>
                                 @foreach (var item in cartItems)
                                 {
-                                    <tr>
-                                        <td>@item.ProductName</td>
+                                    <tr class="@(inventoryEnabled && item.ExceedsStock ? "table-warning" : "")">
+                                        <td>
+                                            <div>@item.ProductName</div>
+                                            @if (inventoryEnabled)
+                                            {
+                                                <div class="small @(item.ExceedsStock ? "text-danger fw-semibold" : "text-muted")">
+                                                    المتوفر: @item.AvailableStock.ToString("N2") @item.BaseUnitSymbol
+                                                    @if (item.ExceedsStock)
+                                                    {
+                                                        <span>— الكمية المطلوبة أكبر من المتوفر</span>
+                                                    }
+                                                </div>
+                                            }
+                                        </td>
                                         <td>@item.UnitSymbol</td>
                                         <td class="text-center">
                                             <input type="number" step="0.001" min="0.001" class="form-control form-control-sm text-center mx-auto" style="width: 90px;"
@@ -264,6 +283,7 @@
     private Guid? cashierId;
     private Guid? lastSaleId;
     private bool savingSale;
+    private bool inventoryEnabled;
 
     private bool isFiltering => !string.IsNullOrWhiteSpace(searchQuery);
 
@@ -280,6 +300,9 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var store = await StoreRepo.GetAsync();
+        inventoryEnabled = store?.InventoryEnabled == true;
+
         await ResolveCashierAsync();
         await LoadInitialProducts();
     }
@@ -423,6 +446,9 @@
                 ProductName = product.Name,
                 UnitId = baseUnit?.Id ?? Guid.Empty,
                 UnitSymbol = baseUnit?.Symbol ?? "قطعة",
+                UnitBaseQuantity = baseUnit?.BaseQuantity ?? 1m,
+                BaseUnitSymbol = product.BaseUnit?.Symbol ?? baseUnit?.Symbol ?? "قطعة",
+                AvailableStock = product.StockQuantity,
                 Quantity = 1,
                 UnitPrice = product.RetailPrice,
                 RetailPrice = product.RetailPrice,
@@ -498,6 +524,35 @@
         {
             await JS.InvokeVoidAsync("alert", "لا يوجد مستخدم نشط. أضف مستخدمًا من صفحة الإعدادات أولًا.");
             return;
+        }
+
+        // تحذير واضح إذا تجاوزت الكمية المتوفرة — لا نمنع البيع، لكن نطلب تأكيداً صريحاً.
+        if (inventoryEnabled)
+        {
+            var shortages = new List<string>();
+            foreach (var item in cartItems)
+            {
+                var product = await ProductRepo.GetByIdAsync(item.ProductId);
+                if (product == null || product.IsService) continue;
+
+                var requested = item.Quantity * item.UnitBaseQuantity;
+                if (requested > product.StockQuantity)
+                {
+                    shortages.Add($"{item.ProductName}: المطلوب {requested:N2}، المتوفر {product.StockQuantity:N2}");
+                }
+            }
+
+            if (shortages.Count > 0)
+            {
+                var proceed = await JS.InvokeAsync<bool>(
+                    "confirm",
+                    "الكمية المطلوبة أكبر من المخزون المتوفر:\n" + string.Join("\n", shortages)
+                    + "\n\nهل تريد متابعة البيع؟ سيصبح رصيد هذه المنتجات سالباً.");
+                if (!proceed)
+                {
+                    return;
+                }
+            }
         }
 
         savingSale = true;
@@ -587,6 +642,10 @@
         public string ProductName { get; set; } = "";
         public Guid UnitId { get; set; }
         public string UnitSymbol { get; set; } = "";
+        public decimal UnitBaseQuantity { get; set; } = 1m;
+        public string BaseUnitSymbol { get; set; } = "";
+        public decimal AvailableStock { get; set; }
+        public bool ExceedsStock => Quantity * UnitBaseQuantity > AvailableStock;
         public decimal Quantity { get; set; }
         public decimal UnitPrice { get; set; }
         public decimal RetailPrice { get; set; }

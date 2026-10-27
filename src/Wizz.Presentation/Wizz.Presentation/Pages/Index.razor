@@ -2,6 +2,7 @@
 @layout MainLayout
 @inject Wizz.Application.Abstractions.ISaleRepository SaleRepo
 @inject Wizz.Application.Abstractions.IProductRepository ProductRepo
+@inject Wizz.Application.Abstractions.IStoreRepository StoreRepo
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -46,7 +47,7 @@
     </div>
 </div>
 
-@if (LowStockCount > 0)
+@if (inventoryEnabled && LowStockCount > 0)
 {
     <div class="stock-alert mt-2 mb-2" role="alert">
         <WizzIcon Icon="alert" Size="20" Class="stock-alert-icon" />
@@ -186,6 +187,7 @@
     private int ProductCount;
     private int LowStockCount;
     private string LowStockNames = "";
+    private bool inventoryEnabled = true;
 
     private bool showHint;
     private DotNetObjectReference<Index>? selfRef;
@@ -211,6 +213,9 @@
         TodayCount = completed.Count;
         TotalRemaining = await SaleRepo.GetTotalRemainingAsync();
         ProductCount = await ProductRepo.CountAsync();
+
+        var store = await StoreRepo.GetAsync();
+        inventoryEnabled = store?.InventoryEnabled == true;
 
         var lowStock = await ProductRepo.GetLowStockAsync();
         LowStockCount = lowStock.Count;

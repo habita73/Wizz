@@ -1,14 +1,29 @@
 @page "/products"
 @layout MainLayout
 @inject Wizz.Application.Abstractions.IProductRepository ProductRepo
+@inject Wizz.Application.Abstractions.IStoreRepository StoreRepo
+@inject Wizz.Application.Abstractions.IUserRepository UserRepo
 @inject Wizz.Application.Abstractions.IUnitOfWork UnitOfWork
 @inject Wizz.Application.UseCases.Products.CreateProductUseCase CreateProductUseCase
 @inject Wizz.Application.UseCases.Products.UpdateProductUseCase UpdateProductUseCase
+@inject Wizz.Application.UseCases.Products.AdjustStockUseCase AdjustStockUseCase
 @inject IJSRuntime JS
 <h2 class="d-flex align-items-center gap-2">
     <WizzIcon Icon="package" Size="24" />
     <span>إدارة المنتجات</span>
 </h2>
+
+@if (!inventoryEnabled)
+{
+    <div class="alert alert-info d-flex align-items-start gap-2">
+        <WizzIcon Icon="info" Size="18" />
+        <div class="flex-grow-1">
+            تتبع المخزون معطّل، لذلك لا يُخصم الرصيد تلقائياً عند البيع ولا تظهر تنبيهات النقص.
+            يمكنك تفعيله من إعدادات المتجر.
+        </div>
+        <a href="/settings" class="btn btn-sm btn-outline-primary flex-shrink-0">الإعدادات</a>
+    </div>
+}
 
 <div class="row mb-3">
     <div class="col-md-5">
@@ -27,7 +42,7 @@
         </div>
     </div>
     <div class="col-md-2">
-        <select class="form-select" @bind="filterActive" @bind:after="SearchProducts">
+        <select class="form-select" @bind="filterActiveString" @bind:after="OnFilterActiveChanged">
             <option value="">الكل</option>
             <option value="true">نشط فقط</option>
             <option value="false">غير نشط فقط</option>
@@ -92,12 +107,23 @@ else
                             }
                             else
                             {
-                                <span class="fw-semibold">@product.StockQuantity.ToString("N2")</span>
-                                @if (product.IsLowStock)
+                                <span class="fw-semibold @(product.StockQuantity < 0 ? "text-danger" : "")">@product.StockQuantity.ToString("N2")</span>
+                                @if (product.StockQuantity < 0)
+                                {
+                                    <span class="badge bg-danger ms-1" title="رصيد سالب — بِيع أكثر من المتوفر">
+                                        <WizzIcon Icon="alert" Size="12" />
+                                        <span>سالب</span>
+                                    </span>
+                                }
+                                else if (product.IsOutOfStock)
+                                {
+                                    <span class="badge bg-danger ms-1">نفد</span>
+                                }
+                                else if (product.IsLowStock)
                                 {
                                     <span class="badge bg-warning text-dark ms-1" title="بلغ حد إعادة الطلب">
                                         <WizzIcon Icon="alert" Size="12" />
-                                        <span>@(product.StockQuantity <= 0 ? "نفد" : "منخفض")</span>
+                                        <span>منخفض</span>
                                     </span>
                                 }
                             }
@@ -116,6 +142,15 @@ else
                                 <button class="btn btn-outline-primary" @onclick="() => EditProduct(product)" title="تعديل">
                                     <WizzIcon Icon="edit" Size="16" Title="تعديل" />
                                 </button>
+                                @if (!product.IsService)
+                                {
+                                    <button class="btn btn-outline-secondary" @onclick="() => OpenAdjust(product)" title="جرد المخزون">
+                                        <WizzIcon Icon="list" Size="16" Title="جرد المخزون" />
+                                    </button>
+                                    <a class="btn btn-outline-secondary" href="/stock-movements?productId=@product.Id" title="سجل حركات المخزون">
+                                        <WizzIcon Icon="clock" Size="16" Title="سجل حركات المخزون" />
+                                    </a>
+                                }
                                 <button class="btn btn-outline-danger" @onclick="() => ToggleActive(product)" title="@(product.IsActive ? "تعطيل" : "تفعيل")">
                                     <WizzIcon Icon="@(product.IsActive ? "ban" : "check-circle")" Size="16" Title="@(product.IsActive ? "تعطيل" : "تفعيل")" />
                                 </button>
@@ -186,17 +221,32 @@ else
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-4">
-                                <label class="form-label">الكمية في المخزون</label>
-                                <input type="number" step="0.01" min="0" class="form-control" @bind="form.StockQuantity" @bind:event="oninput" disabled="@form.IsService" />
+                                @if (editingProduct != null)
+                                {
+                                    <label class="form-label">الرصيد الحالي</label>
+                                    <input type="text" class="form-control" value="@editingProduct.StockQuantity.ToString("N2")" readonly />
+                                    <div class="form-text">يتغيّر تلقائياً بالبيع والإلغاء. للتعديل استخدم «جرد».</div>
+                                }
+                                else
+                                {
+                                    <label class="form-label">الكمية الافتتاحية</label>
+                                    <input type="number" step="0.01" min="0" class="form-control" @bind="form.StockQuantity" @bind:event="oninput" disabled="@form.IsService" />
+                                    <div class="form-text">تُسجَّل كرصيد افتتاحي في سجل حركات المخزون.</div>
+                                }
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">حد التنبيه (إعادة الطلب)</label>
                                 <input type="number" step="0.01" min="0" class="form-control" @bind="form.ReorderLevel" @bind:event="oninput" disabled="@form.IsService" />
+                                <div class="form-text">ينبّهك النظام عندما يصبح الرصيد أقل من أو يساوي هذا الحد.</div>
                             </div>
                             <div class="col-md-4 d-flex align-items-end">
-                                <div class="form-text mb-2">
-                                    ينبّهك النظام عندما تصبح الكمية أقل من أو تساوي حد التنبيه. لا يُخصم المخزون تلقائياً عند البيع.
-                                </div>
+                                @if (editingProduct != null && !editingProduct.IsService)
+                                {
+                                    <button type="button" class="btn btn-outline-primary mb-4" @onclick="OpenAdjustFromEdit">
+                                        <WizzIcon Icon="list" Size="14" />
+                                        <span>جرد المخزون</span>
+                                    </button>
+                                }
                             </div>
                         </div>
                         <div class="row mb-3">
@@ -233,11 +283,51 @@ else
     </div>
 }
 
+@if (adjustingProduct != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">جرد المخزون — @adjustingProduct.Name</h5>
+                    <button type="button" class="btn-close" @onclick="CloseAdjust"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-3">
+                        الرصيد الحالي:
+                        <strong>@adjustingProduct.StockQuantity.ToString("N2") @(adjustingProduct.BaseUnit?.Symbol ?? "")</strong>
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label">الرصيد بعد الجرد <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="0" class="form-control" @bind="adjustQuantity" />
+                        <div class="form-text">أدخل العدد الفعلي الموجود في المتجر. لا يمكن أن يكون سالباً.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">سبب التعديل <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" placeholder="مثال: جرد دوري، تلف، تصحيح إدخال" @bind="adjustReason" />
+                    </div>
+                    <div class="alert alert-info small mb-0">
+                        يُسجَّل الفرق كحركة مخزون مع السبب والمستخدم والوقت، ويظهر في سجل الحركات.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseAdjust">إلغاء</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveAdjust" disabled="@savingAdjust">
+                        @if (savingAdjust) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                        حفظ الجرد
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<Wizz.Application.DTOs.ProductDto> allProducts = new();
     private List<Wizz.Application.DTOs.ProductDto> products = new();
     private string searchQuery = "";
     private bool? filterActive = null;
+    private string filterActiveString = "";
     private bool lowStockOnly = false;
     private int currentPage = 1;
     private int pageSize = 20;
@@ -253,9 +343,24 @@ else
     private ProductForm form = new();
     private bool saving = false;
 
+    private bool inventoryEnabled = true;
+    private Guid? currentUserId;
+    private Wizz.Application.DTOs.ProductDto? adjustingProduct;
+    private decimal adjustQuantity;
+    private string adjustReason = "";
+    private bool savingAdjust;
+
     protected override async Task OnInitializedAsync()
     {
         lowStockOnly = LowStockQuery == true;
+
+        var store = await StoreRepo.GetAsync();
+        inventoryEnabled = store?.InventoryEnabled == true;
+
+        var users = await UserRepo.GetAllAsync();
+        currentUserId = users.FirstOrDefault(u => u.IsActive && u.Role == UserRole.Admin)?.Id
+                        ?? users.FirstOrDefault(u => u.IsActive)?.Id;
+
         await LoadProducts();
     }
 
@@ -313,6 +418,13 @@ else
             ApplyFilters();
             await Task.CompletedTask;
         }
+    }
+
+    private void OnFilterActiveChanged()
+    {
+        filterActive = string.IsNullOrEmpty(filterActiveString) ? null : bool.Parse(filterActiveString);
+        currentPage = 1;
+        ApplyFilters();
     }
 
     private Task SearchProducts()
@@ -448,6 +560,66 @@ else
     private void AddUnit()
     {
         form.Units.Add(new UnitForm { Name = "", Symbol = "", BaseQuantity = 1 });
+    }
+
+    private void OpenAdjust(Wizz.Application.DTOs.ProductDto product)
+    {
+        adjustingProduct = product;
+        adjustQuantity = product.StockQuantity < 0 ? 0m : product.StockQuantity;
+        adjustReason = "";
+    }
+
+    private void OpenAdjustFromEdit()
+    {
+        if (editingProduct == null) return;
+
+        var product = editingProduct;
+        showCreateModal = false;
+        editingProduct = null;
+        OpenAdjust(product);
+    }
+
+    private async Task SaveAdjust()
+    {
+        if (adjustingProduct == null) return;
+
+        if (string.IsNullOrWhiteSpace(adjustReason))
+        {
+            await JS.InvokeVoidAsync("alert", "سبب التعديل مطلوب");
+            return;
+        }
+
+        savingAdjust = true;
+        try
+        {
+            var result = await AdjustStockUseCase.ExecuteAsync(
+                adjustingProduct.Id, adjustQuantity, adjustReason.Trim(), currentUserId);
+
+            if (!result.IsSuccess)
+            {
+                await JS.InvokeVoidAsync("alert", $"خطأ: {string.Join(", ", result.Errors)}");
+                return;
+            }
+
+            CloseAdjust();
+            await LoadProducts();
+            await JS.InvokeVoidAsync("alert", "تم تحديث المخزون وتسجيل الحركة");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"خطأ غير متوقع: {ex.Message}");
+        }
+        finally
+        {
+            savingAdjust = false;
+        }
+    }
+
+    private void CloseAdjust()
+    {
+        adjustingProduct = null;
+        adjustReason = "";
+        adjustQuantity = 0m;
     }
 
     private class ProductForm

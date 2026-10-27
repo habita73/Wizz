@@ -47,14 +47,13 @@ public sealed class Product
     }
 
     public void UpdateDetails(string name, decimal retailPrice, decimal wholesalePrice, bool isActive, bool isService, string? barcode = null, string? description = null,
-        decimal stockQuantity = 0m, decimal reorderLevel = 0m)
+        decimal reorderLevel = 0m)
     {
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("اسم المنتج مطلوب", nameof(name));
         Money.RequireAtMostTwoDecimalPlaces(retailPrice, nameof(retailPrice));
         Money.RequireAtMostTwoDecimalPlaces(wholesalePrice, nameof(wholesalePrice));
         if (retailPrice < 0) throw new ArgumentOutOfRangeException(nameof(retailPrice), "سعر التجزئة لا يمكن أن يكون سالباً");
         if (wholesalePrice < 0) throw new ArgumentOutOfRangeException(nameof(wholesalePrice), "سعر الجملة لا يمكن أن يكون سالباً");
-        if (stockQuantity < 0) throw new ArgumentOutOfRangeException(nameof(stockQuantity), "كمية المخزون لا يمكن أن تكون سالبة");
         if (reorderLevel < 0) throw new ArgumentOutOfRangeException(nameof(reorderLevel), "حد إعادة الطلب لا يمكن أن يكون سالباً");
 
         Name = name.Trim();
@@ -62,17 +61,18 @@ public sealed class Product
         WholesalePrice = wholesalePrice;
         IsActive = isActive;
         IsService = isService;
-        StockQuantity = isService ? 0m : stockQuantity;
+        // الرصيد لا يُكتب من نموذج المنتج — يتغيّر عبر حركات مخزون مسجّلة فقط.
+        StockQuantity = isService ? 0m : StockQuantity;
         ReorderLevel = isService ? 0m : reorderLevel;
         Barcode = string.IsNullOrWhiteSpace(barcode) ? null : barcode.Trim();
         Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
         UpdatedAt = DateTime.UtcNow;
     }
 
-    /// <summary>تعديل سريع لكمية المخزون وحد التنبيه دون تغيير بيانات المنتج الأخرى.</summary>
+    /// <summary>تعديل يدوي (جرد) لكمية المخزون وحد التنبيه دون تغيير بيانات المنتج الأخرى.</summary>
     public void SetStock(decimal quantity, decimal reorderLevel)
     {
-        if (quantity < 0) throw new ArgumentOutOfRangeException(nameof(quantity), "كمية المخزون لا يمكن أن تكون سالبة");
+        if (quantity < 0) throw new ArgumentOutOfRangeException(nameof(quantity), "جرد المخزون لا يمكن أن يكون سالباً");
         if (reorderLevel < 0) throw new ArgumentOutOfRangeException(nameof(reorderLevel), "حد إعادة الطلب لا يمكن أن يكون سالباً");
 
         StockQuantity = IsService ? 0m : quantity;
@@ -80,8 +80,21 @@ public sealed class Product
         UpdatedAt = DateTime.UtcNow;
     }
 
-    /// <summary>تنبيه المخزون: منتج (لا خدمة) بلغ أو تجاوز حد إعادة الطلب.</summary>
-    public bool IsLowStock => !IsService && ReorderLevel > 0 && StockQuantity <= ReorderLevel;
+    /// <summary>تغيير الرصيد بسبب حركة مخزون (بيع، إرجاع، تصحيح)؛ يسمح بالرصيد السالب بحسب سياسة المخزون.</summary>
+    public void ApplyStockChange(decimal quantityDelta)
+    {
+        if (IsService) return;
+        if (quantityDelta == 0) return;
+
+        StockQuantity += quantityDelta;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>تنبيه المخزون: منتج (لا خدمة) بلغ حد إعادة الطلب أو أصبح رصيده سالباً.</summary>
+    public bool IsLowStock => !IsService && (StockQuantity < 0 || (ReorderLevel > 0 && StockQuantity <= ReorderLevel));
+
+    /// <summary>نفد رصيد المنتج (أو أصبح سالباً).</summary>
+    public bool IsOutOfStock => !IsService && StockQuantity <= 0;
 
     /// <summary>إضافة وحدة قياس للمنتج. أول وحدة تضاف تصبح الوحدة الأساسية تلقائياً.</summary>
     public UnitOfMeasure AddUnit(string name, string symbol, decimal baseQuantity)

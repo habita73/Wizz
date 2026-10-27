@@ -64,6 +64,13 @@
                         <input type="checkbox" class="form-check-input" id="allowCredit" @bind="storeForm.AllowCreditSales" />
                         <label class="form-check-label" for="allowCredit">السماح بالبيع الآجل (الدين)</label>
                     </div>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="inventoryEnabled" @bind="storeForm.InventoryEnabled" />
+                        <label class="form-check-label" for="inventoryEnabled">تتبع المخزون (خصم تلقائي عند البيع)</label>
+                        <div class="form-text">
+                            عند التعطيل تعمل المبيعات دون خصم المخزون ولا تظهر تنبيهات النقص.
+                        </div>
+                    </div>
                     <button type="button" class="btn btn-primary" @onclick="SaveStoreSettings" disabled="@savingStore">
                         @if (savingStore)
                         {
@@ -593,6 +600,10 @@
                         <input type="checkbox" class="form-check-input" id="allowCreditModal" @bind="storeForm.AllowCreditSales" />
                         <label class="form-check-label" for="allowCreditModal">السماح بالبيع الآجل</label>
                     </div>
+                    <div class="form-check mt-2">
+                        <input type="checkbox" class="form-check-input" id="inventoryEnabledModal" @bind="storeForm.InventoryEnabled" />
+                        <label class="form-check-label" for="inventoryEnabledModal">تتبع المخزون (خصم تلقائي عند البيع)</label>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" @onclick="() => showStoreModal = false">إلغاء</button>
@@ -984,6 +995,7 @@
                 TaxNumber = store.TaxNumber,
                 CommercialRegister = store.CommercialRegister,
                 AllowCreditSales = store.AllowCreditSales,
+                InventoryEnabled = store.InventoryEnabled,
                 Currency = store.Currency,
             };
         }
@@ -1013,7 +1025,8 @@
                     storeForm.TaxNumber,
                     storeForm.CommercialRegister,
                     storeForm.AllowCreditSales,
-                    string.IsNullOrWhiteSpace(storeForm.Currency) ? "DZD" : storeForm.Currency);
+                    string.IsNullOrWhiteSpace(storeForm.Currency) ? "DZD" : storeForm.Currency,
+                    inventoryEnabled: storeForm.InventoryEnabled);
                 await StoreRepo.AddAsync(created);
             }
             else
@@ -1025,7 +1038,8 @@
                     storeForm.TaxNumber,
                     storeForm.CommercialRegister,
                     storeForm.AllowCreditSales,
-                    storeForm.Currency);
+                    storeForm.Currency,
+                    inventoryEnabled: storeForm.InventoryEnabled);
                 StoreRepo.Update(store);
             }
 
@@ -1264,6 +1278,7 @@
         public string? TaxNumber { get; set; }
         public string? CommercialRegister { get; set; }
         public bool AllowCreditSales { get; set; }
+        public bool InventoryEnabled { get; set; } = true;
         public string Currency { get; set; } = "DZD";
     }
 

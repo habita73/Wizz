@@ -39,6 +39,47 @@ public sealed class CorrectSaleUseCase
 
         _unitOfWork.Sales.Update(sale);
         await _unitOfWork.Sales.AddAsync(correctedSale, ct);
+
+        // تصحيح البيع = إرجاع كميات الأصل ثم خصم كميات البيع المصحح (صافي صفر عند تطابق الأسطر)،
+        // مع تسجيل الحركتين ليبقى سجل التدقيق واضحاً.
+        var store = await _unitOfWork.Store.GetAsync(ct);
+        if (store?.InventoryEnabled == true)
+        {
+            foreach (var item in sale.Items)
+            {
+                var product = item.Product;
+                var unit = item.Unit;
+                if (product == null || unit == null || product.IsService) continue;
+
+                var baseQuantity = unit.ToBaseQuantity(item.Quantity);
+                if (baseQuantity == 0) continue;
+
+                var beforeReturn = product.StockQuantity;
+                product.ApplyStockChange(baseQuantity);
+
+                await _unitOfWork.StockMovements.AddAsync(new StockMovement(
+                    product.Id,
+                    StockMovementType.SaleCorrection,
+                    baseQuantity,
+                    beforeReturn,
+                    reason.Trim(),
+                    sale.Id,
+                    correctedByUserId), ct);
+
+                var beforeDeduction = product.StockQuantity;
+                product.ApplyStockChange(-baseQuantity);
+
+                await _unitOfWork.StockMovements.AddAsync(new StockMovement(
+                    product.Id,
+                    StockMovementType.SaleCorrection,
+                    -baseQuantity,
+                    beforeDeduction,
+                    reason.Trim(),
+                    correctedSale.Id,
+                    correctedByUserId), ct);
+            }
+        }
+
         await _unitOfWork.SaveChangesAsync(ct);
 
         return Result<SaleDto>.Success(MapToDto(correctedSale));

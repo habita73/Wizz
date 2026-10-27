@@ -26,18 +26,27 @@ public sealed class UpdateProductUseCase
                 return Result<ProductDto>.Failure("باركود مستخدم بالفعل");
         }
 
+        var stockBefore = product.StockQuantity;
+
         product.UpdateDetails(input.Name, input.RetailPrice, input.WholesalePrice, product.IsActive, input.IsService, input.Barcode, input.Description,
-            input.StockQuantity, input.ReorderLevel);
+            input.ReorderLevel);
+
+        // تحويل منتج إلى خدمة يُصفّر الرصيد — نسجّل الحركة حتى لا يختفي الرصيد بلا أثر.
+        if (input.IsService && stockBefore != 0)
+        {
+            await _unitOfWork.StockMovements.AddAsync(new StockMovement(
+                product.Id,
+                StockMovementType.ManualAdjustment,
+                -stockBefore,
+                stockBefore,
+                "تحويل المنتج إلى خدمة (إلغاء تتبع المخزون)",
+                saleId: null,
+                createdByUserId: null), ct);
+        }
+
         _unitOfWork.Products.Update(product);
         await _unitOfWork.SaveChangesAsync(ct);
 
-        return Result<ProductDto>.Success(MapToDto(product));
+        return Result<ProductDto>.Success(ProductDto.FromDomain(product));
     }
-
-    private static ProductDto MapToDto(Product p) => new(
-        p.Id, p.Name, p.Barcode, p.Description, p.RetailPrice, p.WholesalePrice,
-        p.IsService, p.IsActive,
-        p.Units.Select(u => new UnitOfMeasureDto(u.Id, u.Name, u.Symbol, u.BaseQuantity, u.IsBaseUnit)).ToList(),
-        p.GetBaseUnit() is { } bu ? new UnitOfMeasureDto(bu.Id, bu.Name, bu.Symbol, bu.BaseQuantity, true) : null,
-        p.StockQuantity, p.ReorderLevel);
 }

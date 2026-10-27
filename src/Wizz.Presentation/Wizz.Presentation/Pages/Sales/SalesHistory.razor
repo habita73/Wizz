@@ -98,10 +98,10 @@ else
                                 </button>
                                 @if (sale.Status == SaleStatus.Completed && !sale.IsCorrected)
                                 {
-                                    <button class="btn btn-outline-warning" @onclick="() => CorrectSale(sale.Id)" title="تصحيح">
+                                    <button class="btn btn-outline-warning" @onclick="() => OpenCorrectSale(sale.Id)" title="تصحيح">
                                         <WizzIcon Icon="edit" Size="16" Title="تصحيح" />
                                     </button>
-                                    <button class="btn btn-outline-danger" @onclick="() => CancelSale(sale.Id)" title="إلغاء">
+                                    <button class="btn btn-outline-danger" @onclick="() => OpenCancelSale(sale.Id)" title="إلغاء">
                                         <WizzIcon Icon="ban" Size="16" Title="إلغاء" />
                                     </button>
                                 }
@@ -124,6 +124,62 @@ else
             </li>
         </ul>
     </nav>
+}
+
+@if (correctingSaleId.HasValue)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">تصحيح البيع</h5>
+                    <button type="button" class="btn-close" @onclick="CloseCorrectSale"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-2">سيتم إنشاء بيع مصحح بناءً على هذا البيع مع حفظ الأصل ورابط التصحيح.</p>
+                    <div class="mb-3">
+                        <label class="form-label">سبب التصحيح <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" @bind="correctionReason" placeholder="أدخل سبب التصحيح" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseCorrectSale">إلغاء</button>
+                    <button type="button" class="btn btn-warning" @onclick="SubmitCorrectSale" disabled="@savingCorrection">
+                        @if (savingCorrection) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                        تأكيد التصحيح
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (cancellingSaleId.HasValue)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">إلغاء البيع</h5>
+                    <button type="button" class="btn-close" @onclick="CloseCancelSale"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning small">سيُلغى البيع ويُعاد المخزون تلقائياً مع تسجيل حركة الإلغاء.</div>
+                    <div class="mb-3">
+                        <label class="form-label">سبب الإلغاء <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" @bind="cancellationReason" placeholder="أدخل سبب الإلغاء" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseCancelSale">إلغاء</button>
+                    <button type="button" class="btn btn-danger" @onclick="SubmitCancelSale" disabled="@savingCancellation">
+                        @if (savingCancellation) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                        تأكيد الإلغاء
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 }
 
 @if (receipt != null)
@@ -191,6 +247,14 @@ else
     private int pageSize = 20;
     private int totalPages = 1;
     private Guid? currentUserId;
+
+    private Guid? correctingSaleId;
+    private string correctionReason = "";
+    private bool savingCorrection;
+
+    private Guid? cancellingSaleId;
+    private string cancellationReason = "";
+    private bool savingCancellation;
 
     protected override async Task OnInitializedAsync()
     {
@@ -281,33 +345,85 @@ else
             : "تعذرت الطباعة. تحقق من الطابعة.");
     }
 
-    private async Task CorrectSale(Guid saleId)
+    private void OpenCorrectSale(Guid saleId)
     {
         if (currentUserId is null)
         {
-            await JS.InvokeVoidAsync("alert", "لا يوجد مستخدم نشط لتنفيذ التصحيح.");
+            JS.InvokeVoidAsync("alert", "لا يوجد مستخدم نشط لتنفيذ التصحيح.");
             return;
         }
 
-        var reason = await JS.InvokeAsync<string>("prompt", "أدخل سبب التصحيح:");
-        if (string.IsNullOrWhiteSpace(reason))
-        {
-            return;
-        }
-
-        var result = await CorrectSaleUseCase.ExecuteAsync(saleId, reason, currentUserId.Value);
-        await JS.InvokeVoidAsync("alert", result.IsSuccess
-            ? "تم إنشاء بيع مصحح وحفظ الأصل."
-            : $"تعذر التصحيح: {string.Join(" | ", result.Errors)}");
-
-        await LoadSales();
+        correctingSaleId = saleId;
+        correctionReason = "";
     }
 
-    private async Task CancelSale(Guid saleId)
+    private void CloseCorrectSale()
+    {
+        correctingSaleId = null;
+        correctionReason = "";
+        savingCorrection = false;
+    }
+
+    private async Task SubmitCorrectSale()
+    {
+        if (correctingSaleId is null || currentUserId is null) return;
+        if (string.IsNullOrWhiteSpace(correctionReason))
+        {
+            await JS.InvokeVoidAsync("alert", "سبب التصحيح مطلوب");
+            return;
+        }
+
+        savingCorrection = true;
+        try
+        {
+            var result = await CorrectSaleUseCase.ExecuteAsync(correctingSaleId.Value, correctionReason.Trim(), currentUserId.Value);
+            await JS.InvokeVoidAsync("alert", result.IsSuccess
+                ? "تم إنشاء بيع مصحح وحفظ الأصل."
+                : $"تعذر التصحيح: {string.Join(" | ", result.Errors)}");
+
+            if (result.IsSuccess)
+            {
+                CloseCorrectSale();
+            }
+            await LoadSales();
+        }
+        finally
+        {
+            savingCorrection = false;
+        }
+    }
+
+    private async Task CorrectSale(Guid saleId)
+    {
+        OpenCorrectSale(saleId);
+        await Task.CompletedTask;
+    }
+
+    private void OpenCancelSale(Guid saleId)
     {
         if (currentUserId is null)
         {
-            await JS.InvokeVoidAsync("alert", "لا يوجد مستخدم نشط لتنفيذ الإلغاء.");
+            JS.InvokeVoidAsync("alert", "لا يوجد مستخدم نشط لتنفيذ الإلغاء.");
+            return;
+        }
+
+        cancellingSaleId = saleId;
+        cancellationReason = "";
+    }
+
+    private void CloseCancelSale()
+    {
+        cancellingSaleId = null;
+        cancellationReason = "";
+        savingCancellation = false;
+    }
+
+    private async Task SubmitCancelSale()
+    {
+        if (cancellingSaleId is null || currentUserId is null) return;
+        if (string.IsNullOrWhiteSpace(cancellationReason))
+        {
+            await JS.InvokeVoidAsync("alert", "سبب الإلغاء مطلوب");
             return;
         }
 
@@ -317,18 +433,30 @@ else
             return;
         }
 
-        var reason = await JS.InvokeAsync<string>("prompt", "أدخل سبب الإلغاء:");
-        if (string.IsNullOrWhiteSpace(reason))
+        savingCancellation = true;
+        try
         {
-            return;
+            var result = await CancelSaleUseCase.ExecuteAsync(cancellingSaleId.Value, cancellationReason.Trim(), currentUserId.Value);
+            await JS.InvokeVoidAsync("alert", result.IsSuccess
+                ? "تم إلغاء البيع."
+                : $"تعذر الإلغاء: {string.Join(" | ", result.Errors)}");
+
+            if (result.IsSuccess)
+            {
+                CloseCancelSale();
+            }
+            await LoadSales();
         }
+        finally
+        {
+            savingCancellation = false;
+        }
+    }
 
-        var result = await CancelSaleUseCase.ExecuteAsync(saleId, reason, currentUserId.Value);
-        await JS.InvokeVoidAsync("alert", result.IsSuccess
-            ? "تم إلغاء البيع."
-            : $"تعذر الإلغاء: {string.Join(" | ", result.Errors)}");
-
-        await LoadSales();
+    private async Task CancelSale(Guid saleId)
+    {
+        OpenCancelSale(saleId);
+        await Task.CompletedTask;
     }
 
     private string GetCashierName(Guid? cashierId) =>

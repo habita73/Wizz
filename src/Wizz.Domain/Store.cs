@@ -10,6 +10,7 @@ public sealed class Store
     public string? TaxNumber { get; private set; }
     public string? CommercialRegister { get; private set; }
     public bool AllowCreditSales { get; private set; }
+    public bool InventoryEnabled { get; private set; } = true;
     public string Currency { get; private set; } = "DZD";
     public string TimeZone { get; private set; } = "Africa/Algiers";
     public DateTime CreatedAt { get; private set; }
@@ -24,7 +25,8 @@ public sealed class Store
         string? taxNumber = null,
         string? commercialRegister = null,
         bool allowCreditSales = false,
-        string currency = "DZD")
+        string currency = "DZD",
+        bool inventoryEnabled = true)
     {
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("اسم المتجر مطلوب", nameof(name));
         if (string.IsNullOrWhiteSpace(currency)) throw new ArgumentException("العملة مطلوبة", nameof(currency));
@@ -36,6 +38,7 @@ public sealed class Store
         TaxNumber = Normalize(taxNumber);
         CommercialRegister = Normalize(commercialRegister);
         AllowCreditSales = allowCreditSales;
+        InventoryEnabled = inventoryEnabled;
         Currency = currency.Trim().ToUpperInvariant();
         CreatedAt = DateTime.UtcNow;
     }
@@ -49,7 +52,8 @@ public sealed class Store
         string? commercialRegister,
         bool allowCreditSales,
         string? currency = null,
-        string? timeZone = null)
+        string? timeZone = null,
+        bool inventoryEnabled = true)
     {
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("اسم المتجر مطلوب", nameof(name));
 
@@ -59,6 +63,7 @@ public sealed class Store
         TaxNumber = Normalize(taxNumber);
         CommercialRegister = Normalize(commercialRegister);
         AllowCreditSales = allowCreditSales;
+        InventoryEnabled = inventoryEnabled;
 
         if (!string.IsNullOrWhiteSpace(currency))
         {

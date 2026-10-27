@@ -38,6 +38,7 @@ builder.Services.AddScoped<CorrectSaleUseCase>();
 builder.Services.AddScoped<CreateProductUseCase>();
 builder.Services.AddScoped<GetProductUseCase>();
 builder.Services.AddScoped<UpdateProductUseCase>();
+builder.Services.AddScoped<AdjustStockUseCase>();
 builder.Services.AddScoped<SearchProductsUseCase>();
 builder.Services.AddScoped<InitializeStoreUseCase>();
 builder.Services.AddScoped<GetStoreSettingsUseCase>();

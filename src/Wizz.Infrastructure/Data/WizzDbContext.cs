@@ -9,6 +9,7 @@ public sealed class WizzDbContext : DbContext
     public DbSet<UnitOfMeasure> UnitsOfMeasure => Set<UnitOfMeasure>();
     public DbSet<Sale> Sales => Set<Sale>();
     public DbSet<SaleItem> SaleItems => Set<SaleItem>();
+    public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<Store> Stores => Set<Store>();
     public DbSet<User> Users => Set<User>();
     public DbSet<DeviceRegistration> DeviceRegistrations => Set<DeviceRegistration>();
@@ -76,6 +77,23 @@ public sealed class WizzDbContext : DbContext
             b.Property(s => s.CommercialRegister).HasMaxLength(50);
             b.Property(s => s.Currency).HasMaxLength(3).HasDefaultValue("DZD");
             b.Property(s => s.TimeZone).HasMaxLength(50).HasDefaultValue("Africa/Algiers");
+            b.Property(s => s.InventoryEnabled).HasDefaultValue(true);
+        });
+
+        modelBuilder.Entity<StockMovement>(b =>
+        {
+            b.HasKey(m => m.Id);
+            b.Property(m => m.QuantityDelta).HasColumnType("decimal(18,4)");
+            b.Property(m => m.QuantityBefore).HasColumnType("decimal(18,4)");
+            b.Property(m => m.QuantityAfter).HasColumnType("decimal(18,4)");
+            b.Property(m => m.Reason).HasMaxLength(500);
+            b.HasIndex(m => m.ProductId);
+            b.HasIndex(m => m.SaleId);
+            b.HasIndex(m => m.CreatedAt);
+            b.HasOne(m => m.Product)
+                .WithMany()
+                .HasForeignKey(m => m.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<User>(b =>

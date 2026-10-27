@@ -80,6 +80,34 @@ public sealed class CreateSaleUseCase
             (PaymentMethod)input.PaymentMethod, input.IsCreditSale, input.DueDate);
 
         await _unitOfWork.Sales.AddAsync(sale, ct);
+
+        // خصم المخزون تلقائياً عند تفعيل تتبع المخزون في المتجر.
+        // يُسمح بالنقص (رصيد سالب) وفق سياسة المخزون المعتمدة، مع تسجيل حركة لكل سطر.
+        if (store.InventoryEnabled)
+        {
+            foreach (var item in sale.Items)
+            {
+                var product = item.Product;
+                var unit = item.Unit;
+                if (product == null || unit == null || product.IsService) continue;
+
+                var baseQuantity = unit.ToBaseQuantity(item.Quantity);
+                if (baseQuantity == 0) continue;
+
+                var before = product.StockQuantity;
+                product.ApplyStockChange(-baseQuantity);
+
+                await _unitOfWork.StockMovements.AddAsync(new StockMovement(
+                    product.Id,
+                    StockMovementType.Sale,
+                    -baseQuantity,
+                    before,
+                    reason: null,
+                    saleId: sale.Id,
+                    createdByUserId: cashierId), ct);
+            }
+        }
+
         await _unitOfWork.SaveChangesAsync(ct);
 
         return Result<SaleDto>.Success(MapToDto(sale));
