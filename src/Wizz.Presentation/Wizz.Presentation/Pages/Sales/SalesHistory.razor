@@ -136,7 +136,9 @@ else
                     <button type="button" class="btn-close" @onclick="CloseCorrectSale"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="small text-muted mb-2">سيتم إنشاء بيع مصحح بناءً على هذا البيع مع حفظ الأصل ورابط التصحيح.</p>
+                    <div class="alert alert-info small mb-3">
+                        <strong>ماذا سيحدث:</strong> سيُنشأ <strong>بيع جديد مصحح</strong> بناءً على هذه البيعة، وتُقف البيعة الأصلية نهائياً (لا يمكن تعديلها أو حذفها لاحقًا). يُعاد رصيد المخزون من البيع الأصلي ثم يُخصم من البيع المصحح (صافي الصفر إذا كانت الكميات نفسها)، ويُسجّل كلاهما في سجل حركات المخزون مع السبب والمستخدم والتاريخ.
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">سبب التصحيح <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" @bind="correctionReason" placeholder="أدخل سبب التصحيح" />
@@ -378,7 +380,7 @@ else
         {
             var result = await CorrectSaleUseCase.ExecuteAsync(correctingSaleId.Value, correctionReason.Trim(), currentUserId.Value);
             await JS.InvokeVoidAsync("alert", result.IsSuccess
-                ? "تم إنشاء بيع مصحح وحفظ الأصل."
+                ? "تم إنشاء بيع مصحح وحفظ الأصل. البيعة الأصلية أُقفلت نهائياً ولا يمكن تعديلها أو حذفها لاحقًا. يمكنك مراجعة الأثر في سجل حركات المخزون."
                 : $"تعذر التصحيح: {string.Join(" | ", result.Errors)}");
 
             if (result.IsSuccess)
