@@ -96,7 +96,7 @@ else
                                 <button class="btn btn-outline-secondary" @onclick="() => PrintReceipt(sale.Id)" title="طباعة">
                                     <WizzIcon Icon="printer" Size="16" Title="طباعة" />
                                 </button>
-                                @if (sale.Status == SaleStatus.Completed && !sale.IsModified)
+                                @if (sale.Status == SaleStatus.Completed)
                                 {
                                     <button class="btn btn-outline-warning" @onclick="() => ModifySale(sale.Id)" title="تعديل">
                                         <WizzIcon Icon="edit" Size="16" Title="تعديل" />
@@ -132,16 +132,45 @@ else
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">تعديل البيع — @saleBeingModified.Id.ToString("N")[..8].ToUpperInvariant()</h5>
+                    <h5 class="modal-title">تحرير البيع بالكامل — @saleBeingModified.Id.ToString("N")[..8].ToUpperInvariant()</h5>
                     <button type="button" class="btn-close" @onclick="CloseModifySale"></button>
                 </div>
                 <div class="modal-body">
                     <div class="alert alert-info small mb-3">
-                        <strong>ماذا سيحدث:</strong> سيتم تعديل هذه البيعة في مكانها. سيُحسب فرق الكميات بين ما كان وما أصبح وسيُعدّل رصيد المخزون تلقائياً (زيادة الكمية تُخصم من المخزون، نقص الكمية يُعاد للمخزون). ستُضاف ملاحظة التعديل مع التاريخ ومن قام بالتعديل.
+                        <strong>ماذا سيحدث:</strong> سيتم تعديل هذه البيعة بالكامل في مكانها. يمكنك تعديل الأصناف والكميات والأسعار وطريقة الدفع والخصم والمبلغ المدفوع وتاريخ الاستحقاق. سيُعاد حساب رصيد المخزون تلقائياً حسب الفرق في الكميات (زيادة الكمية تُخصم من المخزون، نقص الكمية يُعاد للمخزون).
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">ملاحظة التعديل <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" @bind="modificationNote" placeholder="مثال: تعديل الكمية، خطأ في السعر، إلخ" />
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">طريقة الدفع</label>
+                            <select class="form-select" @bind="editPaymentMethod">
+                                <option value="0">نقدي</option>
+                                <option value="1">بطاقة</option>
+                                <option value="2">آجل</option>
+                                <option value="3">محمول</option>
+                                <option value="4">مختلط</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">الخصم</label>
+                            <input type="number" step="0.01" min="0" class="form-control" @bind="editDiscount" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">المبلغ المدفوع</label>
+                            <input type="number" step="0.01" min="0" class="form-control" @bind="editPaid" />
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">تاريخ الاستحقاق (للبيع الآجل)</label>
+                            <input type="date" class="form-control" @bind="editDueDate" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">البيع آجل</label>
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" @bind="editIsCreditSale" />
+                                <label class="form-check-label">نعم، بيع آجل</label>
+                            </div>
+                        </div>
                     </div>
                     <div class="table-responsive mb-3">
                         <table class="table table-sm table-bordered">
@@ -155,28 +184,35 @@ else
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var line in editLines)
+                                @for (int i = 0; i < editLines.Count; i++)
                                 {
+                                    var line = editLines[i];
                                     <tr>
                                         <td>@line.ProductName</td>
                                         <td class="text-center">@line.UnitSymbol</td>
                                         <td class="text-center">
                                             <input type="number" step="0.01" min="0" class="form-control form-control-sm text-center"
-                                                   @bind="line.Quantity" />
+                                                   @bind="editLines[i].Quantity" />
                                         </td>
-                                        <td class="text-end">@line.UnitPrice.ToString("N2") د.ج</td>
-                                        <td class="text-end fw-bold">@line.LineTotal.ToString("N2") د.ج</td>
+                                        <td class="text-end">
+                                            <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end"
+                                                   @bind="editLines[i].UnitPrice" />
+                                        </td>
+                                        <td class="text-end fw-bold">@editLines[i].LineTotal.ToString("N2") د.ج</td>
                                     </tr>
                                 }
                             </tbody>
                         </table>
+                    </div>
+                    <div class="alert alert-success small mb-0">
+                        <strong>الإجمالي الجديد:</strong> @editLines.Sum(l => l.LineTotal).ToString("N2") د.ج
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" @onclick="CloseModifySale">إلغاء</button>
                     <button type="button" class="btn btn-warning" @onclick="SubmitModifySale" disabled="@savingModification">
                         @if (savingModification) { <span class="spinner-border spinner-border-sm me-2"></span> }
-                        تأكيد التعديل
+                        حفظ التعديل
                     </button>
                 </div>
             </div>
@@ -280,10 +316,17 @@ else
 
     private Guid? modifyingSaleId;
     private Sale? saleBeingModified;
-    private string modificationNote = "";
+    private List<EditLineInput> editLines = new();
+    private decimal editDiscount;
+    private decimal editPaid;
+    private PaymentMethod editPaymentMethod;
+    private bool editIsCreditSale;
+    private DateTime? editDueDate;
     private bool savingModification;
 
-    private List<EditLineInput> editLines = new();
+    private Guid? cancellingSaleId;
+    private string cancellationReason = "";
+    private bool savingCancellation;
 
     private sealed class EditLineInput
     {
@@ -296,10 +339,6 @@ else
         public decimal UnitPrice { get; set; }
         public decimal LineTotal { get; set; }
     }
-
-    private Guid? cancellingSaleId;
-    private string cancellationReason = "";
-    private bool savingCancellation;
 
     protected override async Task OnInitializedAsync()
     {
@@ -392,12 +431,6 @@ else
 
     private void OpenModifySale(Guid saleId)
     {
-        if (currentUserId is null)
-        {
-            JS.InvokeVoidAsync("alert", "لا يوجد مستخدم نشط لتنفيذ التعديل.");
-            return;
-        }
-
         var sale = sales.FirstOrDefault(s => s.Id == saleId);
         if (sale == null)
         {
@@ -407,7 +440,11 @@ else
 
         modifyingSaleId = saleId;
         saleBeingModified = sale;
-        modificationNote = "";
+        editDiscount = sale.Discount;
+        editPaid = sale.Paid;
+        editPaymentMethod = sale.PaymentMethod;
+        editIsCreditSale = sale.IsCreditSale;
+        editDueDate = sale.DueDate;
 
         editLines = sale.Items.Select(i => new EditLineInput
         {
@@ -426,35 +463,36 @@ else
     {
         modifyingSaleId = null;
         saleBeingModified = null;
-        modificationNote = "";
         editLines = new();
         savingModification = false;
     }
 
     private async Task SubmitModifySale()
     {
-        if (modifyingSaleId is null || currentUserId is null) return;
-        if (string.IsNullOrWhiteSpace(modificationNote))
-        {
-            await JS.InvokeVoidAsync("alert", "ملاحظة التعديل مطلوبة");
-            return;
-        }
+        if (modifyingSaleId is null) return;
 
-        var newLines = editLines.Select(l => new SaleLineInputDto(
-            l.ProductId,
-            l.UnitId,
-            l.Quantity,
-            l.UseWholesalePrice
-        )).ToList();
+        var input = new Wizz.Application.DTOs.SaleInputDto(
+            editLines.Select(l => new Wizz.Application.DTOs.SaleLineInputDto(
+                l.ProductId,
+                l.UnitId,
+                l.Quantity,
+                l.UseWholesalePrice,
+                l.UnitPrice
+            )).ToList(),
+            editDiscount,
+            editPaid,
+            (Wizz.Application.DTOs.PaymentMethodDto)editPaymentMethod,
+            editIsCreditSale,
+            editDueDate
+        );
 
         savingModification = true;
         try
         {
-            var result = await ModifySaleUseCase.ExecuteAsync(
-                modifyingSaleId.Value, newLines, modificationNote.Trim(), currentUserId.Value);
+            var result = await ModifySaleUseCase.ExecuteAsync(modifyingSaleId.Value, input);
 
             await JS.InvokeVoidAsync("alert", result.IsSuccess
-                ? "تم تعديل البيع في مكانه وتعديل رصيد المخزون حسب فرق الكميات. تمت إضافة ملاحظة التعديل مع التاريخ ومن قام بالتعديل."
+                ? "تم تعديل البيع بالكامل في مكانه وتعديل رصيد المخزون حسب فرق الكميات."
                 : $"تعذر التعديل: {string.Join(" | ", result.Errors)}");
 
             if (result.IsSuccess)

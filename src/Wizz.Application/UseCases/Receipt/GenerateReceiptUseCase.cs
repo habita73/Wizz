@@ -48,7 +48,7 @@ public sealed class GenerateReceiptUseCase
             null, // اسم الكاشير — يحتاج UserRepository
             sale.IsCreditSale,
             sale.DueDate,
-            sale.ModificationNote
+            null
         );
 
         return Result<ReceiptDto>.Success(receipt);

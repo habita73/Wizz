@@ -133,19 +133,6 @@ namespace Wizz.Infrastructure.Data.Migrations
                     b.Property<bool>("IsCreditSale")
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool>("IsModified")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("ModificationNote")
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("ModifiedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid?>("ModifiedByUserId")
-                        .HasColumnType("TEXT");
-
                     b.Property<decimal>("Paid")
                         .HasColumnType("decimal(18,2)");
 

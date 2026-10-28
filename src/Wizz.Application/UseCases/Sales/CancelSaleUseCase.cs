@@ -5,7 +5,7 @@ using Wizz.Application.Common;
 using Wizz.Application.DTOs;
 using Wizz.Domain;
 
-/// <summary>إلغاء عملية بيع — يستعيد المخزون ويسجل سبب الإلغاء على العملية نفسها.</summary>
+/// <summary>إلغاء عملية بيع — يستعيد المخزون على العملية نفسها.</summary>
 public sealed class CancelSaleUseCase
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -25,11 +25,6 @@ public sealed class CancelSaleUseCase
             return Result<SaleDto>.Failure("البيع ملغي بالفعل");
         }
 
-        if (sale.IsModified)
-        {
-            return Result<SaleDto>.Failure("لا يمكن إلغاء بيع معدل — تم تعديله بالفعل");
-        }
-
         sale.Cancel(reason.Trim(), cancelledByUserId);
         _unitOfWork.Sales.Update(sale);
 
@@ -46,5 +41,5 @@ public sealed class CancelSaleUseCase
             i.Quantity, i.UnitPrice, i.LineTotal, i.IsWholesalePrice)).ToList(),
         sale.Subtotal, sale.Discount, sale.Total, sale.Paid, sale.Remaining,
         (PaymentMethodDto)sale.PaymentMethod, sale.IsCreditSale, sale.DueDate,
-        sale.CashierId, null, sale.IsModified, sale.ModifiedAt, sale.ModifiedByUserId, sale.ModificationNote);
+        sale.CashierId, null);
 }

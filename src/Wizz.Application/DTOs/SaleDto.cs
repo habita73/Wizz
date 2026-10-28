@@ -30,19 +30,16 @@ public sealed record SaleDto(
     bool IsCreditSale,
     DateTime? DueDate,
     Guid? CashierId,
-    string? CashierName,
-    bool IsModified,
-    DateTime? ModifiedAt,
-    Guid? ModifiedByUserId,
-    string? ModificationNote
+    string? CashierName
 );
 
-/// <summary>إدخال سطر بيع جديد.</summary>
+/// <summary>إدخال سطر بيع جديد أو معدل.</summary>
 public sealed record SaleLineInputDto(
     Guid ProductId,
     Guid UnitId,
     decimal Quantity,
-    bool UseWholesalePrice
+    bool UseWholesalePrice,
+    decimal? UnitPrice = null
 );
 
 /// <summary>إدخال عملية بيع جديدة.</summary>

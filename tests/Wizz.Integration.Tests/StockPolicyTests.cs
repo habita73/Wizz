@@ -108,12 +108,10 @@ public sealed class StockPolicyTests : IAsyncLifetime
 
         Assert.True(cancelled.IsSuccess);
         Assert.Equal(100m, await GetStockAsync(product.Id)); // استعادة 10 → 100
-        Assert.True(cancelled.Value.IsModified);
-        Assert.Equal("إلغاء البيع: خطأ في الكمية", cancelled.Value.ModificationNote);
     }
 
     [Fact]
-    public async Task ModifySale_UpdatesStockByDelta_AndSetsModificationNote()
+    public async Task ModifySale_UpdatesStockByDelta()
     {
         await SeedStoreAsync();
         var product = await SeedProductAsync(stock: 100m);
@@ -127,16 +125,16 @@ public sealed class StockPolicyTests : IAsyncLifetime
         // تعديل الكمية من 2 صناديق إلى 3 صناديق (زيادة 1 صندوق = 10 كجم)
         var modified = await new ModifySaleUseCase(_unitOfWork).ExecuteAsync(
             sale.Value.Id,
-            new[] { new SaleLineInputDto(product.Id, boxUnit.Id, 3m, false) },
-            "تعديل الكمية إلى 3 صناديق",
-            cashier.Id);
+            new SaleInputDto(
+                new[] { new SaleLineInputDto(product.Id, boxUnit.Id, 3m, false) },
+                Discount: 0m,
+                Paid: 300m,
+                PaymentMethodDto.Cash,
+                IsCreditSale: false,
+                DueDate: null));
 
         Assert.True(modified.IsSuccess);
         Assert.Equal(70m, await GetStockAsync(product.Id)); // 80 - 10 = 70
-        Assert.True(modified.Value.IsModified);
-        Assert.Equal("تعديل الكمية إلى 3 صناديق", modified.Value.ModificationNote);
-        Assert.NotNull(modified.Value.ModifiedAt);
-        Assert.Equal(cashier.Id, modified.Value.ModifiedByUserId);
     }
 
     [Fact]
@@ -154,9 +152,13 @@ public sealed class StockPolicyTests : IAsyncLifetime
         // تعديل الكمية من 10 إلى 5 (نقص 5 كجم → يُعاد 5 للمخزون)
         var modified = await new ModifySaleUseCase(_unitOfWork).ExecuteAsync(
             sale.Value.Id,
-            new[] { new SaleLineInputDto(product.Id, baseUnit.Id, 5m, false) },
-            "تقليل الكمية",
-            cashier.Id);
+            new SaleInputDto(
+                new[] { new SaleLineInputDto(product.Id, baseUnit.Id, 5m, false) },
+                Discount: 0m,
+                Paid: 250m,
+                PaymentMethodDto.Cash,
+                IsCreditSale: false,
+                DueDate: null));
 
         Assert.True(modified.IsSuccess);
         Assert.Equal(95m, await GetStockAsync(product.Id)); // 90 + 5 = 95
@@ -179,9 +181,13 @@ public sealed class StockPolicyTests : IAsyncLifetime
 
         var modified = await new ModifySaleUseCase(_unitOfWork).ExecuteAsync(
             sale.Value.Id,
-            new[] { new SaleLineInputDto(product.Id, baseUnit.Id, 3m, false) },
-            "محاولة تعديل ملغي",
-            cashier.Id);
+            new SaleInputDto(
+                new[] { new SaleLineInputDto(product.Id, baseUnit.Id, 3m, false) },
+                Discount: 0m,
+                Paid: 300m,
+                PaymentMethodDto.Cash,
+                IsCreditSale: false,
+                DueDate: null));
 
         Assert.False(modified.IsSuccess);
     }
