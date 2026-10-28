@@ -23,8 +23,16 @@ public sealed class ModifySaleUseCase
             return Result<SaleDto>.Failure("يجب أن يتضمن البيع سطراً واحداً على الأقل");
         }
 
-        // تحميل البيع بدون تتبع (لتجنب تعارض Change Tracker مع SQL المباشر)
-        var sale = await _unitOfWork.Sales.GetByIdAsyncNoTracking(saleId, ct);
+        var db = (Microsoft.EntityFrameworkCore.DbContext)_unitOfWork.Db;
+
+        // تحميل البيع مع الأصناف والوحدات والمنتجات
+        var sale = await db.Set<Sale>()
+            .Include(s => s.Items)
+                .ThenInclude(i => i.Product)
+            .Include(s => s.Items)
+                .ThenInclude(i => i.Unit)
+            .FirstOrDefaultAsync(s => s.Id == saleId, ct);
+
         if (sale is null)
         {
             return Result<SaleDto>.Failure("لم يتم العثور على البيع");
@@ -70,7 +78,6 @@ public sealed class ModifySaleUseCase
         sale.Edit(newItems, input.Discount, input.Paid, (PaymentMethod)input.PaymentMethod, input.IsCreditSale, input.DueDate);
 
         // تحديث قاعدة البيانات مباشرة باستخدام ADO.NET لتجنب مشاكل Change Tracker
-        var db = _unitOfWork.Db;
         var connection = db.Database.GetDbConnection();
         if (connection.State != System.Data.ConnectionState.Open)
         {
