@@ -124,23 +124,27 @@ namespace Wizz.Infrastructure.Data.Migrations
                     b.Property<Guid?>("CashierId")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("CorrectionReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
                     b.Property<decimal>("Discount")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime?>("DueDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<bool>("IsCorrected")
-                        .HasColumnType("INTEGER");
-
                     b.Property<bool>("IsCreditSale")
                         .HasColumnType("INTEGER");
 
-                    b.Property<Guid?>("OriginalSaleId")
+                    b.Property<bool>("IsModified")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ModificationNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("CorrectionReason");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("ModifiedByUserId")
                         .HasColumnType("TEXT");
 
                     b.Property<decimal>("Paid")

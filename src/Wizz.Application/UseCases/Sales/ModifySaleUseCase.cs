@@ -102,8 +102,16 @@ public sealed class ModifySaleUseCase
             }
         }
 
-        // استبدال الأصناف وتحديد علامات التعديل على الكيان غير المتتبع
+        // استبدال الأصناف في البيع (سيُعيد حساب الإجماليات)
         sale.ReplaceItems(newItems);
+
+        // إذا تجاوز المبلغ المدفوع الإجمالي الجديد، نضبطه على الإجمالي الجديد
+        if (sale.Paid > sale.Total)
+        {
+            sale.AdjustPaid(sale.Total);
+        }
+
+        // تحديد علامات التعديل
         sale.MarkModified(modificationNote.Trim(), modifiedByUserId);
 
         // ربط البيع كمعدل مع EF Core

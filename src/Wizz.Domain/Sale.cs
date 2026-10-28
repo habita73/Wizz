@@ -96,6 +96,15 @@ public sealed class Sale
         ModificationNote = modificationNote?.Trim();
     }
 
+    /// <summary>ضبط المبلغ المدفوع (يُستخدم عند تعديل البيع إذا أصبح المدفوع يتجاوز الإجمالي الجديد).</summary>
+    public void AdjustPaid(decimal newPaid)
+    {
+        if (newPaid < 0) throw new ArgumentOutOfRangeException(nameof(newPaid), "المبلغ المدفوع لا يمكن أن يكون سالباً");
+        if (newPaid > Total) throw new ArgumentOutOfRangeException(nameof(newPaid), "المبلغ المدفوع لا يمكن أن يتجاوز الإجمالي");
+        Paid = newPaid;
+        Remaining = Total - Paid;
+    }
+
     public void Cancel(string reason, Guid cancelledByUserId)
     {
         if (Status == SaleStatus.Cancelled) throw new InvalidOperationException("البيع ملغي بالفعل");
