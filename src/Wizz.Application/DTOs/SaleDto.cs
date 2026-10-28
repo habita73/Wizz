@@ -31,9 +31,10 @@ public sealed record SaleDto(
     DateTime? DueDate,
     Guid? CashierId,
     string? CashierName,
-    bool IsCorrected,
-    Guid? OriginalSaleId,
-    string? CorrectionReason
+    bool IsModified,
+    DateTime? ModifiedAt,
+    Guid? ModifiedByUserId,
+    string? ModificationNote
 );
 
 /// <summary>إدخال سطر بيع جديد.</summary>

@@ -29,5 +29,5 @@ public sealed class GetSaleUseCase
             i.Quantity, i.UnitPrice, i.LineTotal, i.IsWholesalePrice)).ToList(),
         sale.Subtotal, sale.Discount, sale.Total, sale.Paid, sale.Remaining,
         (PaymentMethodDto)sale.PaymentMethod, sale.IsCreditSale, sale.DueDate,
-        sale.CashierId, null, sale.IsCorrected, sale.OriginalSaleId, sale.CorrectionReason);
+        sale.CashierId, null, sale.IsModified, sale.ModifiedAt, sale.ModifiedByUserId, sale.ModificationNote);
 }

@@ -34,7 +34,7 @@ builder.Services.AddWizzInfrastructure(
 builder.Services.AddScoped<CreateSaleUseCase>();
 builder.Services.AddScoped<GetSaleUseCase>();
 builder.Services.AddScoped<CancelSaleUseCase>();
-builder.Services.AddScoped<CorrectSaleUseCase>();
+builder.Services.AddScoped<ModifySaleUseCase>();
 builder.Services.AddScoped<CreateProductUseCase>();
 builder.Services.AddScoped<GetProductUseCase>();
 builder.Services.AddScoped<UpdateProductUseCase>();

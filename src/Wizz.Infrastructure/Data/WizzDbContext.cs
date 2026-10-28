@@ -52,7 +52,7 @@ public sealed class WizzDbContext : DbContext
             b.Property(s => s.Total).HasColumnType("decimal(18,2)");
             b.Property(s => s.Paid).HasColumnType("decimal(18,2)");
             b.Property(s => s.Remaining).HasColumnType("decimal(18,2)");
-            b.Property(s => s.CorrectionReason).HasMaxLength(500);
+            b.Property(s => s.ModificationNote).HasMaxLength(500).HasColumnName("CorrectionReason");
             b.HasIndex(s => s.SaleDate);
             b.HasIndex(s => s.Status);
             b.HasIndex(s => s.CashierId);

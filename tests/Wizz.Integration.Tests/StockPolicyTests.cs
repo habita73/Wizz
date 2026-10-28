@@ -10,8 +10,9 @@ using Wizz.Infrastructure.Repositories;
 namespace Wizz.Integration.Tests;
 
 /// <summary>
-/// اختبارات سياسة المخزون المعتمدة: خصم تلقائي بالوحدة الأساسية، السماح بالسالب مع تحذير،
-/// إرجاع عند الإلغاء، احترام مفتاح تتبع المخزون، وتسجيل كل حركة بسببها وفاعلها.
+/// اختبارات سياسة المخزون: خصم تلقائي بالوحدة الأساسية، السماح بالسالب مع تحذير،
+/// تعديل البيع في مكانه مع تعديل المخزون حسب الفرق، إلغاء يستعيد المخزون،
+/// احترام مفتاح تتبع المخزون في المتجر.
 /// </summary>
 public sealed class StockPolicyTests : IAsyncLifetime
 {
@@ -40,7 +41,7 @@ public sealed class StockPolicyTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Sale_DeductsStockInBaseUnits_AndLogsMovement()
+    public async Task Sale_DeductsStockInBaseUnits()
     {
         await SeedStoreAsync();
         var product = await SeedProductAsync(stock: 100m);
@@ -50,16 +51,7 @@ public sealed class StockPolicyTests : IAsyncLifetime
         var sale = await SellAsync(product, boxUnit.Id, quantity: 2m, paid: 200m, cashier.Id);
 
         Assert.True(sale.IsSuccess);
-        Assert.Equal(80m, await GetStockAsync(product.Id));
-
-        var movements = await GetMovementsAsync(product.Id);
-        var movement = Assert.Single(movements);
-        Assert.Equal(StockMovementType.Sale, movement.Type);
-        Assert.Equal(-20m, movement.QuantityDelta);
-        Assert.Equal(100m, movement.QuantityBefore);
-        Assert.Equal(80m, movement.QuantityAfter);
-        Assert.Equal(sale.Value.Id, movement.SaleId);
-        Assert.Equal(cashier.Id, movement.CreatedByUserId);
+        Assert.Equal(80m, await GetStockAsync(product.Id)); // 100 - (2 صناديق × 10 كجم) = 80
     }
 
     [Fact]
@@ -75,10 +67,6 @@ public sealed class StockPolicyTests : IAsyncLifetime
         Assert.True(sale.IsSuccess);
         Assert.Equal(-3m, await GetStockAsync(product.Id));
         Assert.True(product.IsLowStock);
-
-        var movement = Assert.Single(await GetMovementsAsync(product.Id));
-        Assert.Equal(-8m, movement.QuantityDelta);
-        Assert.Equal(-3m, movement.QuantityAfter);
     }
 
     [Fact]
@@ -100,12 +88,11 @@ public sealed class StockPolicyTests : IAsyncLifetime
         var sale = await new CreateSaleUseCase(_unitOfWork).ExecuteAsync(input, cashier.Id);
 
         Assert.True(sale.IsSuccess);
-        Assert.Equal(44m, await GetStockAsync(product.Id));
-        Assert.Single(await GetMovementsAsync(product.Id));
+        Assert.Equal(44m, await GetStockAsync(product.Id)); // 50 - 6 = 44
     }
 
     [Fact]
-    public async Task CancelSale_RestoresStock_AndLogsCancellation()
+    public async Task CancelSale_RestoresStock()
     {
         await SeedStoreAsync();
         var product = await SeedProductAsync(stock: 100m);
@@ -114,26 +101,19 @@ public sealed class StockPolicyTests : IAsyncLifetime
 
         var sale = await SellAsync(product, boxUnit.Id, quantity: 1m, paid: 100m, cashier.Id);
         Assert.True(sale.IsSuccess);
-        Assert.Equal(90m, await GetStockAsync(product.Id));
+        Assert.Equal(90m, await GetStockAsync(product.Id)); // 100 - 10 = 90
 
         var cancelled = await new CancelSaleUseCase(_unitOfWork)
             .ExecuteAsync(sale.Value.Id, "خطأ في الكمية", cashier.Id);
 
         Assert.True(cancelled.IsSuccess);
-        Assert.Equal(100m, await GetStockAsync(product.Id));
-
-        var movements = await GetMovementsAsync(product.Id);
-        Assert.Equal(2, movements.Count);
-        Assert.Equal(StockMovementType.Sale, movements[0].Type);
-        Assert.Equal(StockMovementType.SaleCancellation, movements[1].Type);
-        Assert.Equal(10m, movements[1].QuantityDelta);
-        Assert.Equal(100m, movements[1].QuantityAfter);
-        Assert.Equal("خطأ في الكمية", movements[1].Reason);
-        Assert.Equal(cashier.Id, movements[1].CreatedByUserId);
+        Assert.Equal(100m, await GetStockAsync(product.Id)); // استعادة 10 → 100
+        Assert.True(cancelled.Value.IsModified);
+        Assert.Equal("إلغاء البيع: خطأ في الكمية", cancelled.Value.ModificationNote);
     }
 
     [Fact]
-    public async Task Correction_KeepsNetStock_AndLogsTwoAuditMovements()
+    public async Task ModifySale_UpdatesStockByDelta_AndSetsModificationNote()
     {
         await SeedStoreAsync();
         var product = await SeedProductAsync(stock: 100m);
@@ -142,25 +122,72 @@ public sealed class StockPolicyTests : IAsyncLifetime
 
         var sale = await SellAsync(product, boxUnit.Id, quantity: 2m, paid: 200m, cashier.Id);
         Assert.True(sale.IsSuccess);
-        Assert.Equal(80m, await GetStockAsync(product.Id));
+        Assert.Equal(80m, await GetStockAsync(product.Id)); // 100 - 20 = 80
 
-        var corrected = await new CorrectSaleUseCase(_unitOfWork)
-            .ExecuteAsync(sale.Value.Id, "تصحيح بيانات", cashier.Id);
+        // تعديل الكمية من 2 صناديق إلى 3 صناديق (زيادة 1 صندوق = 10 كجم)
+        var modified = await new ModifySaleUseCase(_unitOfWork).ExecuteAsync(
+            sale.Value.Id,
+            new[] { new SaleLineInputDto(product.Id, boxUnit.Id, 3m, false) },
+            "تعديل الكمية إلى 3 صناديق",
+            cashier.Id);
 
-        Assert.True(corrected.IsSuccess);
-        Assert.Equal(80m, await GetStockAsync(product.Id));
-
-        var correctionMovements = (await GetMovementsAsync(product.Id))
-            .Where(m => m.Type == StockMovementType.SaleCorrection)
-            .ToList();
-
-        Assert.Equal(2, correctionMovements.Count);
-        Assert.Equal(0m, correctionMovements.Sum(m => m.QuantityDelta));
-        Assert.All(correctionMovements, m => Assert.Equal("تصحيح بيانات", m.Reason));
+        Assert.True(modified.IsSuccess);
+        Assert.Equal(70m, await GetStockAsync(product.Id)); // 80 - 10 = 70
+        Assert.True(modified.Value.IsModified);
+        Assert.Equal("تعديل الكمية إلى 3 صناديق", modified.Value.ModificationNote);
+        Assert.NotNull(modified.Value.ModifiedAt);
+        Assert.Equal(cashier.Id, modified.Value.ModifiedByUserId);
     }
 
     [Fact]
-    public async Task InventoryDisabled_NoDeduction_AndNoMovement()
+    public async Task ModifySale_ReducingQuantity_ReturnsStock()
+    {
+        await SeedStoreAsync();
+        var product = await SeedProductAsync(stock: 100m);
+        var cashier = await SeedUserAsync();
+        var baseUnit = product.GetBaseUnit()!;
+
+        var sale = await SellAsync(product, baseUnit.Id, quantity: 10m, paid: 500m, cashier.Id);
+        Assert.True(sale.IsSuccess);
+        Assert.Equal(90m, await GetStockAsync(product.Id)); // 100 - 10 = 90
+
+        // تعديل الكمية من 10 إلى 5 (نقص 5 كجم → يُعاد 5 للمخزون)
+        var modified = await new ModifySaleUseCase(_unitOfWork).ExecuteAsync(
+            sale.Value.Id,
+            new[] { new SaleLineInputDto(product.Id, baseUnit.Id, 5m, false) },
+            "تقليل الكمية",
+            cashier.Id);
+
+        Assert.True(modified.IsSuccess);
+        Assert.Equal(95m, await GetStockAsync(product.Id)); // 90 + 5 = 95
+    }
+
+    [Fact]
+    public async Task ModifySale_RejectsCancelledSale()
+    {
+        await SeedStoreAsync();
+        var product = await SeedProductAsync(stock: 100m);
+        var cashier = await SeedUserAsync();
+        var baseUnit = product.GetBaseUnit()!;
+
+        var sale = await SellAsync(product, baseUnit.Id, quantity: 5m, paid: 500m, cashier.Id);
+        Assert.True(sale.IsSuccess);
+
+        var cancelled = await new CancelSaleUseCase(_unitOfWork)
+            .ExecuteAsync(sale.Value.Id, "إلغاء", cashier.Id);
+        Assert.True(cancelled.IsSuccess);
+
+        var modified = await new ModifySaleUseCase(_unitOfWork).ExecuteAsync(
+            sale.Value.Id,
+            new[] { new SaleLineInputDto(product.Id, baseUnit.Id, 3m, false) },
+            "محاولة تعديل ملغي",
+            cashier.Id);
+
+        Assert.False(modified.IsSuccess);
+    }
+
+    [Fact]
+    public async Task InventoryDisabled_NoDeduction()
     {
         await SeedStoreAsync(inventoryEnabled: false);
         var product = await SeedProductAsync(stock: 40m);
@@ -170,12 +197,11 @@ public sealed class StockPolicyTests : IAsyncLifetime
         var sale = await SellAsync(product, baseUnit.Id, quantity: 3m, paid: 300m, cashier.Id);
 
         Assert.True(sale.IsSuccess);
-        Assert.Equal(40m, await GetStockAsync(product.Id));
-        Assert.Empty(await GetMovementsAsync(product.Id));
+        Assert.Equal(40m, await GetStockAsync(product.Id)); // لا خصم لأن تتبع معطّل
     }
 
     [Fact]
-    public async Task Service_IsNotDeducted_NorLogged()
+    public async Task Service_IsNotDeducted()
     {
         await SeedStoreAsync();
         var service = await SeedProductAsync(stock: 0m, isService: true);
@@ -185,7 +211,7 @@ public sealed class StockPolicyTests : IAsyncLifetime
         var sale = await SellAsync(service, baseUnit.Id, quantity: 1m, paid: 100m, cashier.Id);
 
         Assert.True(sale.IsSuccess);
-        Assert.Empty(await GetMovementsAsync(service.Id));
+        Assert.Equal(0m, await GetStockAsync(service.Id)); // الخدمة لا يُخصم منها مخزون
     }
 
     [Fact]
@@ -200,12 +226,6 @@ public sealed class StockPolicyTests : IAsyncLifetime
 
         Assert.True(result.IsSuccess);
         Assert.Equal(120m, await GetStockAsync(product.Id));
-
-        var movement = Assert.Single(await GetMovementsAsync(product.Id));
-        Assert.Equal(StockMovementType.ManualAdjustment, movement.Type);
-        Assert.Equal(20m, movement.QuantityDelta);
-        Assert.Equal("جرد دوري", movement.Reason);
-        Assert.Equal(cashier.Id, movement.CreatedByUserId);
     }
 
     [Fact]
@@ -221,11 +241,10 @@ public sealed class StockPolicyTests : IAsyncLifetime
         Assert.False(negative.IsSuccess);
         Assert.False(noReason.IsSuccess);
         Assert.Equal(10m, await GetStockAsync(product.Id));
-        Assert.Empty(await GetMovementsAsync(product.Id));
     }
 
     [Fact]
-    public async Task CreateProduct_RecordsOpeningBalanceMovement()
+    public async Task CreateProduct_RecordsOpeningBalance()
     {
         await SeedStoreAsync();
 
@@ -238,10 +257,7 @@ public sealed class StockPolicyTests : IAsyncLifetime
         var created = await new CreateProductUseCase(_unitOfWork).ExecuteAsync(input);
 
         Assert.True(created.IsSuccess);
-        var movement = Assert.Single(await GetMovementsAsync(created.Value.Id));
-        Assert.Equal(StockMovementType.OpeningBalance, movement.Type);
-        Assert.Equal(25m, movement.QuantityDelta);
-        Assert.Equal(25m, movement.QuantityAfter);
+        Assert.Equal(25m, await GetStockAsync(created.Value.Id));
     }
 
     [Fact]
@@ -265,9 +281,8 @@ public sealed class StockPolicyTests : IAsyncLifetime
         var updated = await new UpdateProductUseCase(_unitOfWork).ExecuteAsync(product.Id, input);
 
         Assert.True(updated.IsSuccess);
-        Assert.Equal(90m, await GetStockAsync(product.Id));
+        Assert.Equal(90m, await GetStockAsync(product.Id)); // المخزون لا يتغير من نموذج التعديل
         Assert.Equal(7m, await _db.Products.AsNoTracking().Where(p => p.Id == product.Id).Select(p => p.ReorderLevel).SingleAsync());
-        Assert.Single(await GetMovementsAsync(product.Id));
     }
 
     private async Task<Wizz.Application.Common.Result<SaleDto>> SellAsync(
@@ -291,16 +306,6 @@ public sealed class StockPolicyTests : IAsyncLifetime
             .Where(p => p.Id == productId)
             .Select(p => p.StockQuantity)
             .SingleAsync();
-    }
-
-    private async Task<List<StockMovement>> GetMovementsAsync(Guid productId)
-    {
-        _db.ChangeTracker.Clear();
-        return await _db.StockMovements.AsNoTracking()
-            .Where(m => m.ProductId == productId)
-            .OrderBy(m => m.CreatedAt)
-            .ThenBy(m => m.QuantityDelta)
-            .ToListAsync();
     }
 
     private async Task<Store> SeedStoreAsync(bool inventoryEnabled = true, bool allowCreditSales = true)

@@ -6,6 +6,8 @@ using Wizz.Domain;
 public interface ISaleRepository
 {
     Task<Sale?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    /// <summary>تحميل بيع بدون تتبع الكيانات (للقراءة أو للتعديل اليدوي لحالة الكيانات).</summary>
+    Task<Sale?> GetByIdAsyncNoTracking(Guid id, CancellationToken ct = default);
     Task<IReadOnlyList<Sale>> GetByDateRangeAsync(DateTime from, DateTime to, CancellationToken ct = default);
     Task<IReadOnlyList<Sale>> GetByCashierAsync(Guid cashierId, DateTime? from = null, DateTime? to = null, CancellationToken ct = default);
     Task<IReadOnlyList<Sale>> GetPendingAsync(CancellationToken ct = default);

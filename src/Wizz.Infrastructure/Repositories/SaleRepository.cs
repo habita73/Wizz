@@ -20,6 +20,15 @@ public sealed class SaleRepository : ISaleRepository
                 .ThenInclude(i => i.Unit)
             .FirstOrDefaultAsync(s => s.Id == id, ct);
 
+    public async Task<Sale?> GetByIdAsyncNoTracking(Guid id, CancellationToken ct = default)
+        => await _db.Sales
+            .AsNoTracking()
+            .Include(s => s.Items)
+                .ThenInclude(i => i.Product)
+            .Include(s => s.Items)
+                .ThenInclude(i => i.Unit)
+            .FirstOrDefaultAsync(s => s.Id == id, ct);
+
     public async Task<IReadOnlyList<Sale>> GetByDateRangeAsync(DateTime from, DateTime to, CancellationToken ct = default)
         => await _db.Sales
             .Include(s => s.Items)
@@ -70,9 +79,23 @@ public sealed class SaleRepository : ISaleRepository
 
     public void Update(Sale sale)
     {
-        _db.Sales.Update(sale);
+        _db.Entry(sale).State = EntityState.Modified;
         foreach (var item in sale.Items)
-            _db.Entry(item).State = item.Id == Guid.Empty ? EntityState.Added : EntityState.Modified;
+        {
+            var entry = _db.Entry(item);
+            // العنصر الجديد (غيرfurt من قاعدة البيانات) يُضاف، والعنصر الموجود يُحدّث
+            entry.State = entry.State == EntityState.Detached ? EntityState.Added : EntityState.Modified;
+        }
+
+        // حذف الأصناف القديمة التي أزيلت من المجموعة (مثلاً عند تعديل البيع وتقليل الكمية أو حذف صنف)
+        var trackedSaleItems = _db.ChangeTracker.Entries<SaleItem>()
+            .Where(e => e.Entity.SaleId == sale.Id && e.State == EntityState.Unchanged)
+            .ToList();
+        foreach (var entry in trackedSaleItems)
+        {
+            if (!sale.Items.Any(i => i.Id == entry.Entity.Id))
+                entry.State = EntityState.Deleted;
+        }
     }
 
     public async Task<decimal> GetTotalSalesAsync(DateTime from, DateTime to, CancellationToken ct = default)

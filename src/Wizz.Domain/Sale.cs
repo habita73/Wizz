@@ -19,9 +19,10 @@ public sealed class Sale
     public bool IsCreditSale { get; private set; }
     public DateTime? DueDate { get; private set; }
 
-    public bool IsCorrected { get; private set; }
-    public Guid? OriginalSaleId { get; private set; }
-    public string? CorrectionReason { get; private set; }
+    public bool IsModified { get; private set; }
+    public DateTime? ModifiedAt { get; private set; }
+    public Guid? ModifiedByUserId { get; private set; }
+    public string? ModificationNote { get; private set; }
 
     private readonly List<SaleItem> _items = new();
     public IReadOnlyList<SaleItem> Items => _items.AsReadOnly();
@@ -75,30 +76,46 @@ public sealed class Sale
         }
     }
 
-    public Sale Correct(string reason, Guid correctedByUserId)
+    /// <summary>استبدال جميع الأصناف بأصناف جديدة وإعادة الحساب (بدون لمس المخزون — يتم تعديله في حالة الاستخدام).</summary>
+    public void ReplaceItems(IEnumerable<SaleItem> newItems)
     {
-        if (IsCorrected) throw new InvalidOperationException("هذا البيع مصحح بالفعل");
-        if (Status == SaleStatus.Cancelled) throw new InvalidOperationException("لا يمكن تصحيح بيع ملغي");
-
-        var correctedItems = _items.Select(i => new SaleItem(i.ProductId, i.UnitId, i.Quantity, i.UnitPrice, i.IsWholesalePrice)).ToList();
-        var correctedSale = new Sale(StoreId, correctedByUserId, correctedItems, Discount, Paid, PaymentMethod, IsCreditSale, DueDate)
+        _items.Clear();
+        foreach (var item in newItems)
         {
-            OriginalSaleId = Id,
-            CorrectionReason = reason,
-            IsCorrected = true
-        };
-
-        Status = SaleStatus.Corrected;
-        return correctedSale;
+            item.AttachToSale(Id);
+            _items.Add(item);
+        }
+        Recalculate();
     }
 
-    public void Cancel(string reason)
+    public void MarkModified(string modificationNote, Guid modifiedByUserId)
+    {
+        IsModified = true;
+        ModifiedAt = DateTime.UtcNow;
+        ModifiedByUserId = modifiedByUserId;
+        ModificationNote = modificationNote?.Trim();
+    }
+
+    public void Cancel(string reason, Guid cancelledByUserId)
     {
         if (Status == SaleStatus.Cancelled) throw new InvalidOperationException("البيع ملغي بالفعل");
-        if (IsCorrected) throw new InvalidOperationException("لا يمكن إلغاء بيع مصحح — ألغِ التصحيح أولاً");
+        if (IsModified) throw new InvalidOperationException("لا يمكن إلغاء بيع معدل — تم تعديله بالفعل");
+
+        // إرجاع الكميات إلى المخزون عند الإلغاء
+        foreach (var item in _items)
+        {
+            var product = item.Product;
+            if (product == null || product.IsService) continue;
+            var baseQuantity = item.Unit.ToBaseQuantity(item.Quantity);
+            if (baseQuantity == 0) continue;
+            product.ApplyStockChange(baseQuantity);
+        }
 
         Status = SaleStatus.Cancelled;
-        CorrectionReason = reason;
+        IsModified = true;
+        ModifiedAt = DateTime.UtcNow;
+        ModifiedByUserId = cancelledByUserId;
+        ModificationNote = $"إلغاء البيع: {reason?.Trim()}";
     }
 
     public void AddItem(SaleItem item)

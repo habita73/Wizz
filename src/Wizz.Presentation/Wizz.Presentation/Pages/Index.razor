@@ -32,7 +32,7 @@
                 <WizzIcon Icon="zap" Size="16" />
                 <span>إجراءات سريعة</span>
             </span>
-            <span class="small text-muted">Alt + 1..5</span>
+            <span class="small text-muted">Alt + 1..4</span>
         </div>
         <div class="quick-actions-grid">
             @foreach (var action in QuickActions)
@@ -198,8 +198,7 @@
         ("1", "bag", "بيع جديد", "sales/new"),
         ("2", "credit", "الديون", "debts"),
         ("3", "alert", "الفواتير المتأخرة", "debts?overdue=true"),
-        ("4", "receipt", "المبيعات", "sales/history"),
-        ("5", "clock", "سجل حركات المخزون", "stock-movements")
+        ("4", "receipt", "المبيعات", "sales/history")
     };
 
     protected override async Task OnInitializedAsync()

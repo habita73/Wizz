@@ -82,7 +82,7 @@ public sealed class CreateSaleUseCase
         await _unitOfWork.Sales.AddAsync(sale, ct);
 
         // خصم المخزون تلقائياً عند تفعيل تتبع المخزون في المتجر.
-        // يُسمح بالنقص (رصيد سالب) وفق سياسة المخزون المعتمدة، مع تسجيل حركة لكل سطر.
+        // يُسمح بالنقص (رصيد سالب) وفق سياسة المخزون المعتمدة.
         if (store.InventoryEnabled)
         {
             foreach (var item in sale.Items)
@@ -94,17 +94,7 @@ public sealed class CreateSaleUseCase
                 var baseQuantity = unit.ToBaseQuantity(item.Quantity);
                 if (baseQuantity == 0) continue;
 
-                var before = product.StockQuantity;
                 product.ApplyStockChange(-baseQuantity);
-
-                await _unitOfWork.StockMovements.AddAsync(new StockMovement(
-                    product.Id,
-                    StockMovementType.Sale,
-                    -baseQuantity,
-                    before,
-                    reason: null,
-                    saleId: sale.Id,
-                    createdByUserId: cashierId), ct);
             }
         }
 
@@ -123,5 +113,5 @@ public sealed class CreateSaleUseCase
             i.Quantity, i.UnitPrice, i.LineTotal, i.IsWholesalePrice)).ToList(),
         sale.Subtotal, sale.Discount, sale.Total, sale.Paid, sale.Remaining,
         (PaymentMethodDto)sale.PaymentMethod, sale.IsCreditSale, sale.DueDate,
-        sale.CashierId, null, sale.IsCorrected, sale.OriginalSaleId, sale.CorrectionReason);
+        sale.CashierId, null, sale.IsModified, sale.ModifiedAt, sale.ModifiedByUserId, sale.ModificationNote);
 }

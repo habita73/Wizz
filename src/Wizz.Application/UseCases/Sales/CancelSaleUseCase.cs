@@ -5,7 +5,7 @@ using Wizz.Application.Common;
 using Wizz.Application.DTOs;
 using Wizz.Domain;
 
-/// <summary>إلغاء عملية بيع.</summary>
+/// <summary>إلغاء عملية بيع — يستعيد المخزون ويسجل سبب الإلغاء على العملية نفسها.</summary>
 public sealed class CancelSaleUseCase
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -16,43 +16,22 @@ public sealed class CancelSaleUseCase
     {
         var sale = await _unitOfWork.Sales.GetByIdAsync(saleId, ct);
         if (sale == null)
+        {
             return Result<SaleDto>.Failure("عملية البيع غير موجودة");
+        }
 
         if (sale.Status == SaleStatus.Cancelled)
-            return Result<SaleDto>.Failure("البيع ملغي بالفعل");
-
-        if (sale.IsCorrected)
-            return Result<SaleDto>.Failure("لا يمكن إلغاء بيع مصحح — ألغِ التصحيح أولاً");
-
-        sale.Cancel(reason);
-        _unitOfWork.Sales.Update(sale);
-
-        // إرجاع الكميات إلى المخزون عند إلغاء البيع (إن كان تتبع المخزون مفعلاً).
-        var store = await _unitOfWork.Store.GetAsync(ct);
-        if (store?.InventoryEnabled == true)
         {
-            foreach (var item in sale.Items)
-            {
-                var product = item.Product;
-                var unit = item.Unit;
-                if (product == null || unit == null || product.IsService) continue;
-
-                var baseQuantity = unit.ToBaseQuantity(item.Quantity);
-                if (baseQuantity == 0) continue;
-
-                var before = product.StockQuantity;
-                product.ApplyStockChange(baseQuantity);
-
-                await _unitOfWork.StockMovements.AddAsync(new StockMovement(
-                    product.Id,
-                    StockMovementType.SaleCancellation,
-                    baseQuantity,
-                    before,
-                    reason,
-                    sale.Id,
-                    cancelledByUserId), ct);
-            }
+            return Result<SaleDto>.Failure("البيع ملغي بالفعل");
         }
+
+        if (sale.IsModified)
+        {
+            return Result<SaleDto>.Failure("لا يمكن إلغاء بيع معدل — تم تعديله بالفعل");
+        }
+
+        sale.Cancel(reason.Trim(), cancelledByUserId);
+        _unitOfWork.Sales.Update(sale);
 
         await _unitOfWork.SaveChangesAsync(ct);
 
@@ -67,5 +46,5 @@ public sealed class CancelSaleUseCase
             i.Quantity, i.UnitPrice, i.LineTotal, i.IsWholesalePrice)).ToList(),
         sale.Subtotal, sale.Discount, sale.Total, sale.Paid, sale.Remaining,
         (PaymentMethodDto)sale.PaymentMethod, sale.IsCreditSale, sale.DueDate,
-        sale.CashierId, null, sale.IsCorrected, sale.OriginalSaleId, sale.CorrectionReason);
+        sale.CashierId, null, sale.IsModified, sale.ModifiedAt, sale.ModifiedByUserId, sale.ModificationNote);
 }
