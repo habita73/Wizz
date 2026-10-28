@@ -19,6 +19,8 @@ public sealed class UnitOfWork : IUnitOfWork
     public IStoreRepository Store => new StoreRepository(_db);
     public IUserRepository Users => new UserRepository(_db);
 
+    public DbContext Db => _db;
+
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)
         => await _db.SaveChangesAsync(ct);
 

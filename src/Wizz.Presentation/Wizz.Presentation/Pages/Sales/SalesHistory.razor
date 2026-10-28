@@ -463,6 +463,10 @@ else
             }
             await LoadSales();
         }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"خطأ غير متوقع: {ex.Message}");
+        }
         finally
         {
             savingModification = false;
@@ -522,6 +526,10 @@ else
                 CloseCancelSale();
             }
             await LoadSales();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"خطأ غير متوقع: {ex.Message}");
         }
         finally
         {

@@ -79,22 +79,13 @@ public sealed class SaleRepository : ISaleRepository
 
     public void Update(Sale sale)
     {
-        _db.Entry(sale).State = EntityState.Modified;
-        foreach (var item in sale.Items)
+        // المستدعي يتعامل مع الربط عبر DbContext مباشرة
+        // هذه الطريقة تُبقي على التوافق مع الكود الحالي
+        var entry = _db.Entry(sale);
+        if (entry.State == EntityState.Detached)
         {
-            var entry = _db.Entry(item);
-            // العنصر الجديد (غيرfurt من قاعدة البيانات) يُضاف، والعنصر الموجود يُحدّث
-            entry.State = entry.State == EntityState.Detached ? EntityState.Added : EntityState.Modified;
-        }
-
-        // حذف الأصناف القديمة التي أزيلت من المجموعة (مثلاً عند تعديل البيع وتقليل الكمية أو حذف صنف)
-        var trackedSaleItems = _db.ChangeTracker.Entries<SaleItem>()
-            .Where(e => e.Entity.SaleId == sale.Id && e.State == EntityState.Unchanged)
-            .ToList();
-        foreach (var entry in trackedSaleItems)
-        {
-            if (!sale.Items.Any(i => i.Id == entry.Entity.Id))
-                entry.State = EntityState.Deleted;
+            _db.Sales.Attach(sale);
+            entry.State = EntityState.Modified;
         }
     }
 

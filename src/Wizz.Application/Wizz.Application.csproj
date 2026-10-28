@@ -2,7 +2,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Wizz.Domain\Wizz.Domain.csproj" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
   </ItemGroup>
 
   <PropertyGroup>

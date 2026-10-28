@@ -138,8 +138,7 @@ namespace Wizz.Infrastructure.Data.Migrations
 
                     b.Property<string>("ModificationNote")
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT")
-                        .HasColumnName("CorrectionReason");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("ModifiedAt")
                         .HasColumnType("TEXT");
