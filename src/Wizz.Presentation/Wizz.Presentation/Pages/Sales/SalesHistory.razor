@@ -142,7 +142,7 @@ else
                     <div class="row mb-3">
                         <div class="col-md-4">
                             <label class="form-label">طريقة الدفع</label>
-                            <select class="form-select" @bind="editPaymentMethod">
+                            <select class="form-select" @bind="editPaymentMethodString">
                                 <option value="0">نقدي</option>
                                 <option value="1">بطاقة</option>
                                 <option value="2">آجل</option>
@@ -152,17 +152,17 @@ else
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">الخصم</label>
-                            <input type="number" step="0.01" min="0" class="form-control" @bind="editDiscount" />
+                            <input type="text" class="form-control" @bind="editDiscountString" />
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">المبلغ المدفوع</label>
-                            <input type="number" step="0.01" min="0" class="form-control" @bind="editPaid" />
+                            <input type="text" class="form-control" @bind="editPaidString" />
                         </div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label">تاريخ الاستحقاق (للبيع الآجل)</label>
-                            <input type="date" class="form-control" @bind="editDueDate" />
+                            <input type="text" class="form-control" @bind="editDueDateString" placeholder="YYYY-MM-DD" />
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">البيع آجل</label>
@@ -317,11 +317,11 @@ else
     private Guid? modifyingSaleId;
     private Sale? saleBeingModified;
     private List<EditLineInput> editLines = new();
-    private decimal editDiscount;
-    private decimal editPaid;
-    private PaymentMethod editPaymentMethod;
+    private string editDiscountString = "0";
+    private string editPaidString = "0";
+    private string editPaymentMethodString = "0";
+    private string editDueDateString = "";
     private bool editIsCreditSale;
-    private DateTime? editDueDate;
     private bool savingModification;
 
     private Guid? cancellingSaleId;
@@ -440,11 +440,11 @@ else
 
         modifyingSaleId = saleId;
         saleBeingModified = sale;
-        editDiscount = sale.Discount;
-        editPaid = sale.Paid;
-        editPaymentMethod = sale.PaymentMethod;
+        editDiscountString = sale.Discount.ToString("0.##");
+        editPaidString = sale.Paid.ToString("0.##");
+        editPaymentMethodString = ((int)sale.PaymentMethod).ToString();
         editIsCreditSale = sale.IsCreditSale;
-        editDueDate = sale.DueDate;
+        editDueDateString = sale.DueDate?.ToString("yyyy-MM-dd") ?? "";
 
         editLines = sale.Items.Select(i => new EditLineInput
         {
@@ -464,12 +464,43 @@ else
         modifyingSaleId = null;
         saleBeingModified = null;
         editLines = new();
+        editDiscountString = "0";
+        editPaidString = "0";
+        editPaymentMethodString = "0";
+        editDueDateString = "";
         savingModification = false;
     }
 
     private async Task SubmitModifySale()
     {
         if (modifyingSaleId is null) return;
+
+        // تحليل القيم من السلاسل النصية
+        if (!decimal.TryParse(editDiscountString, out var discount))
+        {
+            await JS.InvokeVoidAsync("alert", "الخصم غير صالح");
+            return;
+        }
+        if (!decimal.TryParse(editPaidString, out var paid))
+        {
+            await JS.InvokeVoidAsync("alert", "المبلغ المدفوع غير صالح");
+            return;
+        }
+        if (!int.TryParse(editPaymentMethodString, out var paymentMethodInt))
+        {
+            await JS.InvokeVoidAsync("alert", "طريقة الدفع غير صالحة");
+            return;
+        }
+        DateTime? dueDate = null;
+        if (!string.IsNullOrWhiteSpace(editDueDateString))
+        {
+            if (!DateTime.TryParse(editDueDateString, out var parsedDate))
+            {
+                await JS.InvokeVoidAsync("alert", "تاريخ الاستحقاق غير صالح");
+                return;
+            }
+            dueDate = parsedDate;
+        }
 
         var input = new Wizz.Application.DTOs.SaleInputDto(
             editLines.Select(l => new Wizz.Application.DTOs.SaleLineInputDto(
@@ -479,11 +510,11 @@ else
                 l.UseWholesalePrice,
                 l.UnitPrice
             )).ToList(),
-            editDiscount,
-            editPaid,
-            (Wizz.Application.DTOs.PaymentMethodDto)editPaymentMethod,
+            discount,
+            paid,
+            (Wizz.Application.DTOs.PaymentMethodDto)paymentMethodInt,
             editIsCreditSale,
-            editDueDate
+            dueDate
         );
 
         savingModification = true;
