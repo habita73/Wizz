@@ -61,6 +61,25 @@ namespace Wizz.Infrastructure.Data.Migrations
                     b.ToTable("DeviceRegistrations");
                 });
 
+            modelBuilder.Entity("Wizz.Domain.DocumentSequence", b =>
+                {
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DocumentType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("LastNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("StoreId", "DocumentType", "Year");
+
+                    b.ToTable("DocumentSequences");
+                });
+
             modelBuilder.Entity("Wizz.Domain.Product", b =>
                 {
                     b.Property<Guid>("Id")
@@ -129,6 +148,11 @@ namespace Wizz.Infrastructure.Data.Migrations
 
                     b.Property<DateTime?>("DueDate")
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("InventoryApplied")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
 
                     b.Property<bool>("IsCreditSale")
                         .HasColumnType("INTEGER");
@@ -206,6 +230,117 @@ namespace Wizz.Infrastructure.Data.Migrations
                     b.ToTable("SaleItems");
                 });
 
+            modelBuilder.Entity("Wizz.Domain.StockDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("DocumentDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsVoided")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid?>("LegacyStockMovementId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("ReferenceSaleId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Source")
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("VoidedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("VoidedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LegacyStockMovementId")
+                        .IsUnique()
+                        .HasFilter("[LegacyStockMovementId] IS NOT NULL");
+
+                    b.HasIndex("ReferenceSaleId");
+
+                    b.HasIndex("StoreId", "DocumentDate");
+
+                    b.HasIndex("StoreId", "Number")
+                        .IsUnique();
+
+                    b.ToTable("StockDocuments");
+                });
+
+            modelBuilder.Entity("Wizz.Domain.StockDocumentLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("BaseQuantityDelta")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("QuantityAfter")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("QuantityBefore")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("StockDocumentId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UnitId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("StockDocumentId");
+
+                    b.HasIndex("UnitId");
+
+                    b.ToTable("StockDocumentLines");
+                });
+
             modelBuilder.Entity("Wizz.Domain.StockMovement", b =>
                 {
                     b.Property<Guid>("Id")
@@ -277,6 +412,11 @@ namespace Wizz.Infrastructure.Data.Migrations
                         .HasMaxLength(3)
                         .HasColumnType("TEXT")
                         .HasDefaultValue("DZD");
+
+                    b.Property<int>("DocumentYearDigits")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(4);
 
                     b.Property<bool>("InventoryEnabled")
                         .ValueGeneratedOnAdd()
@@ -431,6 +571,15 @@ namespace Wizz.Infrastructure.Data.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("Wizz.Domain.DocumentSequence", b =>
+                {
+                    b.HasOne("Wizz.Domain.Store", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Wizz.Domain.SaleItem", b =>
                 {
                     b.HasOne("Wizz.Domain.Product", "Product")
@@ -454,6 +603,38 @@ namespace Wizz.Infrastructure.Data.Migrations
                     b.Navigation("Product");
 
                     b.Navigation("Unit");
+                });
+
+            modelBuilder.Entity("Wizz.Domain.StockDocument", b =>
+                {
+                    b.HasOne("Wizz.Domain.Store", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Wizz.Domain.StockDocumentLine", b =>
+                {
+                    b.HasOne("Wizz.Domain.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Wizz.Domain.StockDocument", "StockDocument")
+                        .WithMany("Lines")
+                        .HasForeignKey("StockDocumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Wizz.Domain.UnitOfMeasure", null)
+                        .WithMany()
+                        .HasForeignKey("UnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("StockDocument");
                 });
 
             modelBuilder.Entity("Wizz.Domain.StockMovement", b =>
@@ -484,6 +665,11 @@ namespace Wizz.Infrastructure.Data.Migrations
             modelBuilder.Entity("Wizz.Domain.Sale", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("Wizz.Domain.StockDocument", b =>
+                {
+                    b.Navigation("Lines");
                 });
 #pragma warning restore 612, 618
         }

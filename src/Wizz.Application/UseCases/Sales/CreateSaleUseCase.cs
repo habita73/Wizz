@@ -3,6 +3,7 @@ namespace Wizz.Application.UseCases.Sales;
 using Wizz.Application.Abstractions;
 using Wizz.Application.Common;
 using Wizz.Application.DTOs;
+using Wizz.Application.UseCases.StockDocuments;
 using Wizz.Domain;
 
 /// <summary>إنشاء عملية بيع جديدة.</summary>
@@ -75,30 +76,43 @@ public sealed class CreateSaleUseCase
         if (input.IsCreditSale && input.DueDate == null)
             return Result<SaleDto>.Failure("تاريخ الاستحقاق مطلوب للبيع الآجل");
 
-        // إنشاء البيع
-        var sale = new Sale(store.Id, cashierId, items, input.Discount, input.Paid, 
-            (PaymentMethod)input.PaymentMethod, input.IsCreditSale, input.DueDate);
+        // إنشاء البيع — البيع نفسه هو مستند الحركة، ولا يُنسخ إلى جدول ثانٍ.
+        // InventoryApplied يحفظ هل خُصم المخزون فعلًا حتى لا يعيد الإلغاء كمية غير مخصومة.
+        var sale = new Sale(store.Id, cashierId, items, input.Discount, input.Paid,
+            (PaymentMethod)input.PaymentMethod, input.IsCreditSale, input.DueDate,
+            inventoryApplied: store.InventoryEnabled);
 
-        await _unitOfWork.Sales.AddAsync(sale, ct);
+        var ownsTransaction = await StockWorkflow.BeginIfNeededAsync(_unitOfWork, ct);
 
-        // خصم المخزون تلقائياً عند تفعيل تتبع المخزون في المتجر.
-        // يُسمح بالنقص (رصيد سالب) وفق سياسة المخزون المعتمدة.
-        if (store.InventoryEnabled)
+        try
         {
-            foreach (var item in sale.Items)
+            await _unitOfWork.Sales.AddAsync(sale, ct);
+
+            // خصم المخزون تلقائياً عند تفعيل تتبع المخزون في المتجر.
+            // يُسمح بالنقص (رصيد سالب) وفق سياسة المخزون المعتمدة.
+            if (sale.InventoryApplied)
             {
-                var product = item.Product;
-                var unit = item.Unit;
-                if (product == null || unit == null || product.IsService) continue;
+                foreach (var item in sale.Items)
+                {
+                    var product = item.Product;
+                    var unit = item.Unit;
+                    if (product == null || unit == null || product.IsService) continue;
 
-                var baseQuantity = unit.ToBaseQuantity(item.Quantity);
-                if (baseQuantity == 0) continue;
+                    var baseQuantity = StockQuantity.ToBase(unit, item.Quantity);
+                    if (baseQuantity == 0) continue;
 
-                product.ApplyStockChange(-baseQuantity);
+                    product.ApplyStockChange(-baseQuantity);
+                }
             }
-        }
 
-        await _unitOfWork.SaveChangesAsync(ct);
+            await _unitOfWork.SaveChangesAsync(ct);
+            await StockWorkflow.CommitIfOwnedAsync(_unitOfWork, ownsTransaction, ct);
+        }
+        catch
+        {
+            await StockWorkflow.RollbackIfOwnedAsync(_unitOfWork, ownsTransaction, ct);
+            throw;
+        }
 
         return Result<SaleDto>.Success(MapToDto(sale));
     }

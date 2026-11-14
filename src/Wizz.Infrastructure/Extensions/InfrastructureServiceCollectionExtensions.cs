@@ -33,6 +33,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<ISaleRepository, SaleRepository>();
         services.AddScoped<IStockMovementRepository, StockMovementRepository>();
+        services.AddScoped<IStockDocumentRepository, StockDocumentRepository>();
         services.AddScoped<IStoreRepository, StoreRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
 

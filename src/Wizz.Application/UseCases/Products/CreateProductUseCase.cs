@@ -3,9 +3,10 @@ namespace Wizz.Application.UseCases.Products;
 using Wizz.Application.Abstractions;
 using Wizz.Application.Common;
 using Wizz.Application.DTOs;
+using Wizz.Application.UseCases.StockDocuments;
 using Wizz.Domain;
 
-/// <summary>إنشاء منتج جديد.</summary>
+/// <summary>إنشاء منتج جديد، مع تسجيل الرصيد الافتتاحي كمستند (RSL) لا كرقم منفصل.</summary>
 public sealed class CreateProductUseCase
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -39,20 +40,53 @@ public sealed class CreateProductUseCase
             product.AddUnit("قطعة", "قطعة", 1m);
         }
 
-        await _unitOfWork.Products.AddAsync(product, ct);
-
-        // الرصيد الافتتاحي حركة مخزون موثّقة، لا مجرد رقم في بطاقة المنتج.
+        Store? store = null;
+        var recordOpening = false;
         if (!product.IsService && product.StockQuantity > 0)
         {
-            await _unitOfWork.StockMovements.AddAsync(new StockMovement(
-                product.Id,
-                StockMovementType.OpeningBalance,
-                product.StockQuantity,
-                0m,
-                "رصيد افتتاحي عند إنشاء المنتج"), ct);
+            store = await _unitOfWork.Store.GetAsync(ct);
+            if (store == null)
+                return Result<ProductDto>.Failure("لم يتم إعداد المتجر بعد — لا يمكن تسجيل رصيد افتتاحي");
+
+            // تعطيل تتبع المخزون يعني عدم إنشاء مستندات؛ يبقى الرصيد مرجعًا إرشاديًا فقط.
+            recordOpening = store.InventoryEnabled;
         }
 
-        await _unitOfWork.SaveChangesAsync(ct);
+        var ownsTransaction = await StockWorkflow.BeginIfNeededAsync(_unitOfWork, ct);
+
+        try
+        {
+            await _unitOfWork.Products.AddAsync(product, ct);
+
+            if (recordOpening && store != null)
+            {
+                var baseUnit = product.GetBaseUnit();
+                if (baseUnit == null)
+                    throw new InvalidOperationException("المنتج بلا وحدة أساسية");
+
+                var businessDate = StockWorkflow.Today(store);
+                var number = await DocumentNumbering.AllocateAsync(
+                    _unitOfWork.Db, store.Id, StockDocumentType.OpeningBalance, businessDate,
+                    store.DocumentYearDigits, ct);
+
+                var stock = StockQuantity.Normalize(product.StockQuantity);
+                var line = new StockDocumentLine(
+                    product.Id, baseUnit.Id, stock, stock, 0m, stock, "رصيد افتتاحي عند إنشاء المنتج");
+                var document = new StockDocument(
+                    store.Id, StockDocumentType.OpeningBalance, number, businessDate, null,
+                    "رصيد افتتاحي عند إنشاء المنتج", new[] { line });
+
+                await _unitOfWork.StockDocuments.AddAsync(document, ct);
+            }
+
+            await _unitOfWork.SaveChangesAsync(ct);
+            await StockWorkflow.CommitIfOwnedAsync(_unitOfWork, ownsTransaction, ct);
+        }
+        catch
+        {
+            await StockWorkflow.RollbackIfOwnedAsync(_unitOfWork, ownsTransaction, ct);
+            throw;
+        }
 
         return Result<ProductDto>.Success(ProductDto.FromDomain(product));
     }

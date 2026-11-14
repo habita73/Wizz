@@ -3,6 +3,7 @@ namespace Wizz.Application.UseCases.Sales;
 using Wizz.Application.Abstractions;
 using Wizz.Application.Common;
 using Wizz.Application.DTOs;
+using Wizz.Application.UseCases.StockDocuments;
 using Wizz.Domain;
 
 /// <summary>إلغاء عملية بيع — يستعيد المخزون على العملية نفسها.</summary>
@@ -25,10 +26,21 @@ public sealed class CancelSaleUseCase
             return Result<SaleDto>.Failure("البيع ملغي بالفعل");
         }
 
-        sale.Cancel(reason.Trim(), cancelledByUserId);
-        _unitOfWork.Sales.Update(sale);
+        var ownsTransaction = await StockWorkflow.BeginIfNeededAsync(_unitOfWork, ct);
 
-        await _unitOfWork.SaveChangesAsync(ct);
+        try
+        {
+            sale.Cancel(reason.Trim(), cancelledByUserId);
+            _unitOfWork.Sales.Update(sale);
+
+            await _unitOfWork.SaveChangesAsync(ct);
+            await StockWorkflow.CommitIfOwnedAsync(_unitOfWork, ownsTransaction, ct);
+        }
+        catch
+        {
+            await StockWorkflow.RollbackIfOwnedAsync(_unitOfWork, ownsTransaction, ct);
+            throw;
+        }
 
         return Result<SaleDto>.Success(MapToDto(sale));
     }

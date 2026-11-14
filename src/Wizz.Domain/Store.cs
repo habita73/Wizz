@@ -11,6 +11,10 @@ public sealed class Store
     public string? CommercialRegister { get; private set; }
     public bool AllowCreditSales { get; private set; }
     public bool InventoryEnabled { get; private set; } = true;
+
+    /// <summary>عدد أرقام السنة في رقم المستند: 2 أو 4 (الافتراضي 4).</summary>
+    public int DocumentYearDigits { get; private set; } = 4;
+
     public string Currency { get; private set; } = "DZD";
     public string TimeZone { get; private set; } = "Africa/Algiers";
     public DateTime CreatedAt { get; private set; }
@@ -26,10 +30,12 @@ public sealed class Store
         string? commercialRegister = null,
         bool allowCreditSales = false,
         string currency = "DZD",
-        bool inventoryEnabled = true)
+        bool inventoryEnabled = true,
+        int documentYearDigits = 4)
     {
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("اسم المتجر مطلوب", nameof(name));
         if (string.IsNullOrWhiteSpace(currency)) throw new ArgumentException("العملة مطلوبة", nameof(currency));
+        RequireValidYearDigits(documentYearDigits, nameof(documentYearDigits));
 
         Id = Guid.NewGuid();
         Name = name.Trim();
@@ -39,6 +45,7 @@ public sealed class Store
         CommercialRegister = Normalize(commercialRegister);
         AllowCreditSales = allowCreditSales;
         InventoryEnabled = inventoryEnabled;
+        DocumentYearDigits = documentYearDigits;
         Currency = currency.Trim().ToUpperInvariant();
         CreatedAt = DateTime.UtcNow;
     }
@@ -53,9 +60,12 @@ public sealed class Store
         bool allowCreditSales,
         string? currency = null,
         string? timeZone = null,
-        bool inventoryEnabled = true)
+        bool inventoryEnabled = true,
+        int? documentYearDigits = null)
     {
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("اسم المتجر مطلوب", nameof(name));
+        if (documentYearDigits.HasValue)
+            RequireValidYearDigits(documentYearDigits.Value, nameof(documentYearDigits));
 
         Name = name.Trim();
         Address = Normalize(address);
@@ -64,6 +74,8 @@ public sealed class Store
         CommercialRegister = Normalize(commercialRegister);
         AllowCreditSales = allowCreditSales;
         InventoryEnabled = inventoryEnabled;
+        if (documentYearDigits.HasValue)
+            DocumentYearDigits = documentYearDigits.Value;
 
         if (!string.IsNullOrWhiteSpace(currency))
         {
@@ -79,4 +91,10 @@ public sealed class Store
     }
 
     private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static void RequireValidYearDigits(int value, string paramName)
+    {
+        if (value is not (2 or 4))
+            throw new ArgumentOutOfRangeException(paramName, "عدد أرقام السنة يجب أن يكون 2 أو 4");
+    }
 }

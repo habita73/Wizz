@@ -10,6 +10,9 @@ public sealed class WizzDbContext : DbContext
     public DbSet<Sale> Sales => Set<Sale>();
     public DbSet<SaleItem> SaleItems => Set<SaleItem>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
+    public DbSet<StockDocument> StockDocuments => Set<StockDocument>();
+    public DbSet<StockDocumentLine> StockDocumentLines => Set<StockDocumentLine>();
+    public DbSet<DocumentSequence> DocumentSequences => Set<DocumentSequence>();
     public DbSet<Store> Stores => Set<Store>();
     public DbSet<User> Users => Set<User>();
     public DbSet<DeviceRegistration> DeviceRegistrations => Set<DeviceRegistration>();
@@ -52,6 +55,7 @@ public sealed class WizzDbContext : DbContext
             b.Property(s => s.Total).HasColumnType("decimal(18,2)");
             b.Property(s => s.Paid).HasColumnType("decimal(18,2)");
             b.Property(s => s.Remaining).HasColumnType("decimal(18,2)");
+            b.Property(s => s.InventoryApplied).HasDefaultValue(true);
             b.HasIndex(s => s.SaleDate);
             b.HasIndex(s => s.Status);
             b.HasIndex(s => s.CashierId);
@@ -77,6 +81,7 @@ public sealed class WizzDbContext : DbContext
             b.Property(s => s.Currency).HasMaxLength(3).HasDefaultValue("DZD");
             b.Property(s => s.TimeZone).HasMaxLength(50).HasDefaultValue("Africa/Algiers");
             b.Property(s => s.InventoryEnabled).HasDefaultValue(true);
+            b.Property(s => s.DocumentYearDigits).HasDefaultValue(4);
         });
 
         modelBuilder.Entity<StockMovement>(b =>
@@ -93,6 +98,58 @@ public sealed class WizzDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(m => m.ProductId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<StockDocument>(b =>
+        {
+            b.HasKey(d => d.Id);
+            b.Property(d => d.Number).IsRequired().HasMaxLength(30);
+            b.Property(d => d.Reason).HasMaxLength(500);
+            b.Property(d => d.Source).HasMaxLength(30);
+            b.Property(d => d.VoidReason).HasMaxLength(500);
+            b.HasIndex(d => new { d.StoreId, d.Number }).IsUnique();
+            b.HasIndex(d => new { d.StoreId, d.DocumentDate });
+            b.HasIndex(d => d.ReferenceSaleId);
+            b.HasIndex(d => d.LegacyStockMovementId)
+                .IsUnique()
+                .HasFilter("[LegacyStockMovementId] IS NOT NULL");
+            b.HasMany(d => d.Lines)
+                .WithOne(l => l.StockDocument)
+                .HasForeignKey(l => l.StockDocumentId)
+                .OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<Store>()
+                .WithMany()
+                .HasForeignKey(d => d.StoreId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<StockDocumentLine>(b =>
+        {
+            b.HasKey(l => l.Id);
+            b.Property(l => l.Quantity).HasColumnType("decimal(18,4)");
+            b.Property(l => l.BaseQuantityDelta).HasColumnType("decimal(18,4)");
+            b.Property(l => l.QuantityBefore).HasColumnType("decimal(18,4)");
+            b.Property(l => l.QuantityAfter).HasColumnType("decimal(18,4)");
+            b.Property(l => l.Reason).HasMaxLength(500);
+            b.HasIndex(l => l.ProductId);
+            b.HasOne<Product>()
+                .WithMany()
+                .HasForeignKey(l => l.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<UnitOfMeasure>()
+                .WithMany()
+                .HasForeignKey(l => l.UnitId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<DocumentSequence>(b =>
+        {
+            b.HasKey(s => new { s.StoreId, s.DocumentType, s.Year });
+            b.Property(s => s.DocumentType).HasConversion<int>();
+            b.HasOne<Store>()
+                .WithMany()
+                .HasForeignKey(s => s.StoreId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<User>(b =>

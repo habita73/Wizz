@@ -19,12 +19,18 @@ public sealed class Sale
     public bool IsCreditSale { get; private set; }
     public DateTime? DueDate { get; private set; }
 
+    /// <summary>
+    /// هل خُصم مخزون هذا البيع فعليًا؟ عند تعطيل تتبع المخزون يكون false،
+    /// ولذلك لا يعيد الإلغاء أو التعديل كمية لم تُخصم أصلًا.
+    /// </summary>
+    public bool InventoryApplied { get; private set; } = true;
+
     private readonly List<SaleItem> _items = new();
     public IReadOnlyList<SaleItem> Items => _items.AsReadOnly();
 
     private Sale() { }
 
-    public Sale(Guid storeId, Guid? cashierId, IEnumerable<SaleItem> items, decimal discount, decimal paid, PaymentMethod paymentMethod, bool isCreditSale = false, DateTime? dueDate = null)
+    public Sale(Guid storeId, Guid? cashierId, IEnumerable<SaleItem> items, decimal discount, decimal paid, PaymentMethod paymentMethod, bool isCreditSale = false, DateTime? dueDate = null, bool inventoryApplied = true)
     {
         if (items == null || !items.Any()) throw new ArgumentException("يجب أن يتضمن البيع سطراً واحداً على الأقل", nameof(items));
 
@@ -38,6 +44,7 @@ public sealed class Sale
         PaymentMethod = paymentMethod;
         IsCreditSale = isCreditSale;
         DueDate = dueDate;
+        InventoryApplied = inventoryApplied;
 
         foreach (var item in items)
         {
@@ -48,9 +55,9 @@ public sealed class Sale
         Recalculate();
     }
 
-    public static Sale CreateCreditSale(Guid storeId, Guid? cashierId, IEnumerable<SaleItem> items, decimal discount, DateTime dueDate)
+    public static Sale CreateCreditSale(Guid storeId, Guid? cashierId, IEnumerable<SaleItem> items, decimal discount, DateTime dueDate, bool inventoryApplied = true)
     {
-        return new Sale(storeId, cashierId, items, discount, 0m, PaymentMethod.Credit, true, dueDate);
+        return new Sale(storeId, cashierId, items, discount, 0m, PaymentMethod.Credit, true, dueDate, inventoryApplied);
     }
 
     public void ApplyPayment(decimal amount, PaymentMethod method)
@@ -92,7 +99,7 @@ public sealed class Sale
         // حساب الكميات القديمة بالوحدة الأساسية لكل منتج (قبل الاستبدال)
         var oldQuantities = _items
             .GroupBy(i => i.ProductId)
-            .ToDictionary(g => g.Key, g => g.Sum(i => i.Unit!.ToBaseQuantity(i.Quantity)));
+            .ToDictionary(g => g.Key, g => g.Sum(i => StockQuantity.ToBase(i.Unit!, i.Quantity)));
 
         // استبدال الأصناف
         _items.Clear();
@@ -105,12 +112,13 @@ public sealed class Sale
         // حساب الكميات الجديدة بالوحدة الأساسية لكل منتج
         var newQuantities = _items
             .GroupBy(i => i.ProductId)
-            .ToDictionary(g => g.Key, g => g.Sum(i => i.Unit!.ToBaseQuantity(i.Quantity)));
+            .ToDictionary(g => g.Key, g => g.Sum(i => StockQuantity.ToBase(i.Unit!, i.Quantity)));
 
         // تطبيق فرق المخزون لكل منتج (جديد - قديم)
-        // delta > 0 (زيادة الكمية) →خصم من المخزون
-        // delta < 0 (نقص الكمية) →إرجاع للمخزون
-        foreach (var productId in oldQuantities.Keys.Union(newQuantities.Keys))
+        // delta > 0 (زيادة الكمية) → خصم من المخزون
+        // delta < 0 (نقص الكمية) → إرجاع للمخزون
+        // لا يمسّ التعديل المخزون إن لم يكن البيع قد خصمه أصلًا (تتبع المخزون معطّل).
+        foreach (var productId in InventoryApplied ? oldQuantities.Keys.Union(newQuantities.Keys) : Array.Empty<Guid>())
         {
             var oldQty = oldQuantities.TryGetValue(productId, out var o) ? o : 0m;
             var newQty = newQuantities.TryGetValue(productId, out var n) ? n : 0m;
@@ -153,14 +161,19 @@ public sealed class Sale
     {
         if (Status == SaleStatus.Cancelled) throw new InvalidOperationException("البيع ملغي بالفعل");
 
-        // إرجاع الكميات إلى المخزون عند الإلغاء
-        foreach (var item in _items)
+        // إرجاع الكميات إلى المخزون عند الإلغاء — فقط إذا كان البيع قد خصمها فعلًا.
+        if (InventoryApplied)
         {
-            var product = item.Product;
-            if (product == null || product.IsService) continue;
-            var baseQuantity = item.Unit.ToBaseQuantity(item.Quantity);
-            if (baseQuantity == 0) continue;
-            product.ApplyStockChange(baseQuantity);
+            foreach (var item in _items)
+            {
+                var product = item.Product;
+                if (product == null || product.IsService) continue;
+                var unit = item.Unit;
+                if (unit == null) continue;
+                var baseQuantity = StockQuantity.ToBase(unit, item.Quantity);
+                if (baseQuantity == 0) continue;
+                product.ApplyStockChange(baseQuantity);
+            }
         }
 
         Status = SaleStatus.Cancelled;
