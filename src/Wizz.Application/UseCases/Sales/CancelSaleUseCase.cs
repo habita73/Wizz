@@ -26,6 +26,23 @@ public sealed class CancelSaleUseCase
             return Result<SaleDto>.Failure("البيع ملغي بالفعل");
         }
 
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return Result<SaleDto>.Failure("سبب الإلغاء مطلوب");
+        }
+
+        var store = await _unitOfWork.Store.GetAsync(ct);
+        if (store == null)
+        {
+            return Result<SaleDto>.Failure("لم يتم إعداد المتجر بعد");
+        }
+
+        var gateReason = await ShiftGate.RejectReasonAsync(_unitOfWork, sale, store, ct);
+        if (gateReason != null)
+        {
+            return Result<SaleDto>.Failure(gateReason);
+        }
+
         var ownsTransaction = await StockWorkflow.BeginIfNeededAsync(_unitOfWork, ct);
 
         try

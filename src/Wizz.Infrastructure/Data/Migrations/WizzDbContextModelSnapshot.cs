@@ -17,6 +17,50 @@ namespace Wizz.Infrastructure.Data.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.13");
 
+            modelBuilder.Entity("Wizz.Domain.CashierShift", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("CashTotal")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("CashierId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("ClosedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("CreditTotal")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("OpenedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("OpenedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("SalesTotal")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OpenedAt");
+
+                    b.HasIndex("StoreId", "CashierId")
+                        .IsUnique()
+                        .HasFilter("[ClosedAt] IS NULL");
+
+                    b.ToTable("CashierShifts");
+                });
+
             modelBuilder.Entity("Wizz.Domain.DeviceRegistration", b =>
                 {
                     b.Property<Guid>("Id")
@@ -140,6 +184,16 @@ namespace Wizz.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("CancelledByUserId")
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid?>("CashierId")
                         .HasColumnType("TEXT");
 
@@ -157,6 +211,16 @@ namespace Wizz.Infrastructure.Data.Migrations
                     b.Property<bool>("IsCreditSale")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("ModificationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("ModifiedByUserId")
+                        .HasColumnType("TEXT");
+
                     b.Property<decimal>("Paid")
                         .HasColumnType("decimal(18,2)");
 
@@ -167,6 +231,9 @@ namespace Wizz.Infrastructure.Data.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("SaleDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("ShiftId")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Status")
@@ -186,6 +253,8 @@ namespace Wizz.Infrastructure.Data.Migrations
                     b.HasIndex("CashierId");
 
                     b.HasIndex("SaleDate");
+
+                    b.HasIndex("ShiftId");
 
                     b.HasIndex("Status");
 
@@ -571,6 +640,15 @@ namespace Wizz.Infrastructure.Data.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("Wizz.Domain.CashierShift", b =>
+                {
+                    b.HasOne("Wizz.Domain.Store", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Wizz.Domain.DocumentSequence", b =>
                 {
                     b.HasOne("Wizz.Domain.Store", null)
@@ -578,6 +656,14 @@ namespace Wizz.Infrastructure.Data.Migrations
                         .HasForeignKey("StoreId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Wizz.Domain.Sale", b =>
+                {
+                    b.HasOne("Wizz.Domain.CashierShift", null)
+                        .WithMany()
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Wizz.Domain.SaleItem", b =>

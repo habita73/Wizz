@@ -9,6 +9,7 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
     ISaleRepository Sales { get; }
     IStockMovementRepository StockMovements { get; }
     IStockDocumentRepository StockDocuments { get; }
+    ICashierShiftRepository CashierShifts { get; }
     IStoreRepository Store { get; }
     IUserRepository Users { get; }
 

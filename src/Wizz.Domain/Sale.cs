@@ -6,8 +6,22 @@ public sealed class Sale
     public Guid Id { get; private set; }
     public Guid StoreId { get; private set; }
     public Guid? CashierId { get; private set; }
+
+    /// <summary>الوردية التي وقع فيها البيع. nullable للبيانات السابقة وللمبيعات بلا كاشير.</summary>
+    public Guid? ShiftId { get; private set; }
+
     public DateTime SaleDate { get; private set; }
     public SaleStatus Status { get; private set; }
+
+    /// <summary>وقت الإلغاء ومستخدمه وسببه — توقيت البوابة بعد إغلاق الوردية.</summary>
+    public DateTime? CancelledAt { get; private set; }
+    public Guid? CancelledByUserId { get; private set; }
+    public string? CancelReason { get; private set; }
+
+    /// <summary>آخر تعديل للبيع ومستخدمه وسببه — تدقيق داخل نافذة الوردية.</summary>
+    public DateTime? ModifiedAt { get; private set; }
+    public Guid? ModifiedByUserId { get; private set; }
+    public string? ModificationReason { get; private set; }
 
     public decimal Subtotal { get; private set; }
     public decimal Discount { get; private set; }
@@ -157,9 +171,28 @@ public sealed class Sale
         }
     }
 
-    public void Cancel(string reason, Guid cancelledByUserId)
+    /// <summary>ربط البيع بوردية المبيعات. لا يُسمح بتغيير وردية بيع مرتبط مسبقًا.</summary>
+    public void AttachToShift(Guid shiftId)
+    {
+        if (shiftId == Guid.Empty) throw new ArgumentException("معرّف الوردية مطلوب", nameof(shiftId));
+        if (ShiftId.HasValue && ShiftId.Value != shiftId)
+            throw new InvalidOperationException("البيع مرتبط بوردية أخرى بالفعل");
+
+        ShiftId = shiftId;
+    }
+
+    /// <summary>تسجيل تدقيق آخر تعديل داخل نافذة الوردية المفتوحة.</summary>
+    public void MarkModified(Guid? modifiedByUserId, string? reason, DateTime? modifiedAt = null)
+    {
+        ModifiedAt = modifiedAt ?? DateTime.UtcNow;
+        ModifiedByUserId = modifiedByUserId;
+        ModificationReason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
+    }
+
+    public void Cancel(string reason, Guid cancelledByUserId, DateTime? cancelledAt = null)
     {
         if (Status == SaleStatus.Cancelled) throw new InvalidOperationException("البيع ملغي بالفعل");
+        if (string.IsNullOrWhiteSpace(reason)) throw new ArgumentException("سبب الإلغاء مطلوب", nameof(reason));
 
         // إرجاع الكميات إلى المخزون عند الإلغاء — فقط إذا كان البيع قد خصمها فعلًا.
         if (InventoryApplied)
@@ -177,6 +210,9 @@ public sealed class Sale
         }
 
         Status = SaleStatus.Cancelled;
+        CancelledAt = cancelledAt ?? DateTime.UtcNow;
+        CancelledByUserId = cancelledByUserId;
+        CancelReason = reason.Trim();
     }
 
     public void AddItem(SaleItem item)

@@ -16,6 +16,8 @@ public sealed class ModifySaleUseCase
     public async Task<Result<SaleDto>> ExecuteAsync(
         Guid saleId,
         SaleInputDto input,
+        Guid? modifiedByUserId = null,
+        string? modificationReason = null,
         CancellationToken ct = default)
     {
         if (input.Lines == null || input.Lines.Count == 0)
@@ -41,6 +43,18 @@ public sealed class ModifySaleUseCase
         if (sale.Status == SaleStatus.Cancelled)
         {
             return Result<SaleDto>.Failure("لا يمكن تعديل بيع ملغي");
+        }
+
+        var store = await _unitOfWork.Store.GetAsync(ct);
+        if (store == null)
+        {
+            return Result<SaleDto>.Failure("لم يتم إعداد المتجر بعد");
+        }
+
+        var gateReason = await ShiftGate.RejectReasonAsync(_unitOfWork, sale, store, ct);
+        if (gateReason != null)
+        {
+            return Result<SaleDto>.Failure(gateReason);
         }
 
         // لقطة الأصناف القديمة قبل أي تعديل — تُحذف عبر EF داخل المعاملة نفسها.
@@ -80,6 +94,7 @@ public sealed class ModifySaleUseCase
         try
         {
             sale.Edit(newItems, input.Discount, input.Paid, (PaymentMethod)input.PaymentMethod, input.IsCreditSale, input.DueDate);
+            sale.MarkModified(modifiedByUserId, modificationReason);
 
             // حذف صريح للأصناف القديمة عبر EF لتفادي الاعتماد على فرق مجموعات التتبع.
             db.Set<SaleItem>().RemoveRange(oldItems);

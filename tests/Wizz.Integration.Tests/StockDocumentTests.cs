@@ -77,9 +77,13 @@ public sealed class StockDocumentTests : IAsyncLifetime
         var card = await GetCardAsync(product.Id);
         Assert.True(card.IsReconciled);
         Assert.Equal(100m, card.StoredQuantity);
-        Assert.Equal(100m, card.ComputedQuantity);
-        // البيع الملغى لا يُدرج كخروج في بطاقة المخزون.
-        Assert.DoesNotContain(card.Entries, e => e.Kind == "بيع");
+        // المرحلة 2: البيع الملغى يظهر كخروج أصلي ثم دخول إلغاء — المجموع الصافي صفر.
+        var saleEntries = card.Entries
+            .Where(e => e.Number.StartsWith("SALE-", StringComparison.Ordinal)
+                        || e.Number.StartsWith("VOID-", StringComparison.Ordinal))
+            .ToList();
+        Assert.Equal(2, saleEntries.Count);
+        Assert.Equal(0m, saleEntries.Sum(e => e.QuantityDelta));
     }
 
     // T-05: مستند بتاريخ رجعي يرتّب حسب DocumentDate، ويحتفظ CreatedAt بوقت الإدخال.

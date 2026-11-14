@@ -78,14 +78,27 @@ public sealed class CreateSaleUseCase
 
         // إنشاء البيع — البيع نفسه هو مستند الحركة، ولا يُنسخ إلى جدول ثانٍ.
         // InventoryApplied يحفظ هل خُصم المخزون فعلًا حتى لا يعيد الإلغاء كمية غير مخصومة.
-        var sale = new Sale(store.Id, cashierId, items, input.Discount, input.Paid,
-            (PaymentMethod)input.PaymentMethod, input.IsCreditSale, input.DueDate,
-            inventoryApplied: store.InventoryEnabled);
-
         var ownsTransaction = await StockWorkflow.BeginIfNeededAsync(_unitOfWork, ct);
+
+        Sale sale;
 
         try
         {
+            // الفتح التلقائي: أول بيع لكاشير بلا وردية مفتوحة يفتح وردية داخل معاملة البيع نفسها.
+            Guid? shiftId = null;
+            if (cashierId != Guid.Empty)
+            {
+                var shift = await ShiftWorkflow.GetOrOpenAsync(_unitOfWork, store, cashierId, cashierId, ct);
+                shiftId = shift.Id;
+            }
+
+            sale = new Sale(store.Id, cashierId, items, input.Discount, input.Paid,
+                (PaymentMethod)input.PaymentMethod, input.IsCreditSale, input.DueDate,
+                inventoryApplied: store.InventoryEnabled);
+
+            if (shiftId.HasValue)
+                sale.AttachToShift(shiftId.Value);
+
             await _unitOfWork.Sales.AddAsync(sale, ct);
 
             // خصم المخزون تلقائياً عند تفعيل تتبع المخزون في المتجر.

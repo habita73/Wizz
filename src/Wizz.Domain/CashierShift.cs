@@ -1,0 +1,71 @@
+namespace Wizz.Domain;
+
+/// <summary>
+/// وردية كاشير — النافذة الزمنية التي تجمّد المبيعات السابقة. الوردية المفتوحة هي التي
+/// تسمح بتعديل/إلغاء مبيعاتها داخل يوم العمل الحالي فقط؛ وبعد الإغلاق تُجمَّد الإجماليات.
+/// الحالة مشتقة من <see cref="ClosedAt"/> ولا تُخزَّن حقلًا مستقلًا لتفادي مصدرَي حقيقة.
+/// </summary>
+public sealed class CashierShift
+{
+    public Guid Id { get; private set; }
+    public Guid StoreId { get; private set; }
+    public Guid CashierId { get; private set; }
+    public DateTime OpenedAt { get; private set; }
+    public Guid OpenedByUserId { get; private set; }
+    public DateTime? ClosedAt { get; private set; }
+    public Guid? ClosedByUserId { get; private set; }
+
+    /// <summary>مجموع إجمالي المبيعات غير الملغاة في الوردية — يُجمَّد عند الإغلاق.</summary>
+    public decimal SalesTotal { get; private set; }
+
+    /// <summary>مجموع المدفوع في المبيعات غير الآجلة — يُجمَّد عند الإغلاق.</summary>
+    public decimal CashTotal { get; private set; }
+
+    /// <summary>مجموع المتبقي في المبيعات الآجلة — يُجمَّد عند الإغلاق.</summary>
+    public decimal CreditTotal { get; private set; }
+
+    public bool IsOpen => ClosedAt is null;
+
+    private CashierShift() { } // EF Core
+
+    public CashierShift(Guid storeId, Guid cashierId, Guid openedByUserId, DateTime? openedAt = null)
+    {
+        if (storeId == Guid.Empty)
+            throw new ArgumentException("معرّف المتجر مطلوب", nameof(storeId));
+        if (cashierId == Guid.Empty)
+            throw new ArgumentException("معرّف الكاشير مطلوب", nameof(cashierId));
+        if (openedByUserId == Guid.Empty)
+            throw new ArgumentException("معرّف المستخدم الذي يفتح الوردية مطلوب", nameof(openedByUserId));
+
+        Id = Guid.NewGuid();
+        StoreId = storeId;
+        CashierId = cashierId;
+        OpenedByUserId = openedByUserId;
+        OpenedAt = openedAt ?? DateTime.UtcNow;
+    }
+
+    /// <summary>إغلاق الوردية وتجميد إجمالياتها. لا يقبل الإغلاق مرتين ولا تاريخًا قبل الفتح.</summary>
+    public void Close(
+        Guid closedByUserId,
+        decimal salesTotal,
+        decimal cashTotal,
+        decimal creditTotal,
+        DateTime? closedAt = null)
+    {
+        if (!IsOpen) throw new InvalidOperationException("الوردية مغلقة بالفعل");
+        if (closedByUserId == Guid.Empty)
+            throw new ArgumentException("معرّف المستخدم الذي يغلق الوردية مطلوب", nameof(closedByUserId));
+        if (salesTotal < 0 || cashTotal < 0 || creditTotal < 0)
+            throw new ArgumentOutOfRangeException(nameof(salesTotal), "إجماليات الوردية لا يمكن أن تكون سالبة");
+
+        var at = closedAt ?? DateTime.UtcNow;
+        if (at < OpenedAt)
+            throw new ArgumentOutOfRangeException(nameof(closedAt), "وقت الإغلاق لا يمكن أن يسبق وقت الفتح");
+
+        ClosedAt = at;
+        ClosedByUserId = closedByUserId;
+        SalesTotal = salesTotal;
+        CashTotal = cashTotal;
+        CreditTotal = creditTotal;
+    }
+}

@@ -21,7 +21,7 @@ public sealed class BackupService : IBackupService
     /// <summary>الجداول الأساسية التي يجب التحقق من وجودها بعد النسخ أو قبل الاستعادة.</summary>
     private static readonly HashSet<string> RequiredTables = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Sales", "Products", "Stores", "Users", "StockMovements", "SaleItems", "UnitsOfMeasure", "DeviceRegistrations", "Subscriptions",
+        "Sales", "Products", "Stores", "Users", "StockMovements", "SaleItems", "UnitsOfMeasure", "DeviceRegistrations", "Subscriptions", "CashierShifts",
     };
 
     private readonly WizzDbContext _db;

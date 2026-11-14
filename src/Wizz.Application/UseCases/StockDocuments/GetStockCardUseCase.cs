@@ -47,16 +47,17 @@ public sealed class GetStockCardUseCase
                 document.CreatedByUserId));
         }
 
-        // المبيعات النشطة فقط. إلغاء البيع يُعيد الكمية عند التنفيذ ولا يضيف مستندًا في المرحلة 1،
-        // لذا لا يُدرج البيع الملغى كخروج ولا يُدرج الإلغاء كدخول.
-        var activeSales = await _unitOfWork.Db.Set<Sale>()
+        // كل المبيعات التي خصمت المخزون فعلًا، بما فيها الملغاة.
+        // البيع الملغى يظهر كخروج أصلي ثم دخول إلغاء بتاريخ CancelledAt، فمجموعه الصافي صفر،
+        // ويبقى الرصيد المخزَّن مطابقًا لمعادلة المستندات. المبيعات بلا خصم مخزون لا تُدرج.
+        var appliedSales = await _unitOfWork.Db.Set<Sale>()
             .AsNoTracking()
             .Include(s => s.Items)
                 .ThenInclude(i => i.Unit)
-            .Where(s => s.StoreId == store.Id && s.Status != SaleStatus.Cancelled && s.InventoryApplied)
+            .Where(s => s.StoreId == store.Id && s.InventoryApplied)
             .ToListAsync(ct);
 
-        foreach (var sale in activeSales)
+        foreach (var sale in appliedSales)
         {
             var productQuantity = sale.Items
                 .Where(i => i.ProductId == productId && i.Unit != null)
@@ -64,14 +65,29 @@ public sealed class GetStockCardUseCase
 
             if (productQuantity == 0) continue;
 
+            var saleNumber = $"SALE-{sale.Id.ToString("N")[..8]}";
+
             entries.Add((
                 StockWorkflow.BusinessDate(store, sale.SaleDate),
                 sale.SaleDate,
                 "بيع",
-                $"SALE-{sale.Id.ToString("N")[..8]}",
+                saleNumber,
                 -StockQuantity.Normalize(productQuantity),
                 null,
                 sale.CashierId));
+
+            if (sale.Status == SaleStatus.Cancelled)
+            {
+                var cancelledAt = sale.CancelledAt ?? sale.SaleDate;
+                entries.Add((
+                    StockWorkflow.BusinessDate(store, cancelledAt),
+                    cancelledAt,
+                    "إلغاء بيع",
+                    $"VOID-{sale.Id.ToString("N")[..8]}",
+                    StockQuantity.Normalize(productQuantity),
+                    sale.CancelReason,
+                    sale.CancelledByUserId));
+            }
         }
 
         var ordered = entries

@@ -17,6 +17,7 @@ public sealed class UnitOfWork : IUnitOfWork
     public ISaleRepository Sales => new SaleRepository(_db);
     public IStockMovementRepository StockMovements => new StockMovementRepository(_db);
     public IStockDocumentRepository StockDocuments => new StockDocumentRepository(_db);
+    public ICashierShiftRepository CashierShifts => new CashierShiftRepository(_db);
     public IStoreRepository Store => new StoreRepository(_db);
     public IUserRepository Users => new UserRepository(_db);
 

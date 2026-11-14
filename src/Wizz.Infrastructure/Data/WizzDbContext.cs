@@ -13,6 +13,7 @@ public sealed class WizzDbContext : DbContext
     public DbSet<StockDocument> StockDocuments => Set<StockDocument>();
     public DbSet<StockDocumentLine> StockDocumentLines => Set<StockDocumentLine>();
     public DbSet<DocumentSequence> DocumentSequences => Set<DocumentSequence>();
+    public DbSet<CashierShift> CashierShifts => Set<CashierShift>();
     public DbSet<Store> Stores => Set<Store>();
     public DbSet<User> Users => Set<User>();
     public DbSet<DeviceRegistration> DeviceRegistrations => Set<DeviceRegistration>();
@@ -56,10 +57,17 @@ public sealed class WizzDbContext : DbContext
             b.Property(s => s.Paid).HasColumnType("decimal(18,2)");
             b.Property(s => s.Remaining).HasColumnType("decimal(18,2)");
             b.Property(s => s.InventoryApplied).HasDefaultValue(true);
+            b.Property(s => s.CancelReason).HasMaxLength(500);
+            b.Property(s => s.ModificationReason).HasMaxLength(500);
             b.HasIndex(s => s.SaleDate);
             b.HasIndex(s => s.Status);
             b.HasIndex(s => s.CashierId);
+            b.HasIndex(s => s.ShiftId);
             b.HasMany(s => s.Items).WithOne().HasForeignKey(i => i.SaleId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<CashierShift>()
+                .WithMany()
+                .HasForeignKey(s => s.ShiftId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<SaleItem>(b =>
@@ -139,6 +147,22 @@ public sealed class WizzDbContext : DbContext
             b.HasOne<UnitOfMeasure>()
                 .WithMany()
                 .HasForeignKey(l => l.UnitId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CashierShift>(b =>
+        {
+            b.HasKey(s => s.Id);
+            b.Property(s => s.SalesTotal).HasColumnType("decimal(18,2)");
+            b.Property(s => s.CashTotal).HasColumnType("decimal(18,2)");
+            b.Property(s => s.CreditTotal).HasColumnType("decimal(18,2)");
+            b.HasIndex(s => s.OpenedAt);
+            b.HasIndex(s => new { s.StoreId, s.CashierId })
+                .IsUnique()
+                .HasFilter("[ClosedAt] IS NULL");
+            b.HasOne<Store>()
+                .WithMany()
+                .HasForeignKey(s => s.StoreId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
