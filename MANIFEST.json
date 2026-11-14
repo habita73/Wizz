@@ -1,6 +1,6 @@
 {
   "package": "Vent au comptoir Documentation Pack",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "date": "2026-11-14",
   "status": "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_AUTHORIZED",
   "execution_authorized": false,
@@ -19,25 +19,27 @@
   "archive_file_count": 57,
   "archive_policy": "Archive files are historical, non-active references; do not load all archive files for routine tasks.",
   "mvp_status": "APPROVED",
-  "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21, D-22 and D-30.",
+  "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21, D-22, D-30 and D-31.",
   "change_summary": [
-    "Implemented Phase 1 of the stock document model (D-30) and recorded its evidence; see docs/DECISIONS_AND_OPEN_GATES.md section 9.",
-    "Corrected the README test claims to the verified counts: Domain 24/24 and Integration 237/237 (261 total).",
-    "Kept the documents-as-truth model (D-23..D-29), the cashier-shift close gate and the approved MVP scope unchanged.",
-    "Confirmed the limited execution scopes D-21, D-22 and D-30; all other work remains unauthorized.",
-    "Refreshed the pack manifestations with new fingerprints and corrected the archive file count to 57."
+    "Implemented Phase 2 of the stock document model (D-31) and recorded its evidence; see docs/DECISIONS_AND_OPEN_GATES.md section 9.",
+    "Added CashierShift, Sale.ShiftId, the cancel/modify audit fields, the automatic shift open on the first sale, the D-24 edit-window gate and the MRB partial sales return.",
+    "Added the AddCashierShiftsAndSaleAudit migration with a filtered unique index preventing two open shifts for the same (store, cashier).",
+    "The stock card now shows a cancelled sale as the original outbound entry plus a cancel inbound entry dated CancelledAt, keeping the stored balance reconciled.",
+    "Updated the verified test counts to Domain 24/24 and Integration 245/245 (269 total).",
+    "Kept the approved MVP scope and confirmed the limited execution scopes D-21, D-22, D-30 and D-31; Phase 3 remains unauthorized.",
+    "Refreshed the pack manifestations with new fingerprints for v0.6.2."
   ],
   "review_findings": [
-    "Phase 1 evidence: dotnet build Release = 0 errors; Domain 24/24; Integration 237/237; the migration was applied from scratch to a temporary SQLite database.",
-    "Execution remains unauthorized outside the recorded limited scopes (D-21, D-22, D-30).",
-    "Phases 2 and 3 (CashierShift/close gate/MRB, cash, purchases, UI) are not implemented and not authorized.",
-    "MVP-AT-09 still requires a real restore test in a separate environment; MVP-AT-20 remains open."
+    "Phase 2 evidence: dotnet build Release = 0 errors; Domain 24/24; Integration 245/245; the 8 new tests (T-02a, T-02b, T-03, T-09, T-11, T-12, T-13, T-14) pass, including an upgrade test from the Phase 1 migration.",
+    "Execution remains unauthorized outside the recorded limited scopes (D-21, D-22, D-30, D-31).",
+    "Phase 3 (cash drawer, purchases, UI, permissions H-04, sync) is not implemented and not authorized.",
+    "MVP-AT-09 still requires a real restore test in a separate environment; MVP-AT-20 is now implemented within the Phase 2 scope."
   ],
   "files": [
     {
       "path": "AGENTS.md",
       "size_bytes": 22967,
-      "sha256": "aa46a3d192ae2633a6f3f838f139ff967c57cab28d8d37463628003ab31a4b02"
+      "sha256": "d4506f360a66a2704735679f0d129dd32aa847f683c6aeeae1c827b8c40debac"
     },
     {
       "path": "archive/original-detailed-docs/docs/architecture/AI_ARCHITECTURE.md",
@@ -331,8 +333,8 @@
     },
     {
       "path": "docs/DECISIONS_AND_OPEN_GATES.md",
-      "size_bytes": 17162,
-      "sha256": "bdf0714cd19be83e897872e74888331cd9b51bf1662ac7de900c8b2333e9d09a"
+      "size_bytes": 19861,
+      "sha256": "0b830aac8c2e5faa61daad334ab05ef9fbf071a0b495ca0b8460292e70d554bb"
     },
     {
       "path": "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md",
@@ -345,9 +347,14 @@
       "sha256": "8a985797a0f39161fc495c1350b3e2ab7d5050bc0882c49edd7d5eec8e7ac330"
     },
     {
+      "path": "docs/operations/HANDOFF_2026-11-14_PHASE2_SHIFT_AR.md",
+      "size_bytes": 6398,
+      "sha256": "6332c8e37e48e2d3f9fe882ba562b41ca7c6673b943b5ae22d9955664d146550"
+    },
+    {
       "path": "docs/operations/HANDOFF_2026-11-14_STOCK_DOCS_AR.md",
-      "size_bytes": 6033,
-      "sha256": "41cd759e5d5bb099a39a0c6d2a4511e5607440c6a5f6670851284519ab695356"
+      "size_bytes": 6120,
+      "sha256": "6c4ce7d2d1bb34e4c30786b3f15d553fa3af788ab84026dacc9479713f43964a"
     },
     {
       "path": "docs/PRODUCT_MASTER.md",
@@ -390,20 +397,26 @@
       "sha256": "2bffe7c42d48ce10e2471747f04462c0f1a26e88526fc80787c2e3ec81cd46aa"
     },
     {
+      "path": "PACK_MANIFEST_v0.6.2.json",
+      "size_bytes": 3094,
+      "sha256": "a394c1cba2dd451d2e22ac2c292e4f4f3c9dcf21064f91b1fa6a8f5dccb2df8c"
+    },
+    {
       "path": "PROJECT_RULES.md",
       "size_bytes": 24436,
       "sha256": "2db38d738d7188ee352e2f4c5af5ecaddf807353968a846439a735ef162bd9b9"
     },
     {
       "path": "README.md",
-      "size_bytes": 10456,
-      "sha256": "cec5c9d4d3608ef69f4636a40a05905c5670b94e25ce2f0701e568f6e4e2b8b7"
+      "size_bytes": 10493,
+      "sha256": "9652a6c4f591406eab0dbcecc50e198d7fe6b1bcc90725f8357a2832214212cb"
     }
   ],
   "limited_execution_authorizations": [
     "D-21 H-05 consistent backup and restore service",
     "D-22 H-02 sale edit inside a single EF transaction",
-    "D-30 Phase 1 stock documents (StockDocument/DocumentSequence, numbering, opening/count/waste, migration, stock card)"
+    "D-30 Phase 1 stock documents (StockDocument/DocumentSequence, numbering, opening/count/waste, migration, stock card)",
+    "D-31 Phase 2 cashier shift (CashierShift, shift gate over the current business day, sale cancel/modify audit fields, MRB sales return)"
   ],
-  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims."
+  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB)."
 }
