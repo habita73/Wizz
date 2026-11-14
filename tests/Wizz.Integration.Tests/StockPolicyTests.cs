@@ -165,6 +165,230 @@ public sealed class StockPolicyTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ModifySale_RemovingLine_RestoresStock()
+    {
+        await SeedStoreAsync();
+        var productA = await SeedProductAsync(stock: 100m, name: "زيت زيتون", barcode: "OIL-001");
+        var productB = await SeedProductAsync(stock: 50m, name: "سكر", barcode: "SUG-001");
+        var cashier = await SeedUserAsync();
+        var boxUnitA = productA.Units.Single(u => u.Symbol == "صندوق");
+        var baseUnitB = productB.GetBaseUnit()!;
+
+        // بيع A (2 صناديق = 20 كجم) + B (1 كجم)
+        var input = new SaleInputDto(
+            new[]
+            {
+                new SaleLineInputDto(productA.Id, boxUnitA.Id, 2m, false),
+                new SaleLineInputDto(productB.Id, baseUnitB.Id, 1m, false),
+            },
+            Discount: 0m,
+            Paid: 300m,
+            PaymentMethodDto.Cash,
+            IsCreditSale: false,
+            DueDate: null);
+
+        var sale = await new CreateSaleUseCase(_unitOfWork).ExecuteAsync(input, cashier.Id);
+        Assert.True(sale.IsSuccess);
+        Assert.Equal(80m, await GetStockAsync(productA.Id));
+        Assert.Equal(49m, await GetStockAsync(productB.Id));
+
+        // إزالة سطر A بالكامل والإبقاء على B
+        var modified = await new ModifySaleUseCase(_unitOfWork).ExecuteAsync(
+            sale.Value.Id,
+            new SaleInputDto(
+                new[] { new SaleLineInputDto(productB.Id, baseUnitB.Id, 1m, false) },
+                Discount: 0m,
+                Paid: 100m,
+                PaymentMethodDto.Cash,
+                IsCreditSale: false,
+                DueDate: null));
+
+        Assert.True(modified.IsSuccess);
+        Assert.Equal(100m, await GetStockAsync(productA.Id)); // أُعيد كامل مخزون A
+        Assert.Equal(49m, await GetStockAsync(productB.Id));  // B لم يتغير
+        Assert.Single(modified.Value.Lines);
+    }
+
+    [Fact]
+    public async Task ModifySale_ReplacingProduct_MovesStockCorrectly()
+    {
+        await SeedStoreAsync();
+        var productA = await SeedProductAsync(stock: 100m, name: "زيت زيتون", barcode: "OIL-001");
+        var productB = await SeedProductAsync(stock: 100m, name: "سكر", barcode: "SUG-001");
+        var cashier = await SeedUserAsync();
+        var boxUnitA = productA.Units.Single(u => u.Symbol == "صندوق");
+        var boxUnitB = productB.Units.Single(u => u.Symbol == "صندوق");
+
+        var sale = await SellAsync(productA, boxUnitA.Id, quantity: 2m, paid: 200m, cashier.Id);
+        Assert.True(sale.IsSuccess);
+        Assert.Equal(80m, await GetStockAsync(productA.Id));
+
+        // استبدال A بـ B (3 صناديق = 30 كجم)
+        var modified = await new ModifySaleUseCase(_unitOfWork).ExecuteAsync(
+            sale.Value.Id,
+            new SaleInputDto(
+                new[] { new SaleLineInputDto(productB.Id, boxUnitB.Id, 3m, false) },
+                Discount: 0m,
+                Paid: 300m,
+                PaymentMethodDto.Cash,
+                IsCreditSale: false,
+                DueDate: null));
+
+        Assert.True(modified.IsSuccess);
+        Assert.Equal(100m, await GetStockAsync(productA.Id)); // A استُعيد بالكامل
+        Assert.Equal(70m, await GetStockAsync(productB.Id));  // B خُصم 30
+    }
+
+    [Fact]
+    public async Task ModifySale_SameQuantity_DoesNotChangeStock()
+    {
+        await SeedStoreAsync();
+        var product = await SeedProductAsync(stock: 100m);
+        var cashier = await SeedUserAsync();
+        var boxUnit = product.Units.Single(u => u.Symbol == "صندوق");
+
+        var sale = await SellAsync(product, boxUnit.Id, quantity: 2m, paid: 200m, cashier.Id);
+        Assert.True(sale.IsSuccess);
+        Assert.Equal(80m, await GetStockAsync(product.Id));
+
+        var modified = await new ModifySaleUseCase(_unitOfWork).ExecuteAsync(
+            sale.Value.Id,
+            new SaleInputDto(
+                new[] { new SaleLineInputDto(product.Id, boxUnit.Id, 2m, false) },
+                Discount: 0m,
+                Paid: 150m, // تعديل الدفع فقط
+                PaymentMethodDto.Cash,
+                IsCreditSale: false,
+                DueDate: null));
+
+        Assert.True(modified.IsSuccess);
+        Assert.Equal(80m, await GetStockAsync(product.Id)); // لا تغيير في المخزون
+        Assert.Equal(200m, modified.Value.Subtotal);
+        Assert.Equal(150m, modified.Value.Paid);
+        Assert.Equal(50m, modified.Value.Remaining);
+    }
+
+    [Fact]
+    public async Task ModifySale_DoesNotDuplicateItems()
+    {
+        await SeedStoreAsync();
+        var product = await SeedProductAsync(stock: 100m);
+        var cashier = await SeedUserAsync();
+        var boxUnit = product.Units.Single(u => u.Symbol == "صندوق");
+
+        var sale = await SellAsync(product, boxUnit.Id, quantity: 2m, paid: 200m, cashier.Id);
+        Assert.True(sale.IsSuccess);
+
+        var modified = await new ModifySaleUseCase(_unitOfWork).ExecuteAsync(
+            sale.Value.Id,
+            new SaleInputDto(
+                new[] { new SaleLineInputDto(product.Id, boxUnit.Id, 3m, false) },
+                Discount: 0m,
+                Paid: 300m,
+                PaymentMethodDto.Cash,
+                IsCreditSale: false,
+                DueDate: null));
+
+        Assert.True(modified.IsSuccess);
+        Assert.Single(modified.Value.Lines);
+        Assert.Equal(3m, modified.Value.Lines[0].Quantity);
+
+        _db.ChangeTracker.Clear();
+        var storedItems = await _db.SaleItems.AsNoTracking()
+            .Where(i => i.SaleId == sale.Value.Id)
+            .ToListAsync();
+        Assert.Single(storedItems);
+        Assert.Equal(3m, storedItems[0].Quantity);
+    }
+
+    [Fact]
+    public async Task ModifySale_TotalsAreRecalculated()
+    {
+        await SeedStoreAsync();
+        var product = await SeedProductAsync(stock: 100m);
+        var cashier = await SeedUserAsync();
+        var boxUnit = product.Units.Single(u => u.Symbol == "صندوق");
+
+        var sale = await SellAsync(product, boxUnit.Id, quantity: 2m, paid: 200m, cashier.Id);
+        Assert.True(sale.IsSuccess);
+
+        var modified = await new ModifySaleUseCase(_unitOfWork).ExecuteAsync(
+            sale.Value.Id,
+            new SaleInputDto(
+                new[] { new SaleLineInputDto(product.Id, boxUnit.Id, 3m, false) },
+                Discount: 50m,
+                Paid: 250m,
+                PaymentMethodDto.Cash,
+                IsCreditSale: false,
+                DueDate: null));
+
+        Assert.True(modified.IsSuccess);
+        Assert.Equal(300m, modified.Value.Subtotal);
+        Assert.Equal(50m, modified.Value.Discount);
+        Assert.Equal(250m, modified.Value.Total);
+        Assert.Equal(250m, modified.Value.Paid);
+        Assert.Equal(0m, modified.Value.Remaining);
+    }
+
+    [Fact]
+    public async Task ModifySale_UnknownProduct_LeavesSaleUnchanged()
+    {
+        await SeedStoreAsync();
+        var product = await SeedProductAsync(stock: 100m);
+        var cashier = await SeedUserAsync();
+        var baseUnit = product.GetBaseUnit()!;
+
+        var sale = await SellAsync(product, baseUnit.Id, quantity: 5m, paid: 500m, cashier.Id);
+        Assert.True(sale.IsSuccess);
+        Assert.Equal(95m, await GetStockAsync(product.Id));
+
+        var modified = await new ModifySaleUseCase(_unitOfWork).ExecuteAsync(
+            sale.Value.Id,
+            new SaleInputDto(
+                new[] { new SaleLineInputDto(Guid.NewGuid(), baseUnit.Id, 1m, false) },
+                Discount: 0m,
+                Paid: 100m,
+                PaymentMethodDto.Cash,
+                IsCreditSale: false,
+                DueDate: null));
+
+        Assert.False(modified.IsSuccess);
+        Assert.Equal(95m, await GetStockAsync(product.Id)); // لا أثر على المخزون
+
+        _db.ChangeTracker.Clear();
+        var storedItems = await _db.SaleItems.AsNoTracking()
+            .Where(i => i.SaleId == sale.Value.Id)
+            .ToListAsync();
+        Assert.Single(storedItems);
+        Assert.Equal(5m, storedItems[0].Quantity); // الأصناف القديمة كما هي
+    }
+
+    [Fact]
+    public async Task ModifySale_ServiceProduct_DoesNotTouchStock()
+    {
+        await SeedStoreAsync();
+        var service = await SeedProductAsync(stock: 0m, isService: true, name: "خدمة توصيل", barcode: "SRV-001");
+        var cashier = await SeedUserAsync();
+        var baseUnit = service.GetBaseUnit()!;
+
+        var sale = await SellAsync(service, baseUnit.Id, quantity: 1m, paid: 100m, cashier.Id);
+        Assert.True(sale.IsSuccess);
+
+        var modified = await new ModifySaleUseCase(_unitOfWork).ExecuteAsync(
+            sale.Value.Id,
+            new SaleInputDto(
+                new[] { new SaleLineInputDto(service.Id, baseUnit.Id, 4m, false) },
+                Discount: 0m,
+                Paid: 400m,
+                PaymentMethodDto.Cash,
+                IsCreditSale: false,
+                DueDate: null));
+
+        Assert.True(modified.IsSuccess);
+        Assert.Equal(0m, await GetStockAsync(service.Id)); // الخدمة لا مخزون لها
+    }
+
+    [Fact]
     public async Task ModifySale_RejectsCancelledSale()
     {
         await SeedStoreAsync();
@@ -325,9 +549,9 @@ public sealed class StockPolicyTests : IAsyncLifetime
         return store;
     }
 
-    private async Task<Product> SeedProductAsync(decimal stock = 0m, bool isService = false)
+    private async Task<Product> SeedProductAsync(decimal stock = 0m, bool isService = false, string name = "زيت زيتون", string barcode = "OIL-001")
     {
-        var product = new Product("زيت زيتون", 100m, 80m, isService, "OIL-001", null, stock);
+        var product = new Product(name, 100m, 80m, isService, barcode, null, stock);
         product.AddUnit("كيلوغرام", "كجم", 1m);
         product.AddUnit("صندوق", "صندوق", 10m);
 

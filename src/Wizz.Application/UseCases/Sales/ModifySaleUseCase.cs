@@ -43,8 +43,8 @@ public sealed class ModifySaleUseCase
             return Result<SaleDto>.Failure("لا يمكن تعديل بيع ملغي");
         }
 
-        // معرّفات الأصناف القديمة للحذف
-        var oldItemIds = sale.Items.Select(i => i.Id).ToList();
+        // لقطة الأصناف القديمة قبل أي تعديل — تُحذف عبر EF داخل المعاملة نفسها.
+        var oldItems = sale.Items.ToList();
 
         // بناء الأصناف الجديدة مع تحميل المنتجات والوحدات
         var newItems = new List<SaleItem>();
@@ -74,100 +74,30 @@ public sealed class ModifySaleUseCase
             newItems.Add(item);
         }
 
-        // تحديث حقول البيع في الكيان في الذاكرة (sale.Edit() يعالج修正 المخزون داخلياً بناءً على فرق الكميات)
-        sale.Edit(newItems, input.Discount, input.Paid, (PaymentMethod)input.PaymentMethod, input.IsCreditSale, input.DueDate);
-
-        // تحديث قاعدة البيانات مباشرة باستخدام ADO.NET لتجنب مشاكل Change Tracker
-        var connection = db.Database.GetDbConnection();
-        if (connection.State != System.Data.ConnectionState.Open)
-        {
-            await connection.OpenAsync(ct);
-        }
-
-        using var transaction = connection.BeginTransaction();
+        // تعديل البيع والأصناف والمخزون داخل معاملة EF واحدة — لا SQL خام ولا Commit منفصل.
+        await _unitOfWork.BeginTransactionAsync(ct);
 
         try
         {
-            // حذف الأصناف القديمة
-            foreach (var oldItemId in oldItemIds)
-            {
-                using var deleteCmd = connection.CreateCommand();
-                deleteCmd.Transaction = transaction;
-                deleteCmd.CommandText = "DELETE FROM \"SaleItems\" WHERE \"Id\" = @id";
-                var p = deleteCmd.CreateParameter();
-                p.ParameterName = "@id";
-                p.Value = oldItemId;
-                deleteCmd.Parameters.Add(p);
-                await deleteCmd.ExecuteNonQueryAsync(ct);
-            }
+            sale.Edit(newItems, input.Discount, input.Paid, (PaymentMethod)input.PaymentMethod, input.IsCreditSale, input.DueDate);
 
-            // إدخال الأصناف الجديدة
-            foreach (var item in newItems)
-            {
-                using var insertCmd = connection.CreateCommand();
-                insertCmd.Transaction = transaction;
-                insertCmd.CommandText = @"INSERT INTO ""SaleItems"" (""Id"", ""SaleId"", ""ProductId"", ""UnitId"", ""Quantity"", ""UnitPrice"", ""IsWholesalePrice"", ""LineTotal"")
-                                          VALUES (@id, @saleId, @productId, @unitId, @quantity, @unitPrice, @isWholesale, @lineTotal)";
-                var pid = insertCmd.CreateParameter(); pid.ParameterName = "@id"; pid.Value = item.Id;
-                var psid = insertCmd.CreateParameter(); psid.ParameterName = "@saleId"; psid.Value = saleId;
-                var ppid = insertCmd.CreateParameter(); ppid.ParameterName = "@productId"; ppid.Value = item.ProductId;
-                var puid = insertCmd.CreateParameter(); puid.ParameterName = "@unitId"; puid.Value = item.UnitId;
-                var pq = insertCmd.CreateParameter(); pq.ParameterName = "@quantity"; pq.Value = item.Quantity;
-                var pupr = insertCmd.CreateParameter(); pupr.ParameterName = "@unitPrice"; pupr.Value = item.UnitPrice;
-                var piw = insertCmd.CreateParameter(); piw.ParameterName = "@isWholesale"; piw.Value = item.IsWholesalePrice;
-                var plt = insertCmd.CreateParameter(); plt.ParameterName = "@lineTotal"; plt.Value = Math.Round(item.Quantity * item.UnitPrice, 2, MidpointRounding.AwayFromZero);
-                insertCmd.Parameters.Add(pid);
-                insertCmd.Parameters.Add(psid);
-                insertCmd.Parameters.Add(ppid);
-                insertCmd.Parameters.Add(puid);
-                insertCmd.Parameters.Add(pq);
-                insertCmd.Parameters.Add(pupr);
-                insertCmd.Parameters.Add(piw);
-                insertCmd.Parameters.Add(plt);
-                await insertCmd.ExecuteNonQueryAsync(ct);
-            }
+            // حذف صريح للأصناف القديمة عبر EF لتفادي الاعتماد على فرق مجموعات التتبع.
+            db.Set<SaleItem>().RemoveRange(oldItems);
 
-            // تحديث البيع
-            using var updateCmd = connection.CreateCommand();
-            updateCmd.Transaction = transaction;
-            updateCmd.CommandText = @"UPDATE ""Sales""
-                                      SET ""Subtotal"" = @subtotal, ""Discount"" = @discount, ""Total"" = @total, ""Paid"" = @paid, ""Remaining"" = @remaining,
-                                          ""PaymentMethod"" = @paymentMethod, ""IsCreditSale"" = @isCreditSale, ""DueDate"" = @dueDate
-                                      WHERE ""Id"" = @saleId";
-            var psubtotal = updateCmd.CreateParameter(); psubtotal.ParameterName = "@subtotal"; psubtotal.Value = sale.Subtotal;
-            var pdiscount = updateCmd.CreateParameter(); pdiscount.ParameterName = "@discount"; pdiscount.Value = sale.Discount;
-            var ptotal = updateCmd.CreateParameter(); ptotal.ParameterName = "@total"; ptotal.Value = sale.Total;
-            var ppaid = updateCmd.CreateParameter(); ppaid.ParameterName = "@paid"; ppaid.Value = sale.Paid;
-            var premaining = updateCmd.CreateParameter(); premaining.ParameterName = "@remaining"; premaining.Value = sale.Remaining;
-            var ppaymentMethod = updateCmd.CreateParameter(); ppaymentMethod.ParameterName = "@paymentMethod"; ppaymentMethod.Value = (int)sale.PaymentMethod;
-            var pisCreditSale = updateCmd.CreateParameter(); pisCreditSale.ParameterName = "@isCreditSale"; pisCreditSale.Value = sale.IsCreditSale;
-            var pdueDate = updateCmd.CreateParameter(); pdueDate.ParameterName = "@dueDate"; pdueDate.Value = (object?)sale.DueDate ?? DBNull.Value;
-            var psaleId = updateCmd.CreateParameter(); psaleId.ParameterName = "@saleId"; psaleId.Value = saleId;
-            updateCmd.Parameters.Add(psubtotal);
-            updateCmd.Parameters.Add(pdiscount);
-            updateCmd.Parameters.Add(ptotal);
-            updateCmd.Parameters.Add(ppaid);
-            updateCmd.Parameters.Add(premaining);
-            updateCmd.Parameters.Add(ppaymentMethod);
-            updateCmd.Parameters.Add(pisCreditSale);
-            updateCmd.Parameters.Add(pdueDate);
-            updateCmd.Parameters.Add(psaleId);
-            await updateCmd.ExecuteNonQueryAsync(ct);
+            // إضافة الأصناف الجديدة صراحةً بحالة Added — المفتاح Guid معرّف مسبقًا،
+            // وبدون ذلك يعتبرها EF موجودة ويولّد UPDATE يفشل بـ0 صفوف.
+            db.Set<SaleItem>().AddRange(newItems);
 
-            transaction.Commit();
+            await _unitOfWork.SaveChangesAsync(ct);
+            await _unitOfWork.CommitTransactionAsync(ct);
         }
         catch
         {
-            transaction.Rollback();
+            await _unitOfWork.RollbackTransactionAsync(ct);
             throw;
         }
 
-        await _unitOfWork.SaveChangesAsync(ct);
-
-        // إعادة تحميل البيع مع الأصناف لـ DTO
-        var savedSale = await _unitOfWork.Sales.GetByIdAsync(saleId, ct);
-
-        return Result<SaleDto>.Success(MapToDto(savedSale));
+        return Result<SaleDto>.Success(MapToDto(sale));
     }
 
     private static SaleDto MapToDto(Sale sale) => new(

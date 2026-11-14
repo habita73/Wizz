@@ -82,6 +82,13 @@ public sealed class Sale
     {
         if (newItems == null || !newItems.Any()) throw new ArgumentException("يجب أن يتضمن البيع سطراً واحداً على الأقل", nameof(newItems));
 
+        // حفظ مراجع منتجات الأصناف القديمة قبل الاستبدال — لازمة لاسترجاع مخزون
+        // المنتجات التي أُزيلت من البيع بالكامل ولم يبقَ لها سطر جديد.
+        var oldProducts = _items
+            .Where(i => i.Product != null)
+            .GroupBy(i => i.ProductId)
+            .ToDictionary(g => g.Key, g => g.First().Product!);
+
         // حساب الكميات القديمة بالوحدة الأساسية لكل منتج (قبل الاستبدال)
         var oldQuantities = _items
             .GroupBy(i => i.ProductId)
@@ -112,7 +119,8 @@ public sealed class Sale
             if (delta != 0)
             {
                 var item = _items.FirstOrDefault(i => i.ProductId == productId);
-                var product = item?.Product;
+                var product = item?.Product
+                    ?? (oldProducts.TryGetValue(productId, out var previous) ? previous : null);
                 if (product != null && !product.IsService)
                 {
                     product.ApplyStockChange(-delta);
