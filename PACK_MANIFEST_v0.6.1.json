@@ -1,0 +1,42 @@
+{
+  "package": "Vent au comptoir Documentation Pack",
+  "version": "0.6.1",
+  "date": "2026-11-14",
+  "status": "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_AUTHORIZED",
+  "execution_authorized": false,
+  "limited_execution_authorizations": [
+    "D-21 H-05 consistent backup and restore service",
+    "D-22 H-02 sale edit inside a single EF transaction",
+    "D-30 Phase 1 stock documents (StockDocument/DocumentSequence, numbering, opening/count/waste, migration, stock card)"
+  ],
+  "active_files": [
+    "README.md",
+    "PROJECT_RULES.md",
+    "AGENTS.md",
+    "docs/PRODUCT_MASTER.md",
+    "docs/MVP_AND_ACCEPTANCE.md",
+    "docs/TECHNICAL_AND_SAFETY_RULES.md",
+    "docs/DECISIONS_AND_OPEN_GATES.md",
+    "docs/STOCK_AND_DOCUMENTS_MODEL_AR.md",
+    "docs/ARCHIVE_INDEX.md",
+    "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md"
+  ],
+  "archive_file_count": 57,
+  "archive_policy": "Archive files are historical, non-active references; do not load all archive files for routine tasks.",
+  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims.",
+  "mvp_status": "APPROVED",
+  "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21, D-22 and D-30.",
+  "change_summary": [
+    "Implemented Phase 1 of the stock document model (D-30): StockDocument/StockDocumentLine/DocumentSequence, atomic {CODE}-{YYYY}-{SEQ} numbering, opening/count/waste documents, service-conversion adjustment, delete protection and stock-card query.",
+    "Added the AddStockDocuments migration and the idempotent StockMovements migration with reconstructed/synthetic opening documents.",
+    "Corrected the README test claims to the verified counts: Domain 24/24 and Integration 237/237 (261 total).",
+    "Kept the documents-as-truth model (D-23..D-29), the cashier-shift close gate and the approved MVP scope unchanged.",
+    "Refreshed the pack manifestations with new fingerprints for v0.6.1."
+  ],
+  "review_findings": [
+    "Phase 1 evidence: dotnet build Release = 0 errors; Domain 24/24; Integration 237/237; the migration was applied from scratch to a temporary SQLite database.",
+    "Execution remains unauthorized outside the recorded limited scopes (D-21, D-22, D-30).",
+    "Phases 2 and 3 (CashierShift/close gate/MRB, cash, purchases, UI) are not implemented and not authorized.",
+    "MVP-AT-09 still requires a real restore test in a separate environment; MVP-AT-20 remains open."
+  ]
+}

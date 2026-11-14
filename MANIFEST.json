@@ -1,6 +1,6 @@
 {
   "package": "Vent au comptoir Documentation Pack",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "date": "2026-11-14",
   "status": "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_AUTHORIZED",
   "execution_authorized": false,
@@ -16,27 +16,28 @@
     "docs/ARCHIVE_INDEX.md",
     "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md"
   ],
-  "archive_file_count": 56,
+  "archive_file_count": 57,
   "archive_policy": "Archive files are historical, non-active references; do not load all archive files for routine tasks.",
   "mvp_status": "APPROVED",
-  "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains false.",
+  "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21, D-22 and D-30.",
   "change_summary": [
-    "Adopted the documents-as-truth model (D-23..D-29): sales, cancellations, purchases, waste, counts and returns are the single source of truth; stored stock is a derived cache.",
-    "Added the stock document design: document numbering, DocumentDate/CreatedAt separation, stock card, migration strategy and mandatory balance tests.",
-    "Recorded the cashier-shift close gate: retroactive sale edits only in the current open shift; afterwards corrections use new linked documents.",
-    "Clarified D-20 and corrected the G-08 contradiction; logged the limited H-05/H-02 execution authorizations with their evidence.",
-    "Added MVP acceptance items AT-19..AT-22 and refreshed the pack manifestations with new fingerprints."
+    "Implemented Phase 1 of the stock document model (D-30) and recorded its evidence; see docs/DECISIONS_AND_OPEN_GATES.md section 9.",
+    "Corrected the README test claims to the verified counts: Domain 24/24 and Integration 237/237 (261 total).",
+    "Kept the documents-as-truth model (D-23..D-29), the cashier-shift close gate and the approved MVP scope unchanged.",
+    "Confirmed the limited execution scopes D-21, D-22 and D-30; all other work remains unauthorized.",
+    "Refreshed the pack manifestations with new fingerprints and corrected the archive file count to 57."
   ],
   "review_findings": [
-    "No implementation or runtime tests were performed for the stock document model in this documentation update.",
-    "Execution remains unauthorized outside the recorded limited scopes (D-21, D-22).",
-    "MVP-AT-09 still requires a real restore test in a separate environment; documentation-truth items (H-06) remain open."
+    "Phase 1 evidence: dotnet build Release = 0 errors; Domain 24/24; Integration 237/237; the migration was applied from scratch to a temporary SQLite database.",
+    "Execution remains unauthorized outside the recorded limited scopes (D-21, D-22, D-30).",
+    "Phases 2 and 3 (CashierShift/close gate/MRB, cash, purchases, UI) are not implemented and not authorized.",
+    "MVP-AT-09 still requires a real restore test in a separate environment; MVP-AT-20 remains open."
   ],
   "files": [
     {
       "path": "AGENTS.md",
       "size_bytes": 22967,
-      "sha256": "1314706a1b59e7adcfbe15f645df423ce09f8a81bc5be192687dc65fbdd49db7"
+      "sha256": "aa46a3d192ae2633a6f3f838f139ff967c57cab28d8d37463628003ab31a4b02"
     },
     {
       "path": "archive/original-detailed-docs/docs/architecture/AI_ARCHITECTURE.md",
@@ -330,8 +331,8 @@
     },
     {
       "path": "docs/DECISIONS_AND_OPEN_GATES.md",
-      "size_bytes": 14969,
-      "sha256": "f856252192e938cd3bbd46b8751213784ec43b4926a9a6239f934a2ee472cc84"
+      "size_bytes": 17162,
+      "sha256": "bdf0714cd19be83e897872e74888331cd9b51bf1662ac7de900c8b2333e9d09a"
     },
     {
       "path": "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md",
@@ -340,28 +341,28 @@
     },
     {
       "path": "docs/MVP_AND_ACCEPTANCE.md",
-      "size_bytes": 15023,
-      "sha256": "98f1e2472454d1372cdf41fb068d637874afd4393161d91c6a2928d38562e34c"
+      "size_bytes": 15265,
+      "sha256": "8a985797a0f39161fc495c1350b3e2ab7d5050bc0882c49edd7d5eec8e7ac330"
     },
     {
       "path": "docs/operations/HANDOFF_2026-11-14_STOCK_DOCS_AR.md",
-      "size_bytes": 5703,
-      "sha256": "fbf057b38b25a884c324b2d77b6239c9be0f601b9cfaa2ffcb6ed8eed5f2eeb6"
+      "size_bytes": 6033,
+      "sha256": "41cd759e5d5bb099a39a0c6d2a4511e5607440c6a5f6670851284519ab695356"
     },
     {
       "path": "docs/PRODUCT_MASTER.md",
       "size_bytes": 7999,
-      "sha256": "88d3b42efe1036f3f2ee5149a9ff63e1047c7f128ab55ff49bbc3fd812e5a92a"
+      "sha256": "ebd50d42d813fefc99cbfe8b543cba4e0ef8dd6eeaf959b693d6e5ff56e1cc80"
     },
     {
       "path": "docs/STOCK_AND_DOCUMENTS_MODEL_AR.md",
       "size_bytes": 18040,
-      "sha256": "036c0ad968b8f901301b0603c48724e9b2404ac426b7686feb58b6e6b9821ffa"
+      "sha256": "450638e1ce1e8492a64724a1a03e8d397a49a82452ed6d05bed41ddccfdc2192"
     },
     {
       "path": "docs/TECHNICAL_AND_SAFETY_RULES.md",
       "size_bytes": 10088,
-      "sha256": "f6e6f03bb0f6adf8f2e076a949c813cc0845c5162e1d931963c1f2c21aefa456"
+      "sha256": "72f90a4a0e869289ded7fa867c139fb3be5ba08b7e84c90e4fa1b11bcb9b4cf6"
     },
     {
       "path": "PACK_MANIFEST_v0.5.2.json",
@@ -384,19 +385,25 @@
       "sha256": "77fb605323f3df548dc2766e8067417fab014efd4ac9c09f3e177823a256080d"
     },
     {
+      "path": "PACK_MANIFEST_v0.6.1.json",
+      "size_bytes": 2589,
+      "sha256": "2bffe7c42d48ce10e2471747f04462c0f1a26e88526fc80787c2e3ec81cd46aa"
+    },
+    {
       "path": "PROJECT_RULES.md",
       "size_bytes": 24436,
       "sha256": "2db38d738d7188ee352e2f4c5af5ecaddf807353968a846439a735ef162bd9b9"
     },
     {
       "path": "README.md",
-      "size_bytes": 10405,
-      "sha256": "c1c9f10d4778981ddbcc4809a40193e936775d449e05e6b135958e86444cfbaa"
+      "size_bytes": 10457,
+      "sha256": "cc0440e9821bc68766a7a80cf48808df3a0c33a6f8f8a719971c904e501d8c38"
     }
   ],
   "limited_execution_authorizations": [
     "D-21 H-05 consistent backup and restore service",
-    "D-22 H-02 sale edit inside a single EF transaction"
+    "D-22 H-02 sale edit inside a single EF transaction",
+    "D-30 Phase 1 stock documents (StockDocument/DocumentSequence, numbering, opening/count/waste, migration, stock card)"
   ],
-  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model, the cashier-shift gate and the stock document design."
+  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims."
 }

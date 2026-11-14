@@ -2,7 +2,7 @@
 
 - **الإصدار:** 1.0 | **التاريخ:** 2026-11-14
 - **الحالة:** `APPROVED — DESIGN ONLY` — التصميم معتمد من Farid (D-23…D-29)، ولا يمنح إذن تنفيذ برمجي.
-- **المراجع الملزمة:** `PROJECT_RULES.md` (0.3.0، R-01…R-12)، `docs/TECHNICAL_AND_SAFETY_RULES.md` (0.6.0)،
+- **المراجع الملزمة:** `PROJECT_RULES.md` (0.3.0، R-01…R-12)، `docs/TECHNICAL_AND_SAFETY_RULES.md` (0.6.1)،
   `docs/DECISIONS_AND_OPEN_GATES.md` (D-20 مع توضيح 2026-11-14، D-23…D-29)، `docs/MVP_AND_ACCEPTANCE.md`
   (MVP-AT-19…22).
 - **البديل المرفوض:** اعتماد جدول حركات مستقل كمصدر حقيقة ثانٍ إلى جانب المستندات. سبب الرفض: احتمال اختلاف
