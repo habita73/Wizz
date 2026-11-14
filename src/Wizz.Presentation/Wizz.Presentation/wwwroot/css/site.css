@@ -2169,3 +2169,79 @@ summary:focus-visible,
   --bs-btn-active-border-color: var(--wizz-warning);
 }
 
+/* ============================================================
+   صفحات المصادقة (الدخول والإعداد) — بلا شريط جانبي
+   ============================================================ */
+.auth-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  padding: 2rem 1rem;
+  background:
+    radial-gradient(circle at 50% 0%, var(--wizz-primary-light), transparent 55%),
+    var(--wizz-bg);
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  color: var(--wizz-accent-ink);
+}
+
+.auth-brand-mark {
+  width: 40px;
+  height: 40px;
+  color: var(--wizz-primary);
+}
+
+.auth-brand strong {
+  display: block;
+  font-size: 1.35rem;
+  line-height: 1.15;
+}
+
+.auth-brand span {
+  font-size: .8rem;
+  color: var(--wizz-text-muted);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--wizz-surface);
+  border: 1px solid var(--wizz-border);
+  border-radius: var(--wizz-radius);
+  box-shadow: var(--wizz-shadow);
+  padding: 2rem;
+}
+
+.auth-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: .25rem;
+  color: var(--wizz-text);
+}
+
+.auth-subtitle {
+  color: var(--wizz-text-secondary);
+  font-size: .9rem;
+  margin-bottom: 1.25rem;
+}
+
+.auth-footer {
+  color: var(--wizz-text-muted);
+  font-size: .78rem;
+  text-align: center;
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 1.35rem;
+  }
+}
+

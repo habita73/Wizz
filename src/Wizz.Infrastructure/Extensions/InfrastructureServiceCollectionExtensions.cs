@@ -36,6 +36,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IStockDocumentRepository, StockDocumentRepository>();
         services.AddScoped<IStoreRepository, StoreRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IAuditLogger, AuditLogger>();
 
         // Devices (Mock for MVP)
         services.AddSingleton<IBarcodeReader, MockScanner>();

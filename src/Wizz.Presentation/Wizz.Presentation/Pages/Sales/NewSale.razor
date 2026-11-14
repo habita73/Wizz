@@ -1,9 +1,11 @@
 @page "/sales/new"
 @layout MainLayout
+@attribute [Authorize(Policy = PermissionPolicy.CreateSale)]
 @inject IJSRuntime JS
 @inject Wizz.Application.Abstractions.IProductRepository ProductRepo
 @inject Wizz.Application.Abstractions.IStoreRepository StoreRepo
-@inject Wizz.Application.Abstractions.IUserRepository UserRepo
+@inject CurrentUser CurrentUser
+@inject Wizz.Application.Abstractions.IAuditLogger Audit
 @inject Wizz.Application.UseCases.Sales.CreateSaleUseCase CreateSaleUseCase
 @inject Wizz.Application.UseCases.Receipt.GenerateReceiptUseCase GenerateReceiptUseCase
 @inject Wizz.Application.Abstractions.IPrinter Printer
@@ -339,9 +341,7 @@
 
     private async Task ResolveCashierAsync()
     {
-        var users = await UserRepo.GetAllAsync();
-        cashierId = users.FirstOrDefault(u => u.IsActive && u.Role == UserRole.Admin)?.Id
-                    ?? users.FirstOrDefault(u => u.IsActive)?.Id;
+        cashierId = await CurrentUser.IdAsync();
     }
 
     private async Task LoadInitialProducts()
@@ -572,6 +572,14 @@
             }
 
             lastSaleId = result.Value.Id;
+            await Audit.LogAsync(new AuditEntry(
+                AuditAction.SaleCreated,
+                AuditOutcome.Success,
+                cashierId,
+                await CurrentUser.UsernameAsync(),
+                "Sale",
+                result.Value.Id.ToString(),
+                $"إجمالي البيع {result.Value.Total:N2} د.ج"));
             ClearCart();
             await LoadInitialProducts();
             await JS.InvokeVoidAsync("alert", $"تم البيع بنجاح — الإجمالي {result.Value.Total:N2} د.ج");

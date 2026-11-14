@@ -1,0 +1,179 @@
+@page "/login"
+@layout AuthLayout
+@attribute [AllowAnonymous]
+@attribute [ExcludeFromInteractiveRouting]
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using Microsoft.AspNetCore.Http
+@using Wizz.Application.Abstractions
+@using Wizz.Application.Security
+@using Wizz.Domain
+@using Wizz.Presentation.Security
+@inject IUserRepository UserRepo
+@inject IUnitOfWork UnitOfWork
+@inject SafeAudit Audit
+@inject LoginAttemptTracker Attempts
+@inject NavigationManager Nav
+
+<PageTitle>تسجيل الدخول</PageTitle>
+
+<div class="auth-card">
+    <h1 class="auth-title">تسجيل الدخول</h1>
+    <p class="auth-subtitle">أدخل بيانات حسابك للمتابعة.</p>
+
+    @if (needsSetup)
+    {
+        <div class="alert alert-warning small">
+            لا يوجد مدير نظام نشط. يلزم إعداد أول تشغيل لإنشاء حساب المدير.
+            <a href="@AuthRoutes.Setup" class="alert-link">بدء الإعداد</a>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <div class="alert alert-danger small" role="alert">@error</div>
+    }
+
+    <EditForm Model="Input" FormName="login" OnSubmit="SignInAsync" method="post">
+        <div class="mb-3">
+            <label class="form-label" for="login-username">اسم المستخدم</label>
+            <InputText id="login-username" class="form-control" @bind-Value="Input.Username"
+                       autocomplete="username" autofocus />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="login-password">كلمة المرور</label>
+            <InputText id="login-password" type="password" class="form-control" @bind-Value="Input.Password"
+                       autocomplete="current-password" />
+        </div>
+
+        <div class="form-check mb-3">
+            <InputCheckbox id="login-remember" class="form-check-input" @bind-Value="Input.RememberMe" />
+            <label class="form-check-label" for="login-remember">إبقائي مسجلًا على هذا الجهاز</label>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100" disabled="@busy">
+            @if (busy)
+            {
+                <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+            }
+            دخول
+        </button>
+    </EditForm>
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm(FormName = "login")]
+    private LoginInput Input { get; set; } = new();
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    private string? error;
+    private bool busy;
+    private bool needsSetup;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (HttpContext?.User.Identity?.IsAuthenticated == true)
+        {
+            Nav.NavigateTo(SafeReturnUrl(), replace: true);
+            return;
+        }
+
+        var users = await UserRepo.GetAllAsync();
+        needsSetup = !users.Any(u => u.IsActive && u.Role == UserRole.Admin);
+    }
+
+    private async Task SignInAsync(EditContext _)
+    {
+        error = null;
+        busy = true;
+
+        try
+        {
+            var username = (Input.Username ?? string.Empty).Trim();
+            if (username.Length == 0 || string.IsNullOrEmpty(Input.Password))
+            {
+                error = "أدخل اسم المستخدم وكلمة المرور.";
+                return;
+            }
+
+            if (Attempts.IsLocked(username))
+            {
+                error = "تم قفل المحاولات مؤقتًا بسبب تكرار الفشل. حاول بعد خمس دقائق.";
+                await AuditAttemptAsync(username, AuditOutcome.Denied, "محاولة دخول أثناء القفل المؤقت");
+                return;
+            }
+
+            var user = await UserRepo.GetByUsernameAsync(username);
+            if (user is null || !user.IsActive || !PasswordHasher.Verify(Input.Password, user.PasswordHash))
+            {
+                var remaining = Attempts.RecordFailure(username);
+                error = remaining > 0
+                    ? "بيانات الدخول غير صحيحة."
+                    : "بيانات الدخول غير صحيحة. تم قفل المحاولات مؤقتًا لخمس دقائق.";
+                await AuditAttemptAsync(username, AuditOutcome.Failure, "بيانات دخول غير صحيحة");
+                return;
+            }
+
+            Attempts.Reset(username);
+            user.RecordLogin();
+            UserRepo.Update(user);
+            await UnitOfWork.SaveChangesAsync();
+
+            await Audit.LogAsync(new AuditEntry(
+                AuditAction.LoginSucceeded,
+                AuditOutcome.Success,
+                user.Id,
+                user.Username,
+                "User",
+                user.Id.ToString(),
+                "تسجيل دخول ناجح",
+                IpAddress));
+
+            var principal = UserClaimsFactory.Create(user, CookieAuthenticationDefaults.AuthenticationScheme);
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                principal,
+                new AuthenticationProperties { IsPersistent = Input.RememberMe });
+
+            Nav.NavigateTo(SafeReturnUrl(), forceLoad: true, replace: true);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private Task AuditAttemptAsync(string username, AuditOutcome outcome, string details)
+        => Audit.LogAsync(new AuditEntry(
+            AuditAction.LoginFailed,
+            outcome,
+            null,
+            username,
+            "User",
+            null,
+            details,
+            IpAddress));
+
+    private string IpAddress => HttpContext?.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+
+    private string SafeReturnUrl()
+    {
+        if (string.IsNullOrWhiteSpace(ReturnUrl)) return "/";
+        if (!ReturnUrl.StartsWith('/') || ReturnUrl.StartsWith("//") || ReturnUrl.StartsWith("/\\")) return "/";
+        if (ReturnUrl.StartsWith(AuthRoutes.Login, StringComparison.OrdinalIgnoreCase)) return "/";
+        return ReturnUrl;
+    }
+
+    public sealed class LoginInput
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public bool RememberMe { get; set; }
+    }
+}

@@ -1,4 +1,5 @@
-﻿@inherits LayoutComponentBase
+﻿@using System.Security.Claims
+@inherits LayoutComponentBase
 
 <div class="page">
     <div class="sidebar">
@@ -9,12 +10,25 @@
         <div class="top-row px-4">
             <span class="app-status">
                 <span class="status-dot"></span>
-                يعمل محليًا
+                وضع محلي
             </span>
-            <span class="app-user">
-                <WizzIcon Icon="user" Size="16" />
-                <span>مدير النظام</span>
-            </span>
+            <AuthorizeView>
+                <Authorized Context="auth">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="app-user">
+                            <WizzIcon Icon="user" Size="16" />
+                            <span>@(auth.User.FindFirst(ClaimTypes.GivenName)?.Value ?? auth.User.Identity?.Name)</span>
+                            <small class="text-muted">(@RoleText(auth.User.FindFirst(ClaimTypes.Role)?.Value))</small>
+                        </span>
+                        <form method="post" action="/auth/logout" class="m-0">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">خروج</button>
+                        </form>
+                    </div>
+                </Authorized>
+                <NotAuthorized>
+                    <span class="app-user">زائر</span>
+                </NotAuthorized>
+            </AuthorizeView>
         </div>
 
         <article class="content px-4">
@@ -26,5 +40,15 @@
 <div id="blazor-error-ui" data-nosnippet>
     حدث خطأ غير متوقع.
     <a href="." class="reload">إعادة التحميل</a>
-    <span class="dismiss">✕</span>
+    <span class="dismiss">×</span>
 </div>
+
+@code {
+    private static string RoleText(string? role) => role switch
+    {
+        nameof(UserRole.Admin) => "مدير نظام",
+        nameof(UserRole.Manager) => "مدير",
+        nameof(UserRole.Cashier) => "كاشير",
+        _ => "مستخدم",
+    };
+}

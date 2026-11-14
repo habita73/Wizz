@@ -1,5 +1,6 @@
 @page "/settings"
 @layout MainLayout
+@attribute [Authorize(Policy = PermissionPolicy.ManageStoreSettings)]
 @inject Wizz.Application.Abstractions.IStoreRepository StoreRepo
 @inject Wizz.Application.Abstractions.IUserRepository UserRepo
 @inject Wizz.Application.Abstractions.IBackupService BackupService
@@ -8,6 +9,8 @@
 @inject Wizz.Application.Abstractions.IDeviceCapabilityEvaluator DeviceEvaluator
 @inject Wizz.Application.Abstractions.IModelRouter ModelRouter
 @inject Wizz.Presentation.Pages.AI.AiMemoryStore MemoryStore
+@inject CurrentUser CurrentUser
+@inject SafeAudit Audit
 @inject IJSRuntime JS
 
 <h2>
@@ -84,6 +87,8 @@
     </div>
 
     <!-- المستخدمون -->
+    <AuthorizeView Policy="@PermissionPolicy.ManageUsers">
+        <Authorized>
     <div class="col-lg-6 mb-4">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -152,8 +157,12 @@
             </div>
         </div>
     </div>
+        </Authorized>
+    </AuthorizeView>
 
     <!-- النسخ الاحتياطي -->
+    <AuthorizeView Policy="@PermissionPolicy.BackupRestore">
+        <Authorized>
     <div class="col-lg-6 mb-4">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -212,6 +221,8 @@
             </div>
         </div>
     </div>
+        </Authorized>
+    </AuthorizeView>
 
     <!-- معلومات النظام -->
     <div class="col-lg-6 mb-4">
@@ -721,12 +732,38 @@
 
     protected override async Task OnInitializedAsync()
     {
+        canManageUsers = await CurrentUser.HasPermissionAsync(Permission.ManageUsers);
+        canBackupRestore = await CurrentUser.HasPermissionAsync(Permission.BackupRestore);
+
         await LoadStore();
-        await LoadUsers();
-        await LoadBackups();
+        if (canManageUsers) await LoadUsers();
+        if (canBackupRestore) await LoadBackups();
         await LoadAiSettings();
         await LoadAiPreferences();
         await LoadThemeMode();
+    }
+
+    private bool canManageUsers;
+    private bool canBackupRestore;
+
+    /// <summary>
+    /// حراسة صلاحية على مستوى الدالة — لا يكفي إخفاء الأزرار في الواجهة.
+    /// تسجل المحاولة المرفوضة في سجل التدقيق.
+    /// </summary>
+    private async Task<bool> EnsurePermissionAsync(Permission permission, string details, string? entityType = null, string? entityId = null)
+    {
+        if (await CurrentUser.HasPermissionAsync(permission)) return true;
+
+        await Audit.LogAsync(new AuditEntry(
+            AuditAction.PermissionDenied,
+            AuditOutcome.Denied,
+            await CurrentUser.IdAsync(),
+            await CurrentUser.UsernameAsync(),
+            entityType,
+            entityId,
+            details));
+        await JS.InvokeVoidAsync("alert", "لا تملك الصلاحية لتنفيذ هذا الإجراء.");
+        return false;
     }
 
     /// <summary>يحمّل تفضيل الوضع اللوني من التخزين المحلي (الافتراضي: النظام).</summary>
@@ -925,6 +962,11 @@
 
     private async Task SaveAiSettings()
     {
+        if (!await EnsurePermissionAsync(Permission.ManageStoreSettings, "محاولة حفظ إعدادات المساعد دون صلاحية", "AiSettings"))
+        {
+            return;
+        }
+
         AiSettings.IsCloudEnabled = aiCloudEnabled;
         if (!string.IsNullOrWhiteSpace(cloudApiKey))
         {
@@ -932,6 +974,15 @@
         }
         AiSettings.LocalModelLevel = localModelLevel;
         DeviceEvaluator.InvalidateCache();
+
+        await Audit.LogAsync(new AuditEntry(
+            AuditAction.AiSettingsUpdated,
+            AuditOutcome.Success,
+            await CurrentUser.IdAsync(),
+            await CurrentUser.UsernameAsync(),
+            "AiSettings",
+            null,
+            $"سحابي: {aiCloudEnabled} — المستوى المحلي: {localModelLevel} — مفتاح مُحدَّث: {!string.IsNullOrWhiteSpace(cloudApiKey)}"));
 
         await RefreshRouterStatusAsync();
         await JS.InvokeVoidAsync("alert", "تم حفظ إعدادات المساعد الذكي");
@@ -1007,6 +1058,15 @@
 
     private async Task SaveStoreSettings()
     {
+        if (!await EnsurePermissionAsync(
+                Permission.ManageStoreSettings,
+                "محاولة حفظ إعدادات المتجر دون صلاحية",
+                "Store",
+                store?.Id.ToString()))
+        {
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(storeForm.Name))
         {
             await JS.InvokeVoidAsync("alert", "اسم المتجر مطلوب");
@@ -1044,6 +1104,14 @@
             }
 
             await UnitOfWork.SaveChangesAsync();
+            await Audit.LogAsync(new AuditEntry(
+                AuditAction.StoreSettingsUpdated,
+                AuditOutcome.Success,
+                await CurrentUser.IdAsync(),
+                await CurrentUser.UsernameAsync(),
+                "Store",
+                store?.Id.ToString(),
+                $"اسم المتجر: {storeForm.Name} — عملة: {storeForm.Currency} — بيع آجل: {storeForm.AllowCreditSales} — تتبع مخزون: {storeForm.InventoryEnabled}"));
             showStoreModal = false;
             await LoadStore();
             await JS.InvokeVoidAsync("alert", "تم حفظ إعدادات المتجر بنجاح");
@@ -1060,17 +1128,38 @@
 
     private async Task CreateBackup()
     {
+        if (!await EnsurePermissionAsync(Permission.BackupRestore, "محاولة إنشاء نسخة احتياطية دون صلاحية", "Backup"))
+        {
+            return;
+        }
+
         backupInProgress = true;
         try
         {
             var result = await BackupService.CreateBackupAsync();
             if (result.Success)
             {
+                await Audit.LogAsync(new AuditEntry(
+                    AuditAction.BackupCreated,
+                    AuditOutcome.Success,
+                    await CurrentUser.IdAsync(),
+                    await CurrentUser.UsernameAsync(),
+                    "Backup",
+                    null,
+                    $"نسخة احتياطية: {Path.GetFileName(result.BackupPath ?? "")}"));
                 await LoadBackups();
                 await JS.InvokeVoidAsync("alert", $"تم إنشاء النسخة الاحتياطية: {result.BackupPath}");
             }
             else
             {
+                await Audit.LogAsync(new AuditEntry(
+                    AuditAction.BackupCreated,
+                    AuditOutcome.Failure,
+                    await CurrentUser.IdAsync(),
+                    await CurrentUser.UsernameAsync(),
+                    "Backup",
+                    null,
+                    $"فشل إنشاء النسخة: {result.ErrorMessage}"));
                 await JS.InvokeVoidAsync("alert", $"فشل النسخ: {result.ErrorMessage}");
             }
         }
@@ -1086,6 +1175,11 @@
 
     private async Task RestoreBackup(string path)
     {
+        if (!await EnsurePermissionAsync(Permission.BackupRestore, "محاولة استعادة نسخة احتياطية دون صلاحية", "Backup"))
+        {
+            return;
+        }
+
         var confirmed = await JS.InvokeAsync<bool>("confirm", "تحذير: الاستعادة ستستبدل البيانات الحالية. هل تريد المتابعة؟");
         if (!confirmed)
         {
@@ -1095,16 +1189,37 @@
         var result = await BackupService.RestoreAsync(path);
         if (result.Success)
         {
+            await Audit.LogAsync(new AuditEntry(
+                AuditAction.BackupRestored,
+                AuditOutcome.Success,
+                await CurrentUser.IdAsync(),
+                await CurrentUser.UsernameAsync(),
+                "Backup",
+                null,
+                $"استعادة النسخة: {Path.GetFileName(path)}"));
             await JS.InvokeVoidAsync("alert", "تمت الاستعادة بنجاح. أعد تشغيل التطبيق.");
         }
         else
         {
+            await Audit.LogAsync(new AuditEntry(
+                AuditAction.BackupRestored,
+                AuditOutcome.Failure,
+                await CurrentUser.IdAsync(),
+                await CurrentUser.UsernameAsync(),
+                "Backup",
+                null,
+                $"فشل استعادة النسخة: {result.ErrorMessage}"));
             await JS.InvokeVoidAsync("alert", $"فشل الاستعادة: {result.ErrorMessage}");
         }
     }
 
     private async Task DeleteBackup(string path)
     {
+        if (!await EnsurePermissionAsync(Permission.BackupRestore, "محاولة حذف نسخة احتياطية دون صلاحية", "Backup"))
+        {
+            return;
+        }
+
         var confirmed = await JS.InvokeAsync<bool>("confirm", "هل تريد حذف هذه النسخة الاحتياطية؟");
         if (!confirmed)
         {
@@ -1112,6 +1227,14 @@
         }
 
         await BackupService.DeleteBackupAsync(path);
+        await Audit.LogAsync(new AuditEntry(
+            AuditAction.BackupDeleted,
+            AuditOutcome.Success,
+            await CurrentUser.IdAsync(),
+            await CurrentUser.UsernameAsync(),
+            "Backup",
+            null,
+            $"حذف النسخة: {Path.GetFileName(path)}"));
         await LoadBackups();
     }
 
@@ -1151,19 +1274,48 @@
 
     private async Task SaveUser()
     {
+        if (!await EnsurePermissionAsync(Permission.ManageUsers, "محاولة إنشاء أو تعديل مستخدم دون صلاحية", "User", editingUser?.Id.ToString()))
+        {
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(userForm.FullName))
         {
             await JS.InvokeVoidAsync("alert", "الاسم الكامل مطلوب");
             return;
         }
 
+        var changingPassword = !string.IsNullOrEmpty(userForm.Password);
+        if (changingPassword)
+        {
+            var passwordErrors = PasswordPolicy.Validate(userForm.Password);
+            if (passwordErrors.Count > 0)
+            {
+                await JS.InvokeVoidAsync("alert", string.Join("\n", passwordErrors));
+                return;
+            }
+        }
+
+        var currentUserId = await CurrentUser.IdAsync();
+        if (editingUser != null && !userForm.IsActive && editingUser.Id == currentUserId)
+        {
+            await JS.InvokeVoidAsync("alert", "لا يمكنك تعطيل حسابك الحالي.");
+            return;
+        }
+
         savingUser = true;
         try
         {
+            var actorId = currentUserId;
+            var actorName = await CurrentUser.UsernameAsync();
+
             if (editingUser != null)
             {
+                var previouslyActive = editingUser.IsActive;
+                var previousRole = editingUser.Role;
+
                 editingUser.UpdateProfile(userForm.FullName, userForm.Role);
-                if (!string.IsNullOrEmpty(userForm.Password))
+                if (changingPassword)
                 {
                     editingUser.ChangePassword(PasswordHasher.Hash(userForm.Password));
                 }
@@ -1178,6 +1330,42 @@
                 }
 
                 UserRepo.Update(editingUser);
+
+                var details = $"تعديل المستخدم '{editingUser.Username}': الدور {previousRole} ← {editingUser.Role}، الحالة {(previouslyActive ? "نشط" : "معطل")} ← {(editingUser.IsActive ? "نشط" : "معطل")}";
+                await Audit.LogAsync(new AuditEntry(
+                    AuditAction.UserUpdated,
+                    AuditOutcome.Success,
+                    actorId,
+                    actorName,
+                    "User",
+                    editingUser.Id.ToString(),
+                    details));
+
+                if (changingPassword)
+                {
+                    await Audit.LogAsync(new AuditEntry(
+                        AuditAction.UserPasswordReset,
+                        AuditOutcome.Success,
+                        actorId,
+                        actorName,
+                        "User",
+                        editingUser.Id.ToString(),
+                        $"إعادة تعيين كلمة مرور المستخدم '{editingUser.Username}' من شاشة التعديل"));
+                }
+
+                if (previouslyActive != editingUser.IsActive)
+                {
+                    await Audit.LogAsync(new AuditEntry(
+                        editingUser.IsActive ? AuditAction.UserActivated : AuditAction.UserDeactivated,
+                        AuditOutcome.Success,
+                        actorId,
+                        actorName,
+                        "User",
+                        editingUser.Id.ToString(),
+                        editingUser.IsActive
+                            ? $"تفعيل المستخدم '{editingUser.Username}'"
+                            : $"تعطيل المستخدم '{editingUser.Username}'"));
+                }
             }
             else
             {
@@ -1199,6 +1387,14 @@
                 }
 
                 await UserRepo.AddAsync(created);
+                await Audit.LogAsync(new AuditEntry(
+                    AuditAction.UserCreated,
+                    AuditOutcome.Success,
+                    actorId,
+                    actorName,
+                    "User",
+                    created.Id.ToString(),
+                    $"إنشاء المستخدم '{created.Username}' بدور {created.Role}"));
             }
 
             await UnitOfWork.SaveChangesAsync();
@@ -1217,20 +1413,51 @@
 
     private async Task ResetPassword(User user)
     {
+        if (!await EnsurePermissionAsync(Permission.ManageUsers, "محاولة إعادة تعيين كلمة مرور دون صلاحية", "User", user.Id.ToString()))
+        {
+            return;
+        }
+
         var newPassword = await JS.InvokeAsync<string>("prompt", $"كلمة مرور جديدة للمستخدم {user.Username}:");
         if (string.IsNullOrWhiteSpace(newPassword))
         {
             return;
         }
 
+        var passwordErrors = PasswordPolicy.Validate(newPassword);
+        if (passwordErrors.Count > 0)
+        {
+            await JS.InvokeVoidAsync("alert", string.Join("\n", passwordErrors));
+            return;
+        }
+
         user.ChangePassword(PasswordHasher.Hash(newPassword));
         UserRepo.Update(user);
         await UnitOfWork.SaveChangesAsync();
+        await Audit.LogAsync(new AuditEntry(
+            AuditAction.UserPasswordReset,
+            AuditOutcome.Success,
+            await CurrentUser.IdAsync(),
+            await CurrentUser.UsernameAsync(),
+            "User",
+            user.Id.ToString(),
+            $"إعادة تعيين كلمة مرور المستخدم '{user.Username}' — أُبطلت جلساته القائمة"));
         await JS.InvokeVoidAsync("alert", "تم تحديث كلمة المرور");
     }
 
     private async Task ToggleUserActive(User user)
     {
+        if (!await EnsurePermissionAsync(Permission.ManageUsers, "محاولة تغيير حالة مستخدم دون صلاحية", "User", user.Id.ToString()))
+        {
+            return;
+        }
+
+        if (user.IsActive && user.Id == await CurrentUser.IdAsync())
+        {
+            await JS.InvokeVoidAsync("alert", "لا يمكنك تعطيل حسابك الحالي.");
+            return;
+        }
+
         if (user.IsActive)
         {
             user.Deactivate();
@@ -1242,6 +1469,16 @@
 
         UserRepo.Update(user);
         await UnitOfWork.SaveChangesAsync();
+        await Audit.LogAsync(new AuditEntry(
+            user.IsActive ? AuditAction.UserActivated : AuditAction.UserDeactivated,
+            AuditOutcome.Success,
+            await CurrentUser.IdAsync(),
+            await CurrentUser.UsernameAsync(),
+            "User",
+            user.Id.ToString(),
+            user.IsActive
+                ? $"تفعيل المستخدم '{user.Username}'"
+                : $"تعطيل المستخدم '{user.Username}' — أُبطلت جلساته القائمة"));
         await LoadUsers();
     }
 

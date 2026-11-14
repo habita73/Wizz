@@ -1,16 +1,40 @@
-﻿<Router AppAssembly="typeof(Program).Assembly">
-    <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)" />
-        <FocusOnNavigate RouteData="routeData" Selector="h1" />
-    </Found>
-    <NotFound>
-        <PageTitle>الصفحة غير موجودة</PageTitle>
-        <LayoutView Layout="typeof(MainLayout)">
-            <div class="container py-5 text-center">
-                <h1 class="display-1">404</h1>
-                <p class="lead">الصفحة المطلوبة غير موجودة.</p>
-                <a href="/" class="btn btn-primary">العودة إلى الرئيسية</a>
-            </div>
-        </LayoutView>
-    </NotFound>
-</Router>
+﻿@using Microsoft.AspNetCore.Components.Authorization
+
+<CascadingAuthenticationState>
+    <Router AppAssembly="typeof(Program).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)">
+                <NotAuthorized>
+                    @if (context.User.Identity?.IsAuthenticated == true)
+                    {
+                        <LayoutView Layout="typeof(MainLayout)">
+                            <div class="container py-5 text-center">
+                                <h1 class="h3 mb-3">لا تملك الصلاحية</h1>
+                                <p class="lead">دورك الحالي لا يسمح بالوصول إلى هذه الصفحة.</p>
+                                <a href="/" class="btn btn-primary">العودة إلى الرئيسية</a>
+                            </div>
+                        </LayoutView>
+                    }
+                    else
+                    {
+                        <RedirectToLogin />
+                    }
+                </NotAuthorized>
+                <Authorizing>
+                    <p class="p-4 text-muted">جارٍ التحقق من الهوية…</p>
+                </Authorizing>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <PageTitle>الصفحة غير موجودة</PageTitle>
+            <LayoutView Layout="typeof(MainLayout)">
+                <div class="container py-5 text-center">
+                    <h1 class="display-1">404</h1>
+                    <p class="lead">الصفحة المطلوبة غير موجودة.</p>
+                    <a href="/" class="btn btn-primary">العودة إلى الرئيسية</a>
+                </div>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>

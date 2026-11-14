@@ -1,8 +1,10 @@
 @page "/products"
 @layout MainLayout
+@attribute [Authorize(Policy = PermissionPolicy.ViewProducts)]
 @inject Wizz.Application.Abstractions.IProductRepository ProductRepo
 @inject Wizz.Application.Abstractions.IStoreRepository StoreRepo
-@inject Wizz.Application.Abstractions.IUserRepository UserRepo
+@inject CurrentUser CurrentUser
+@inject SafeAudit Audit
 @inject Wizz.Application.Abstractions.IUnitOfWork UnitOfWork
 @inject Wizz.Application.UseCases.Products.CreateProductUseCase CreateProductUseCase
 @inject Wizz.Application.UseCases.Products.UpdateProductUseCase UpdateProductUseCase
@@ -56,10 +58,14 @@
         </button>
     </div>
     <div class="col-md-3 text-end">
-        <button class="btn btn-success" @onclick="NewProduct">
-            <WizzIcon Icon="plus" Size="16" />
-            <span>منتج جديد</span>
-        </button>
+        <AuthorizeView Policy="@PermissionPolicy.ManageProducts">
+            <Authorized>
+                <button class="btn btn-success" @onclick="NewProduct">
+                    <WizzIcon Icon="plus" Size="16" />
+                    <span>منتج جديد</span>
+                </button>
+            </Authorized>
+        </AuthorizeView>
     </div>
 </div>
 
@@ -139,21 +145,32 @@ else
                         </td>
                         <td>
                             <div class="btn-group btn-group-sm">
-                                <button class="btn btn-outline-primary" @onclick="() => EditProduct(product)" title="تعديل">
-                                    <WizzIcon Icon="edit" Size="16" Title="تعديل" />
-                                </button>
+                                <AuthorizeView Policy="@PermissionPolicy.ManageProducts">
+                                    <Authorized>
+                                        <button class="btn btn-outline-primary" @onclick="() => EditProduct(product)" title="تعديل">
+                                            <WizzIcon Icon="edit" Size="16" Title="تعديل" />
+                                        </button>
+                                        @if (!product.IsService)
+                                        {
+                                            <button class="btn btn-outline-secondary" @onclick="() => OpenAdjust(product)" title="جرد المخزون">
+                                                <WizzIcon Icon="list" Size="16" Title="جرد المخزون" />
+                                            </button>
+                                        }
+                                    </Authorized>
+                                </AuthorizeView>
                                 @if (!product.IsService)
                                 {
-                                    <button class="btn btn-outline-secondary" @onclick="() => OpenAdjust(product)" title="جرد المخزون">
-                                        <WizzIcon Icon="list" Size="16" Title="جرد المخزون" />
-                                    </button>
                                     <a class="btn btn-outline-secondary" href="/stock-movements?productId=@product.Id" title="سجل حركات المخزون">
                                         <WizzIcon Icon="clock" Size="16" Title="سجل حركات المخزون" />
                                     </a>
                                 }
-                                <button class="btn btn-outline-danger" @onclick="() => ToggleActive(product)" title="@(product.IsActive ? "تعطيل" : "تفعيل")">
-                                    <WizzIcon Icon="@(product.IsActive ? "ban" : "check-circle")" Size="16" Title="@(product.IsActive ? "تعطيل" : "تفعيل")" />
-                                </button>
+                                <AuthorizeView Policy="@PermissionPolicy.ManageProducts">
+                                    <Authorized>
+                                        <button class="btn btn-outline-danger" @onclick="() => ToggleActive(product)" title="@(product.IsActive ? "تعطيل" : "تفعيل")">
+                                            <WizzIcon Icon="@(product.IsActive ? "ban" : "check-circle")" Size="16" Title="@(product.IsActive ? "تعطيل" : "تفعيل")" />
+                                        </button>
+                                    </Authorized>
+                                </AuthorizeView>
                             </div>
                         </td>
                     </tr>
@@ -357,9 +374,7 @@ else
         var store = await StoreRepo.GetAsync();
         inventoryEnabled = store?.InventoryEnabled == true;
 
-        var users = await UserRepo.GetAllAsync();
-        currentUserId = users.FirstOrDefault(u => u.IsActive && u.Role == UserRole.Admin)?.Id
-                        ?? users.FirstOrDefault(u => u.IsActive)?.Id;
+        currentUserId = await CurrentUser.IdAsync();
 
         await LoadProducts();
     }
@@ -485,8 +500,33 @@ else
         showCreateModal = true;
     }
 
+    /// <summary>يمنع تنفيذ عمليات المنتجات دون صلاحية ManageProducts ويسجل المحاولة المرفوضة.</summary>
+    private async Task<bool> EnsureCanManageAsync(string details, string? entityId = null)
+    {
+        if (await CurrentUser.HasPermissionAsync(Permission.ManageProducts)) return true;
+
+        await Audit.LogAsync(new AuditEntry(
+            AuditAction.PermissionDenied,
+            AuditOutcome.Denied,
+            currentUserId,
+            await CurrentUser.UsernameAsync(),
+            "Product",
+            entityId,
+            details));
+        await JS.InvokeVoidAsync("alert", "لا تملك الصلاحية لتنفيذ هذا الإجراء.");
+        return false;
+    }
+
     private async Task SaveProduct()
     {
+        var isUpdate = editingProduct != null;
+        if (!await EnsureCanManageAsync(
+                isUpdate ? "محاولة تعديل منتج دون صلاحية" : "محاولة إنشاء منتج دون صلاحية",
+                editingProduct?.Id.ToString()))
+        {
+            return;
+        }
+
         saving = true;
         try
         {
@@ -497,17 +537,45 @@ else
                 form.StockQuantity, form.ReorderLevel
             );
 
-            if (editingProduct != null)
+            if (isUpdate)
             {
-                var result = await UpdateProductUseCase.ExecuteAsync(editingProduct.Id, input);
-                if (result.IsSuccess) await JS.InvokeVoidAsync("alert", "تم تحديث المنتج بنجاح");
-                else await JS.InvokeVoidAsync("alert", $"خطأ: {string.Join(", ", result.Errors)}");
+                var result = await UpdateProductUseCase.ExecuteAsync(editingProduct!.Id, input);
+                if (result.IsSuccess)
+                {
+                    await Audit.LogAsync(new AuditEntry(
+                        AuditAction.ProductUpdated,
+                        AuditOutcome.Success,
+                        currentUserId,
+                        await CurrentUser.UsernameAsync(),
+                        "Product",
+                        editingProduct.Id.ToString(),
+                        $"تعديل المنتج: {form.Name}"));
+                    await JS.InvokeVoidAsync("alert", "تم تحديث المنتج بنجاح");
+                }
+                else
+                {
+                    await JS.InvokeVoidAsync("alert", $"خطأ: {string.Join(", ", result.Errors)}");
+                }
             }
             else
             {
                 var result = await CreateProductUseCase.ExecuteAsync(input);
-                if (result.IsSuccess) await JS.InvokeVoidAsync("alert", "تم إنشاء المنتج بنجاح");
-                else await JS.InvokeVoidAsync("alert", $"خطأ: {string.Join(", ", result.Errors)}");
+                if (result.IsSuccess)
+                {
+                    await Audit.LogAsync(new AuditEntry(
+                        AuditAction.ProductCreated,
+                        AuditOutcome.Success,
+                        currentUserId,
+                        await CurrentUser.UsernameAsync(),
+                        "Product",
+                        null,
+                        $"إنشاء المنتج: {form.Name}"));
+                    await JS.InvokeVoidAsync("alert", "تم إنشاء المنتج بنجاح");
+                }
+                else
+                {
+                    await JS.InvokeVoidAsync("alert", $"خطأ: {string.Join(", ", result.Errors)}");
+                }
             }
 
             CloseModal();
@@ -522,6 +590,13 @@ else
 
     private async Task ToggleActive(Wizz.Application.DTOs.ProductDto product)
     {
+        if (!await EnsureCanManageAsync(
+                product.IsActive ? "محاولة تعطيل منتج دون صلاحية" : "محاولة تفعيل منتج دون صلاحية",
+                product.Id.ToString()))
+        {
+            return;
+        }
+
         var action = product.IsActive ? "تعطيل" : "تفعيل";
         var confirmed = await JS.InvokeAsync<bool>("confirm", $"هل تريد {action} المنتج '{product.Name}'؟");
         if (!confirmed)
@@ -547,6 +622,14 @@ else
 
         ProductRepo.Update(entity);
         await UnitOfWork.SaveChangesAsync();
+        await Audit.LogAsync(new AuditEntry(
+            entity.IsActive ? AuditAction.ProductUpdated : AuditAction.ProductDeleted,
+            AuditOutcome.Success,
+            currentUserId,
+            await CurrentUser.UsernameAsync(),
+            "Product",
+            entity.Id.ToString(),
+            entity.IsActive ? $"تفعيل المنتج: {entity.Name}" : $"تعطيل المنتج: {entity.Name}"));
         await LoadProducts();
     }
 
@@ -583,6 +666,11 @@ else
     {
         if (adjustingProduct == null) return;
 
+        if (!await EnsureCanManageAsync("محاولة جرد مخزون دون صلاحية", adjustingProduct.Id.ToString()))
+        {
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(adjustReason))
         {
             await JS.InvokeVoidAsync("alert", "سبب التعديل مطلوب");
@@ -592,6 +680,7 @@ else
         savingAdjust = true;
         try
         {
+            var previousQuantity = adjustingProduct.StockQuantity;
             var result = await AdjustStockUseCase.ExecuteAsync(
                 adjustingProduct.Id, adjustQuantity, adjustReason.Trim(), currentUserId);
 
@@ -600,6 +689,15 @@ else
                 await JS.InvokeVoidAsync("alert", $"خطأ: {string.Join(", ", result.Errors)}");
                 return;
             }
+
+            await Audit.LogAsync(new AuditEntry(
+                AuditAction.StockAdjusted,
+                AuditOutcome.Success,
+                currentUserId,
+                await CurrentUser.UsernameAsync(),
+                "Product",
+                adjustingProduct.Id.ToString(),
+                $"جرد المخزون: {previousQuantity:N2} ← {adjustQuantity:N2} — السبب: {adjustReason.Trim()}"));
 
             CloseAdjust();
             await LoadProducts();

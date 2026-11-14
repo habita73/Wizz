@@ -1,7 +1,10 @@
 @page "/sales/history"
 @layout MainLayout
+@attribute [Authorize]
 @inject Wizz.Application.Abstractions.ISaleRepository SaleRepo
 @inject Wizz.Application.Abstractions.IUserRepository UserRepo
+@inject CurrentUser CurrentUser
+@inject SafeAudit Audit
 @inject Wizz.Application.Abstractions.IPrinter Printer
 @inject Wizz.Application.UseCases.Sales.ModifySaleUseCase ModifySaleUseCase
 @inject Wizz.Application.UseCases.Sales.CancelSaleUseCase CancelSaleUseCase
@@ -98,12 +101,20 @@ else
                                 </button>
                                 @if (sale.Status == SaleStatus.Completed)
                                 {
-                                    <button class="btn btn-outline-warning" @onclick="() => ModifySale(sale.Id)" title="تعديل">
-                                        <WizzIcon Icon="edit" Size="16" Title="تعديل" />
-                                    </button>
-                                    <button class="btn btn-outline-danger" @onclick="() => OpenCancelSale(sale.Id)" title="إلغاء">
-                                        <WizzIcon Icon="ban" Size="16" Title="إلغاء" />
-                                    </button>
+                                    <AuthorizeView Policy="@PermissionPolicy.ModifySale">
+                                        <Authorized>
+                                            <button class="btn btn-outline-warning" @onclick="() => ModifySale(sale.Id)" title="تعديل">
+                                                <WizzIcon Icon="edit" Size="16" Title="تعديل" />
+                                            </button>
+                                        </Authorized>
+                                    </AuthorizeView>
+                                    <AuthorizeView Policy="@PermissionPolicy.CancelSale">
+                                        <Authorized>
+                                            <button class="btn btn-outline-danger" @onclick="() => OpenCancelSale(sale.Id)" title="إلغاء">
+                                                <WizzIcon Icon="ban" Size="16" Title="إلغاء" />
+                                            </button>
+                                        </Authorized>
+                                    </AuthorizeView>
                                 }
                             </div>
                         </td>
@@ -171,6 +182,10 @@ else
                                 <label class="form-check-label">نعم، بيع آجل</label>
                             </div>
                         </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">سبب التعديل <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" @bind="modificationReason" placeholder="سبب التعديل يُحفظ في سجل البيع" />
                     </div>
                     <div class="table-responsive mb-3">
                         <table class="table table-sm table-bordered">
@@ -326,6 +341,7 @@ else
 
     private Guid? cancellingSaleId;
     private string cancellationReason = "";
+    private string modificationReason = "";
     private bool savingCancellation;
 
     private sealed class EditLineInput
@@ -344,8 +360,7 @@ else
     {
         var users = await UserRepo.GetAllAsync();
         cashierNames = users.ToDictionary(u => u.Id, u => u.FullName);
-        currentUserId = users.FirstOrDefault(u => u.IsActive && u.Role == UserRole.Admin)?.Id
-                        ?? users.FirstOrDefault(u => u.IsActive)?.Id;
+        currentUserId = await CurrentUser.IdAsync();
 
         await LoadSales();
     }
@@ -440,6 +455,7 @@ else
 
         modifyingSaleId = saleId;
         saleBeingModified = sale;
+        modificationReason = "";
         editDiscountString = sale.Discount.ToString("0.##");
         editPaidString = sale.Paid.ToString("0.##");
         editPaymentMethodString = ((int)sale.PaymentMethod).ToString();
@@ -468,12 +484,25 @@ else
         editPaidString = "0";
         editPaymentMethodString = "0";
         editDueDateString = "";
+        modificationReason = "";
         savingModification = false;
     }
 
     private async Task SubmitModifySale()
     {
         if (modifyingSaleId is null) return;
+
+        if (!await CurrentUser.HasPermissionAsync(Permission.ModifySale))
+        {
+            await DenyAsync("محاولة تعديل بيع دون صلاحية", "Sale", modifyingSaleId.Value);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(modificationReason))
+        {
+            await JS.InvokeVoidAsync("alert", "سبب التعديل مطلوب");
+            return;
+        }
 
         // تحليل القيم من السلاسل النصية
         if (!decimal.TryParse(editDiscountString, out var discount))
@@ -520,7 +549,12 @@ else
         savingModification = true;
         try
         {
-            var result = await ModifySaleUseCase.ExecuteAsync(modifyingSaleId.Value, input);
+            var actorId = await CurrentUser.IdAsync();
+            var result = await ModifySaleUseCase.ExecuteAsync(
+                modifyingSaleId.Value,
+                input,
+                actorId,
+                modificationReason.Trim());
 
             await JS.InvokeVoidAsync("alert", result.IsSuccess
                 ? "تم تعديل البيع بالكامل في مكانه وتعديل رصيد المخزون حسب فرق الكميات."
@@ -528,6 +562,14 @@ else
 
             if (result.IsSuccess)
             {
+                await Audit.LogAsync(new AuditEntry(
+                    AuditAction.SaleModified,
+                    AuditOutcome.Success,
+                    actorId,
+                    await CurrentUser.UsernameAsync(),
+                    "Sale",
+                    modifyingSaleId.Value.ToString(),
+                    $"سبب التعديل: {modificationReason.Trim()}"));
                 CloseModifySale();
             }
             await LoadSales();
@@ -544,15 +586,26 @@ else
 
     private async Task ModifySale(Guid saleId)
     {
+        if (!await CurrentUser.HasPermissionAsync(Permission.ModifySale))
+        {
+            await DenyAsync("محاولة فتح تعديل بيع دون صلاحية", "Sale", saleId);
+            return;
+        }
+
         OpenModifySale(saleId);
-        await Task.CompletedTask;
     }
 
-    private void OpenCancelSale(Guid saleId)
+    private async Task OpenCancelSale(Guid saleId)
     {
         if (currentUserId is null)
         {
-            JS.InvokeVoidAsync("alert", "لا يوجد مستخدم نشط لتنفيذ الإلغاء.");
+            await JS.InvokeVoidAsync("alert", "لا يوجد مستخدم نشط لتنفيذ الإلغاء.");
+            return;
+        }
+
+        if (!await CurrentUser.HasPermissionAsync(Permission.CancelSale))
+        {
+            await DenyAsync("محاولة فتح إلغاء بيع دون صلاحية", "Sale", saleId);
             return;
         }
 
@@ -576,6 +629,12 @@ else
             return;
         }
 
+        if (!await CurrentUser.HasPermissionAsync(Permission.CancelSale))
+        {
+            await DenyAsync("محاولة إلغاء بيع دون صلاحية", "Sale", cancellingSaleId.Value);
+            return;
+        }
+
         var confirmed = await JS.InvokeAsync<bool>("confirm", "هل أنت متأكد من إلغاء هذا البيع؟ لا يمكن التراجع.");
         if (!confirmed)
         {
@@ -592,6 +651,14 @@ else
 
             if (result.IsSuccess)
             {
+                await Audit.LogAsync(new AuditEntry(
+                    AuditAction.SaleCancelled,
+                    AuditOutcome.Success,
+                    currentUserId,
+                    await CurrentUser.UsernameAsync(),
+                    "Sale",
+                    cancellingSaleId.Value.ToString(),
+                    $"سبب الإلغاء: {cancellationReason.Trim()}"));
                 CloseCancelSale();
             }
             await LoadSales();
@@ -608,8 +675,20 @@ else
 
     private async Task CancelSale(Guid saleId)
     {
-        OpenCancelSale(saleId);
-        await Task.CompletedTask;
+        await OpenCancelSale(saleId);
+    }
+
+    private async Task DenyAsync(string details, string entityType, Guid entityId)
+    {
+        await Audit.LogAsync(new AuditEntry(
+            AuditAction.PermissionDenied,
+            AuditOutcome.Denied,
+            currentUserId,
+            await CurrentUser.UsernameAsync(),
+            entityType,
+            entityId.ToString(),
+            details));
+        await JS.InvokeVoidAsync("alert", "لا تملك الصلاحية لتنفيذ هذا الإجراء.");
     }
 
     private string GetCashierName(Guid? cashierId) =>

@@ -12,6 +12,12 @@ public sealed class User
     public DateTime CreatedAt { get; private set; }
     public DateTime? LastLoginAt { get; private set; }
 
+    /// <summary>
+    /// بصمة أمان تُضمَّن في كوكي الدخول وتُتحقق عند كل طلب. تتغير عند تعديل كلمة المرور
+    /// أو الدور أو تعطيل الحساب، فتُبطل الجلسات القديمة فورًا.
+    /// </summary>
+    public string SecurityStamp { get; private set; } = default!;
+
     private User() { } // EF Core
 
     public User(string username, string passwordHash, string fullName, UserRole role)
@@ -27,34 +33,46 @@ public sealed class User
         Role = role;
         IsActive = true;
         CreatedAt = DateTime.UtcNow;
+        SecurityStamp = NewSecurityStamp();
     }
 
-    /// <summary>تحديث الاسم الكامل والدور.</summary>
+    /// <summary>تحديث الاسم الكامل والدور. تغيير الدور يُبطل الجلسات القائمة.</summary>
     public void UpdateProfile(string fullName, UserRole? role = null)
     {
         if (string.IsNullOrWhiteSpace(fullName)) throw new ArgumentException("الاسم الكامل مطلوب", nameof(fullName));
 
         FullName = fullName.Trim();
-        if (role.HasValue)
+        if (role.HasValue && role.Value != Role)
         {
             Role = role.Value;
+            RotateSecurityStamp();
         }
     }
 
-    /// <summary>تغيير كلمة المرور (يُمرَّر التجزئة الجاهزة).</summary>
+    /// <summary>تغيير كلمة المرور (يُمرَّر التجزئة الجاهزة) وإبطال الجلسات القائمة.</summary>
     public void ChangePassword(string newPasswordHash)
     {
         if (string.IsNullOrWhiteSpace(newPasswordHash)) throw new ArgumentException("كلمة المرور مطلوبة", nameof(newPasswordHash));
         PasswordHash = newPasswordHash;
+        RotateSecurityStamp();
     }
+
+    /// <summary>إبطال كل جلسات هذا المستخدم دون تغيير كلمة المرور أو الدور.</summary>
+    public void RotateSecurityStamp() => SecurityStamp = NewSecurityStamp();
 
     public void RecordLogin() => LastLoginAt = DateTime.UtcNow;
 
     public void Activate() => IsActive = true;
 
-    public void Deactivate() => IsActive = false;
+    public void Deactivate()
+    {
+        IsActive = false;
+        RotateSecurityStamp();
+    }
 
     public bool HasPermission(Permission permission) => Role.HasPermission(permission);
+
+    private static string NewSecurityStamp() => Guid.NewGuid().ToString("N");
 }
 
 public enum UserRole { Cashier = 0, Manager = 1, Admin = 2 }
@@ -70,6 +88,8 @@ public enum Permission
     BackupRestore = 6,
     ManagePermissions = 7,
     AccessAI = 8,
+    CancelSale = 9,
+    ModifySale = 10,
 }
 
 public static class RolePermissions
@@ -83,10 +103,10 @@ public static class RolePermissions
             Permission.ViewProducts,
             Permission.ManageProducts,
             Permission.ViewReports,
-            Permission.ManageUsers,
             Permission.ManageStoreSettings,
-            Permission.BackupRestore,
             Permission.AccessAI,
+            Permission.CancelSale,
+            Permission.ModifySale,
         },
         [UserRole.Admin] = Enum.GetValues<Permission>(),
     };

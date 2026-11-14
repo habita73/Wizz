@@ -1,5 +1,6 @@
 @page "/debts"
 @layout MainLayout
+@attribute [Authorize]
 @inject Wizz.Application.Abstractions.ISaleRepository SaleRepo
 @inject Wizz.Application.Abstractions.IPrinter Printer
 @inject Wizz.Application.UseCases.Receipt.GenerateReceiptUseCase GenerateReceiptUseCase

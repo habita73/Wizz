@@ -1,0 +1,14 @@
+@page "/access-denied"
+@layout AuthLayout
+@attribute [AllowAnonymous]
+@inject NavigationManager Nav
+
+<PageTitle>لا تملك الصلاحية</PageTitle>
+
+<div class="auth-card text-center">
+    <h1 class="auth-title">لا تملك الصلاحية</h1>
+    <p class="auth-subtitle">
+        دورك الحالي لا يسمح بالوصول إلى هذه الصفحة. راجع مدير النظام إذا كنت تحتاج إلى صلاحية إضافية.
+    </p>
+    <a href="/" class="btn btn-primary">العودة إلى الرئيسية</a>
+</div>

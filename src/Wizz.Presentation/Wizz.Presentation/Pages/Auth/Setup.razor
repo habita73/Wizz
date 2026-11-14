@@ -1,0 +1,181 @@
+@page "/setup"
+@layout AuthLayout
+@attribute [AllowAnonymous]
+@attribute [ExcludeFromInteractiveRouting]
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using Microsoft.AspNetCore.Http
+@using Wizz.Application.Abstractions
+@using Wizz.Application.Security
+@using Wizz.Domain
+@using Wizz.Presentation.Security
+@inject IUserRepository UserRepo
+@inject IUnitOfWork UnitOfWork
+@inject SafeAudit Audit
+@inject NavigationManager Nav
+
+<PageTitle>إعداد أول تشغيل</PageTitle>
+
+<div class="auth-card">
+    <h1 class="auth-title">إعداد أول تشغيل</h1>
+    <p class="auth-subtitle">
+        لا توجد بيانات دخول جاهزة. أنشئ حساب مدير النظام الأول بكلمة مرور قوية خاصة بك.
+    </p>
+
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <div class="alert alert-danger small" role="alert">@error</div>
+    }
+
+    <EditForm Model="Input" FormName="setup" OnSubmit="CreateAdminAsync" method="post">
+        <div class="mb-3">
+            <label class="form-label" for="setup-username">اسم المستخدم</label>
+            <InputText id="setup-username" class="form-control" @bind-Value="Input.Username"
+                       autocomplete="username" autofocus />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="setup-fullname">الاسم الكامل</label>
+            <InputText id="setup-fullname" class="form-control" @bind-Value="Input.FullName"
+                       autocomplete="name" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="setup-password">كلمة المرور</label>
+            <InputText id="setup-password" type="password" class="form-control" @bind-Value="Input.Password"
+                       autocomplete="new-password" />
+            <div class="form-text">@PasswordPolicy.MinimumLength أحرف على الأقل، مع حرف ورقم.</div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="setup-confirm">تأكيد كلمة المرور</label>
+            <InputText id="setup-confirm" type="password" class="form-control" @bind-Value="Input.ConfirmPassword"
+                       autocomplete="new-password" />
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100" disabled="@busy">
+            @if (busy)
+            {
+                <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+            }
+            إنشاء الحساب والدخول
+        </button>
+    </EditForm>
+
+    <p class="auth-hint mt-3 mb-0">
+        هذا الإعداد متاح فقط عندما لا يوجد مدير نظام نشط. بعد الإنشاء تُدار الحسابات من صفحة الإعدادات.
+    </p>
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm(FormName = "setup")]
+    private SetupInput Input { get; set; } = new();
+
+    private string? error;
+    private bool busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var users = await UserRepo.GetAllAsync();
+        if (users.Any(u => u.IsActive && u.Role == UserRole.Admin))
+        {
+            Nav.NavigateTo(AuthRoutes.Login, replace: true);
+        }
+    }
+
+    private async Task CreateAdminAsync(EditContext _)
+    {
+        error = null;
+        busy = true;
+
+        try
+        {
+            var users = await UserRepo.GetAllAsync();
+            if (users.Any(u => u.IsActive && u.Role == UserRole.Admin))
+            {
+                Nav.NavigateTo(AuthRoutes.Login, forceLoad: true, replace: true);
+                return;
+            }
+
+            var username = (Input.Username ?? string.Empty).Trim();
+            var fullName = (Input.FullName ?? string.Empty).Trim();
+
+            if (username.Length < 3)
+            {
+                error = "اسم المستخدم يجب أن يكون 3 أحرف على الأقل.";
+                return;
+            }
+
+            if (username.Any(c => char.IsWhiteSpace(c)))
+            {
+                error = "اسم المستخدم لا يمكن أن يحتوي مسافات.";
+                return;
+            }
+
+            if (fullName.Length == 0)
+            {
+                error = "الاسم الكامل مطلوب.";
+                return;
+            }
+
+            var passwordErrors = PasswordPolicy.Validate(Input.Password);
+            if (passwordErrors.Count > 0)
+            {
+                error = string.Join(" | ", passwordErrors);
+                return;
+            }
+
+            if (!string.Equals(Input.Password, Input.ConfirmPassword, StringComparison.Ordinal))
+            {
+                error = "تأكيد كلمة المرور غير مطابق.";
+                return;
+            }
+
+            if (await UserRepo.ExistsUsernameAsync(username))
+            {
+                error = "اسم المستخدم مستخدم بالفعل.";
+                return;
+            }
+
+            var admin = new User(username, PasswordHasher.Hash(Input.Password), fullName, UserRole.Admin);
+            admin.RecordLogin();
+            await UserRepo.AddAsync(admin);
+            await UnitOfWork.SaveChangesAsync();
+
+            await Audit.LogAsync(new AuditEntry(
+                AuditAction.FirstRunSetup,
+                AuditOutcome.Success,
+                admin.Id,
+                admin.Username,
+                "User",
+                admin.Id.ToString(),
+                "إنشاء حساب مدير النظام الأول",
+                IpAddress));
+
+            var principal = UserClaimsFactory.Create(admin, CookieAuthenticationDefaults.AuthenticationScheme);
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+            Nav.NavigateTo("/", forceLoad: true, replace: true);
+        }
+        catch (Exception ex)
+        {
+            error = $"تعذر إنشاء الحساب: {ex.Message}";
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private string IpAddress => HttpContext?.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+
+    public sealed class SetupInput
+    {
+        public string Username { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+}

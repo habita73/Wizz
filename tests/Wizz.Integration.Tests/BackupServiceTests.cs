@@ -242,8 +242,8 @@ public sealed class BackupServiceTests : IAsyncLifetime
         cmd.CommandText = @"
             INSERT INTO Stores (Id, Name, Address, Phone, TaxNumber, CommercialRegister, Currency, TimeZone, InventoryEnabled, AllowCreditSales, CreatedAt)
             VALUES ('22222222-2222-2222-2222-222222222222', 'متجر الاختبار الرئيسي', 'الجزائر العاصمة', '+213 21 00 00 00', '000000000000000', '00/00-0000000', 'DZD', 'Africa/Algiers', 1, 1, '2026-01-01T00:00:00Z');
-            INSERT INTO Users (Id, Username, PasswordHash, FullName, Role, IsActive, CreatedAt)
-            VALUES ('33333333-3333-3333-3333-333333333333', 'testcashier', 'hashedhash', 'كاشير اختبار', 0, 1, '2026-01-01T00:00:00Z');
+            INSERT INTO Users (Id, Username, PasswordHash, FullName, Role, IsActive, CreatedAt, SecurityStamp)
+            VALUES ('33333333-3333-3333-3333-333333333333', 'testcashier', 'hashedhash', 'كاشير اختبار', 0, 1, '2026-01-01T00:00:00Z', 'test-security-stamp');
         ";
         if (_db.Database.GetDbConnection().State != System.Data.ConnectionState.Open)
             await _db.Database.GetDbConnection().OpenAsync();

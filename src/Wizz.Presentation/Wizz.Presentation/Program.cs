@@ -1,4 +1,6 @@
 using System.Globalization;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using Wizz.Application.Abstractions;
@@ -16,6 +18,8 @@ using Wizz.Domain;
 using Wizz.Infrastructure.Data;
 using Wizz.Infrastructure.Extensions;
 using Wizz.Presentation.Components;
+using Wizz.Presentation.Security;
+using Wizz.Presentation.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +28,66 @@ var builder = WebApplication.CreateBuilder(args);
 // ---------------------------------------------------------------------------
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+// ---------------------------------------------------------------------------
+// المصادقة والتفويض — كوكي آمن + سياسات صلاحيات مشتقة من مصفوفة الأدوار
+// ---------------------------------------------------------------------------
+builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddAntiforgery();
+
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.Cookie.Name = "wizz.auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.LoginPath = AuthRoutes.Login;
+        options.AccessDeniedPath = AuthRoutes.AccessDenied;
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = true;
+
+        // إبطال الجلسة فورًا عند تغيير كلمة المرور أو الدور أو تعطيل الحساب.
+        options.Events = new CookieAuthenticationEvents
+        {
+            OnValidatePrincipal = async context =>
+            {
+                var principal = context.Principal;
+                var idValue = principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                var stamp = principal?.FindFirst(UserClaimsFactory.SecurityStampClaimType)?.Value;
+
+                if (!Guid.TryParse(idValue, out var userId) || string.IsNullOrEmpty(stamp))
+                {
+                    context.RejectPrincipal();
+                    return;
+                }
+
+                var users = context.HttpContext.RequestServices.GetRequiredService<IUserRepository>();
+                var user = await users.GetByIdAsync(userId, context.HttpContext.RequestAborted);
+
+                if (user is null || !user.IsActive || !string.Equals(user.SecurityStamp, stamp, StringComparison.Ordinal))
+                {
+                    context.RejectPrincipal();
+                    await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                }
+            },
+        };
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    foreach (var permission in Enum.GetValues<Permission>())
+    {
+        options.AddPolicy(PermissionPolicy.For(permission), policy =>
+            policy.RequireClaim(PermissionPolicy.ClaimType, permission.ToString()));
+    }
+
+    options.AddPolicy("Role:Admin", policy => policy.RequireRole(nameof(UserRole.Admin)));
+});
+
+builder.Services.AddSingleton<LoginAttemptTracker>();
+builder.Services.AddScoped<CurrentUser>();
+builder.Services.AddScoped<SafeAudit>();
 
 builder.Services.AddWizzInfrastructure(
     connectionString: builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=wizz.db",
@@ -106,12 +170,36 @@ app.UseRequestLocalization(new RequestLocalizationOptions
 });
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 app.UseStaticFiles();
 app.MapStaticAssets();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+// تسجيل الخروج عبر POST. تعطيل التحقق من رمز مكافحة التزوير مقصود:
+// تسجيل الخروج لا يغيّر بيانات، وأي طلب له يقتصر على إنهاء جلسة صاحب المتصفح.
+app.MapPost(AuthRoutes.Logout, async (HttpContext context, SafeAudit audit) =>
+{
+    var idValue = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    var username = context.User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+    Guid? userId = Guid.TryParse(idValue, out var parsed) ? parsed : null;
+
+    await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    await audit.LogAsync(new AuditEntry(
+        AuditAction.Logout,
+        AuditOutcome.Success,
+        userId,
+        username,
+        "User",
+        userId?.ToString(),
+        "تسجيل خروج",
+        context.Connection.RemoteIpAddress?.ToString()));
+
+    return Results.Redirect(AuthRoutes.Login);
+}).DisableAntiforgery().RequireAuthorization();
 
 // ---------------------------------------------------------------------------
 // تهيئة قاعدة البيانات والبيانات الأولية
@@ -142,6 +230,7 @@ static async Task SeedAsync(IServiceProvider services)
     var userRepo = services.GetRequiredService<IUserRepository>();
     var productRepo = services.GetRequiredService<IProductRepository>();
     var unitOfWork = services.GetRequiredService<IUnitOfWork>();
+    var audit = services.GetRequiredService<IAuditLogger>();
 
     if (!await storeRepo.ExistsAsync())
     {
@@ -155,25 +244,32 @@ static async Task SeedAsync(IServiceProvider services)
         await unitOfWork.SaveChangesAsync();
     }
 
-    if (await userRepo.GetByUsernameAsync("admin") is null)
+    // إزالة بيانات الدخول الثابتة القديمة: أي حساب ما زال يستخدم كلمة المرور
+    // التجريبية المعروفة يُعطَّل فورًا، وتُطلب إعادة الإعداد الآمن من /setup.
+    foreach (var user in await userRepo.GetAllAsync())
     {
-        await userRepo.AddAsync(new User(
-            username: "admin",
-            passwordHash: PasswordHasher.Hash("Admin@123"),
-            fullName: "مدير النظام",
-            role: UserRole.Admin));
-    }
+        if (!user.IsActive) continue;
 
-    if (await userRepo.GetByUsernameAsync("cashier") is null)
-    {
-        await userRepo.AddAsync(new User(
-            username: "cashier",
-            passwordHash: PasswordHasher.Hash("Cashier@123"),
-            fullName: "كاشير افتراضي",
-            role: UserRole.Cashier));
-    }
+        var usesKnownDefault =
+            (string.Equals(user.Username, "admin", StringComparison.OrdinalIgnoreCase)
+                && PasswordHasher.Verify("Admin@123", user.PasswordHash))
+            || (string.Equals(user.Username, "cashier", StringComparison.OrdinalIgnoreCase)
+                && PasswordHasher.Verify("Cashier@123", user.PasswordHash));
 
-    await unitOfWork.SaveChangesAsync();
+        if (!usesKnownDefault) continue;
+
+        user.Deactivate();
+        userRepo.Update(user);
+        await unitOfWork.SaveChangesAsync();
+        await audit.LogAsync(new AuditEntry(
+            AuditAction.DefaultCredentialDisabled,
+            AuditOutcome.Success,
+            user.Id,
+            user.Username,
+            "User",
+            user.Id.ToString(),
+            "تعطيل حساب كان يستخدم كلمة مرور تجريبية معروفة"));
+    }
 
     if (await productRepo.CountAsync() > 0)
     {

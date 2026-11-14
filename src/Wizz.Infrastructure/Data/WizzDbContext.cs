@@ -16,6 +16,7 @@ public sealed class WizzDbContext : DbContext
     public DbSet<CashierShift> CashierShifts => Set<CashierShift>();
     public DbSet<Store> Stores => Set<Store>();
     public DbSet<User> Users => Set<User>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<DeviceRegistration> DeviceRegistrations => Set<DeviceRegistration>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
 
@@ -182,7 +183,23 @@ public sealed class WizzDbContext : DbContext
             b.Property(u => u.Username).IsRequired().HasMaxLength(100);
             b.Property(u => u.PasswordHash).IsRequired().HasMaxLength(500);
             b.Property(u => u.FullName).IsRequired().HasMaxLength(200);
+            b.Property(u => u.SecurityStamp).IsRequired().HasMaxLength(64);
             b.HasIndex(u => u.Username).IsUnique();
+        });
+
+        modelBuilder.Entity<AuditLog>(b =>
+        {
+            b.HasKey(a => a.Id);
+            b.Property(a => a.Username).HasMaxLength(100);
+            b.Property(a => a.Action).HasConversion<int>();
+            b.Property(a => a.Outcome).HasConversion<int>();
+            b.Property(a => a.EntityType).HasMaxLength(100);
+            b.Property(a => a.EntityId).HasMaxLength(100);
+            b.Property(a => a.Details).HasMaxLength(AuditLog.MaxDetailsLength);
+            b.Property(a => a.IpAddress).HasMaxLength(64);
+            b.HasIndex(a => a.OccurredAtUtc);
+            b.HasIndex(a => a.UserId);
+            b.HasIndex(a => new { a.Action, a.Outcome });
         });
 
         modelBuilder.Entity<DeviceRegistration>(b =>

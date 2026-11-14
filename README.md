@@ -6,7 +6,7 @@
 
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/download/dotnet/10.0)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/habita73/wizz/ci.yml?branch=main&logo=github-actions&logoColor=white)](https://github.com/habita73/wizz/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-269%2F269%20passing-brightgreen?logo=xunit&logoColor=white)](https://github.com/habita73/wizz/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-286%2F286%20passing-brightgreen?logo=xunit&logoColor=white)](https://github.com/habita73/wizz/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-coming%20soon-yellow)](https://github.com/habita73/wizz/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?logo=opensourceinitiative&logoColor=white)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/habita73/wizz?style=social)](https://github.com/habita73/wizz/stargazers)
@@ -128,6 +128,12 @@ Wizz.sln
 - SQLite محلي (ملف واحد، نسخ/استعادة بنسخ الملف)
 - نسخ احتياطي آلي/يدوي، استعادة في بيئة منفصلة للتحقق
 - تدقيق (Audit Trail) للعمليات الحساسة
+
+### 🔐 الأمان والمصادقة
+- دخول بكوكيز على جدول المستخدمين، تجزئة كلمات المرور PBKDF2-SHA256 مع ملح لكل كلمة
+- بصمة أمان تُبطل الجلسات فور تغيير كلمة المرور/الدور/التعطيل
+- سياسات صلاحيات على الصفحات ودوال العمليات، وقفل مؤقت بعد محاولات دخول فاشلة
+- إعداد أول تشغيل لإنشاء حساب مدير النظام، وتعطيل أي حساب افتراضي غير مُغيَّر
 
 ### 🤖 مساعد AI (محلي Ollama)
 - أدوات محددة: ملخص المبيعات، بحث منتج، معلومات المتجر
