@@ -1,0 +1,40 @@
+{
+  "package": "Vent au comptoir Documentation Pack",
+  "version": "0.6.0",
+  "date": "2026-11-14",
+  "status": "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_AUTHORIZED",
+  "execution_authorized": false,
+  "limited_execution_authorizations": [
+    "D-21 H-05 consistent backup and restore service",
+    "D-22 H-02 sale edit inside a single EF transaction"
+  ],
+  "active_files": [
+    "README.md",
+    "PROJECT_RULES.md",
+    "AGENTS.md",
+    "docs/PRODUCT_MASTER.md",
+    "docs/MVP_AND_ACCEPTANCE.md",
+    "docs/TECHNICAL_AND_SAFETY_RULES.md",
+    "docs/DECISIONS_AND_OPEN_GATES.md",
+    "docs/STOCK_AND_DOCUMENTS_MODEL_AR.md",
+    "docs/ARCHIVE_INDEX.md",
+    "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md"
+  ],
+  "archive_file_count": 56,
+  "archive_policy": "Archive files are historical, non-active references; do not load all archive files for routine tasks.",
+  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model, the cashier-shift gate and the stock document design.",
+  "mvp_status": "APPROVED",
+  "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21 and D-22.",
+  "change_summary": [
+    "Adopted the documents-as-truth model (D-23..D-29): sales, cancellations, purchases, waste, counts and returns are the single source of truth; stored stock is a derived cache.",
+    "Added the stock document design: document numbering, DocumentDate/CreatedAt separation, stock card, migration strategy and mandatory balance tests.",
+    "Recorded the cashier-shift close gate: retroactive sale edits only in the current open shift; afterwards corrections use new linked documents.",
+    "Clarified D-20 and corrected the G-08 contradiction; logged the limited H-05/H-02 execution authorizations with their evidence.",
+    "Added MVP acceptance items AT-19..AT-22 and refreshed the pack manifestations with new fingerprints."
+  ],
+  "review_findings": [
+    "No implementation or runtime tests were performed for the stock document model in this documentation update.",
+    "Execution remains unauthorized outside the recorded limited scopes (D-21, D-22).",
+    "MVP-AT-09 still requires a real restore test in a separate environment; documentation-truth items (H-06) remain open."
+  ]
+}

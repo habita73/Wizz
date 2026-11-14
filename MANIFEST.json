@@ -1,8 +1,8 @@
 {
   "package": "Vent au comptoir Documentation Pack",
-  "version": "0.5.4",
-  "date": "2026-10-16",
-  "status": "DOCUMENTATION_CLOSED_EXECUTION_NOT_AUTHORIZED",
+  "version": "0.6.0",
+  "date": "2026-11-14",
+  "status": "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_AUTHORIZED",
   "execution_authorized": false,
   "active_files": [
     "README.md",
@@ -12,215 +12,31 @@
     "docs/MVP_AND_ACCEPTANCE.md",
     "docs/TECHNICAL_AND_SAFETY_RULES.md",
     "docs/DECISIONS_AND_OPEN_GATES.md",
+    "docs/STOCK_AND_DOCUMENTS_MODEL_AR.md",
     "docs/ARCHIVE_INDEX.md",
     "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md"
   ],
   "archive_file_count": 56,
   "archive_policy": "Archive files are historical, non-active references; do not load all archive files for routine tasks.",
-  "preservation_note": "Previous detailed documents are preserved in archive/original-detailed-docs and related archive subfolders. v0.5.3 retained as prior baseline; v0.5.4 adds a consolidated closeout/handoff record.",
   "mvp_status": "APPROVED",
   "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains false.",
   "change_summary": [
-    "Added a consolidated closeout and developer handoff record to prevent repeated documentation cycles.",
-    "Recorded architecture items as approved direction versus proposals; Blazor Web App local-hosting details remain proposed pending validation.",
-    "Consolidated budget and schedule as estimates, legal gates as NEEDS-VALIDATION, and hardware/acceptance tests as not yet verified.",
-    "Explicitly closed the documentation phase while keeping implementation unauthorized."
+    "Adopted the documents-as-truth model (D-23..D-29): sales, cancellations, purchases, waste, counts and returns are the single source of truth; stored stock is a derived cache.",
+    "Added the stock document design: document numbering, DocumentDate/CreatedAt separation, stock card, migration strategy and mandatory balance tests.",
+    "Recorded the cashier-shift close gate: retroactive sale edits only in the current open shift; afterwards corrections use new linked documents.",
+    "Clarified D-20 and corrected the G-08 contradiction; logged the limited H-05/H-02 execution authorizations with their evidence.",
+    "Added MVP acceptance items AT-19..AT-22 and refreshed the pack manifestations with new fingerprints."
   ],
   "review_findings": [
-    "No implementation or runtime tests were performed in this documentation update.",
-    "Legal compliance and physical device compatibility remain unverified.",
-    "The budget and timeline are planning estimates, not verified market quotes."
+    "No implementation or runtime tests were performed for the stock document model in this documentation update.",
+    "Execution remains unauthorized outside the recorded limited scopes (D-21, D-22).",
+    "MVP-AT-09 still requires a real restore test in a separate environment; documentation-truth items (H-06) remain open."
   ],
   "files": [
     {
       "path": "AGENTS.md",
-      "size_bytes": 22787,
-      "sha256": "4c8a27f8c46cdd3bdccfc7997a8c76e59baf7fae68cbdf579ac84d1ae2a76ca3"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.5.2.json",
-      "size_bytes": 1189,
-      "sha256": "0622434afed632f3dfe4b7b3a9cab71a69bd9339752d41ea2de9b3ece94771b4"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.5.3.json",
-      "size_bytes": 1576,
-      "sha256": "a81af4cb7c7832d801e5a8952b1d3b82c8902fe34c15fa7703c3095b5f6bb683"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.5.4.json",
-      "size_bytes": 1820,
-      "sha256": "d38a4c24d905a35dd41faa50946e8e4b1a1d756a4a84cb7af6404f80cc98c13f"
-    },
-    {
-      "path": "PROJECT_RULES.md",
-      "size_bytes": 22650,
-      "sha256": "63bd2964a36ed022ad29c858f0e9a0cf49a384be1be9f6d9b9ece8218a79ef07"
-    },
-    {
-      "path": "README.md",
-      "size_bytes": 3702,
-      "sha256": "530f1d7d9f60037e7f05470e498edd4e668aa177910a3aaa465fc4915e00f961"
-    },
-    {
-      "path": "archive/PACK_MANIFEST_v0.3.9.json",
-      "size_bytes": 9430,
-      "sha256": "18eb08f1888f7330e8b6e81fb16cb561f402ce7ada96a4ee8cdaef531fe9c586"
-    },
-    {
-      "path": "archive/PACK_MANIFEST_v0.4.0.json",
-      "size_bytes": 9585,
-      "sha256": "672b69c75573a044f778fdb2e991b55e507b42ce2d4f75857f4b55ac461c2018"
-    },
-    {
-      "path": "archive/PACK_MANIFEST_v0.4.1.json",
-      "size_bytes": 9852,
-      "sha256": "72957fea5743df27361b7c1b599776833f8f5f637bc99f628ddb687f3f0d301c"
-    },
-    {
-      "path": "archive/PACK_MANIFEST_v0.5.0.json",
-      "size_bytes": 473,
-      "sha256": "8f16c7404d1677be6be78a1fb3e280a0195262a8e373f6775ae6e32e71f92254"
-    },
-    {
-      "path": "archive/README_ARCHIVE.md",
-      "size_bytes": 1408,
-      "sha256": "84090185eb9b28bc3e083aa06fefb092625fc2c5f0466c2f2f1727b5543384ce"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/DECISION_REGISTER.md",
-      "size_bytes": 3417,
-      "sha256": "f53a1197f59b5c6982c92a1d45c1d2fbe46255dc43800e5d7c55fc09397f8bc1"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/DECISION_TRACEABILITY_Q1-Q247.md",
-      "size_bytes": 38218,
-      "sha256": "97294883eb7cd2a948214b00e33c08eb5e3bcd84acb718b9b032316d4c94b529"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/DOCUMENTATION_WORKFLOW_AUDIT_v0.5.1.md",
-      "size_bytes": 1847,
-      "sha256": "145502ae8eed1e8f131b4b60aad25c76ccc6bbcce7c2c1f76fcdf335779247a8"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/FINAL_DOCUMENTATION_READINESS_AUDIT_v0.4.0.md",
-      "size_bytes": 8507,
-      "sha256": "63000b18136e39fe262abe8059775dde42b9184514f4ae543310779135f05df8"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/LEGAL_MARKET_RESEARCH_AUDIT_v0.2.4.md",
-      "size_bytes": 3033,
-      "sha256": "00c51e56c034404290abb959fe5f237d0eeaaec515934e04e5492b95962c7eea"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/LOCALIZATION_AND_RTL.md",
-      "size_bytes": 1365,
-      "sha256": "46637b628460728f793c3c8f305118b0f5df132ad86b9fac35d74be09c1fd2ad"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/MVP_ACCEPTANCE_TESTS_v0.3.1.md",
-      "size_bytes": 9995,
-      "sha256": "8d031016d01ce0c21e6179865639012e6bd7e9f2d3a7c120cba7ca89e2dfd361"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/MVP_ACCEPTANCE_TEST_AUDIT_v0.3.1.md",
-      "size_bytes": 1268,
-      "sha256": "67545fbb9c22c2e456b2b036fa5c5dd28c9f18f1cf824ebd3536335fa9713163"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/MVP_SCOPE_AUDIT_v0.2.8.md",
-      "size_bytes": 1023,
-      "sha256": "88007929bbbf9417147be4e5401a1fc36846ea4e7273382228180d5932ad79e7"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/MVP_SCOPE_AUDIT_v0.2.9.md",
-      "size_bytes": 927,
-      "sha256": "dc66e4ae924e9151d153e34139d544926cca51cb64f1e4c2ebdfb410e2232110"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/MVP_SCOPE_PROPOSAL.md",
-      "size_bytes": 11696,
-      "sha256": "a02c839f667c97bf229aa050c02104bfb33164521a36944152208a9f4dd6ac8a"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/OPEN_QUESTIONS.md",
-      "size_bytes": 2988,
-      "sha256": "cbc52b71627bb93f2f7d1c455abe9f7c9ac08f3ff5773da639600f7e9e9714de"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/PILOT_RECRUITMENT_AND_TEST_PLAN_v0.3.0.md",
-      "size_bytes": 4064,
-      "sha256": "b1dc245e6533393c67cfe9107797f803fdba93996e42311bd4a3573fe0c1c395"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/PRE_EXECUTION_DECISIONS_v0.2.9.md",
-      "size_bytes": 3675,
-      "sha256": "ab13dce590199a883fb2a86b4fe2cb54dc0f53a955d18159437d15eacd6bd5e6"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/PROJECT_BLUEPRINT.md",
-      "size_bytes": 63412,
-      "sha256": "9f78dec86fe559042395df6f93eb5ce2b1a0ecacc32d03429ee1067f13bf6d3a"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/QA_TRACEABILITY_AUDIT_v0.3.8.md",
-      "size_bytes": 2149,
-      "sha256": "122b502cc1258b4ab827ef226835316307ef3fb6f9ebfab7031b1b198b4f1c34"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/REQUIREMENTS_COVERAGE_AUDIT.md",
-      "size_bytes": 5884,
-      "sha256": "8c81c4fae0020c6a5fa3915aec891f6ab63f9ebfa00438d40a7dc8b2082cf578"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/REQUIREMENT_TRACEABILITY_MATRIX_v0.3.9.md",
-      "size_bytes": 17616,
-      "sha256": "43a6c2c4e6641228bd1cc5ac4699cef53bfc3426118da69bc6f6853fa6ce80e4"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/REQUIREMENT_TRACEABILITY_MATRIX_v0.4.1.md",
-      "size_bytes": 29876,
-      "sha256": "af0e9ecfc88f8c1caf938dcbdbf21fe25f190ceb0d7791158d2d0851b6088e3f"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/RESTORATION_AND_COMPLETENESS_AUDIT.md",
-      "size_bytes": 7004,
-      "sha256": "4917490bdbaf7ab619a5b8d86f4365251915d0153581fed58aaa6f2bcb22c81d"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/RISK_REGISTER.md",
-      "size_bytes": 1482,
-      "sha256": "52acdb7dee82cc6d56403e26b4476493b98104f45e5401abb94165dc9e0aa964"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/SECURITY_PRIVACY_AUDIT_v0.3.4.md",
-      "size_bytes": 1466,
-      "sha256": "5a478b2eb50b97610eb6b1366a70d01cb65e672259cab777f966bbe7116a59a4"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/SECURITY_PRIVACY_OPERATIONAL_CONTROLS_v0.3.4.md",
-      "size_bytes": 15605,
-      "sha256": "78f7a0b4fb7e4c3041333e6b6289e2a250cc8714a55f945e0ba5a3471bbb2638"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/TECHNICAL_VALIDATION_PLAN_v0.3.3.md",
-      "size_bytes": 7852,
-      "sha256": "3d4ce5b3432a724684770f6d2bbf64703dbeb837225729979e5d1efefa7e1021"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/TEST_STRATEGY.md",
-      "size_bytes": 1120,
-      "sha256": "f0815f4827c6349404e52724128d6bc4912a596a24f8131a7fc279621cb6b54a"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/TEST_STRATEGY_v0.3.8.md",
-      "size_bytes": 9857,
-      "sha256": "021889093d055984616fc35d5649f42c8a51f57666e7245c3ff2d7b25856b66f"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/WORKSPACE_AND_GIT_WORKFLOW.md",
-      "size_bytes": 1138,
-      "sha256": "0758d74e13a8dd7b49c650dc526eeaf69fa53bd0d42beba655f6971252e21a83"
+      "size_bytes": 22967,
+      "sha256": "1314706a1b59e7adcfbe15f645df423ce09f8a81bc5be192687dc65fbdd49db7"
     },
     {
       "path": "archive/original-detailed-docs/docs/architecture/AI_ARCHITECTURE.md",
@@ -253,14 +69,14 @@
       "sha256": "27a0530dca8841b1cb9c5049f50f5cc08ae9648c3f50f2ffbebf70a65d9a0f2c"
     },
     {
-      "path": "archive/original-detailed-docs/docs/business/BUSINESS_MODEL.md",
-      "size_bytes": 2351,
-      "sha256": "03dae5d50de1b42423f09e948cc59005b2a25789424d40d801fbcde1407c3297"
-    },
-    {
       "path": "archive/original-detailed-docs/docs/business/BUSINESS_MODEL_AND_RISK_AUDIT_v0.2.5.md",
       "size_bytes": 8106,
       "sha256": "c6e7490a72ddfff0407fdedf6556438057d072445a0189a39c3a54d4bcbcd3cf"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/business/BUSINESS_MODEL.md",
+      "size_bytes": 2351,
+      "sha256": "03dae5d50de1b42423f09e948cc59005b2a25789424d40d801fbcde1407c3297"
     },
     {
       "path": "archive/original-detailed-docs/docs/business/LICENSING_AND_SUBSCRIPTIONS.md",
@@ -271,6 +87,66 @@
       "path": "archive/original-detailed-docs/docs/compliance/ALGERIA_COMPLIANCE.md",
       "size_bytes": 12504,
       "sha256": "8940191a981678ff0109b1d3577f673f6362f01b456374041f5d3298e2497789"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/DECISION_REGISTER.md",
+      "size_bytes": 3417,
+      "sha256": "f53a1197f59b5c6982c92a1d45c1d2fbe46255dc43800e5d7c55fc09397f8bc1"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/DECISION_TRACEABILITY_Q1-Q247.md",
+      "size_bytes": 38218,
+      "sha256": "97294883eb7cd2a948214b00e33c08eb5e3bcd84acb718b9b032316d4c94b529"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/DOCUMENTATION_WORKFLOW_AUDIT_v0.5.1.md",
+      "size_bytes": 1847,
+      "sha256": "145502ae8eed1e8f131b4b60aad25c76ccc6bbcce7c2c1f76fcdf335779247a8"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/FINAL_DOCUMENTATION_READINESS_AUDIT_v0.4.0.md",
+      "size_bytes": 8507,
+      "sha256": "63000b18136e39fe262abe8059775dde42b9184514f4ae543310779135f05df8"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/LEGAL_MARKET_RESEARCH_AUDIT_v0.2.4.md",
+      "size_bytes": 3033,
+      "sha256": "00c51e56c034404290abb959fe5f237d0eeaaec515934e04e5492b95962c7eea"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/LOCALIZATION_AND_RTL.md",
+      "size_bytes": 1365,
+      "sha256": "46637b628460728f793c3c8f305118b0f5df132ad86b9fac35d74be09c1fd2ad"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/MVP_ACCEPTANCE_TEST_AUDIT_v0.3.1.md",
+      "size_bytes": 1268,
+      "sha256": "67545fbb9c22c2e456b2b036fa5c5dd28c9f18f1cf824ebd3536335fa9713163"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/MVP_ACCEPTANCE_TESTS_v0.3.1.md",
+      "size_bytes": 9995,
+      "sha256": "8d031016d01ce0c21e6179865639012e6bd7e9f2d3a7c120cba7ca89e2dfd361"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/MVP_SCOPE_AUDIT_v0.2.8.md",
+      "size_bytes": 1023,
+      "sha256": "88007929bbbf9417147be4e5401a1fc36846ea4e7273382228180d5932ad79e7"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/MVP_SCOPE_AUDIT_v0.2.9.md",
+      "size_bytes": 927,
+      "sha256": "dc66e4ae924e9151d153e34139d544926cca51cb64f1e4c2ebdfb410e2232110"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/MVP_SCOPE_PROPOSAL.md",
+      "size_bytes": 11696,
+      "sha256": "a02c839f667c97bf229aa050c02104bfb33164521a36944152208a9f4dd6ac8a"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/OPEN_QUESTIONS.md",
+      "size_bytes": 2988,
+      "sha256": "cbc52b71627bb93f2f7d1c455abe9f7c9ac08f3ff5773da639600f7e9e9714de"
     },
     {
       "path": "archive/original-detailed-docs/docs/operations/DATA_MIGRATION_AND_PORTABILITY_v0.3.7.md",
@@ -291,6 +167,101 @@
       "path": "archive/original-detailed-docs/docs/operations/VPS_AND_DEPLOYMENT.md",
       "size_bytes": 1020,
       "sha256": "b4598629a7560b37a9592694620f349de16e8cf34af1f64763e8bbd8bb38b873"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/PILOT_RECRUITMENT_AND_TEST_PLAN_v0.3.0.md",
+      "size_bytes": 4064,
+      "sha256": "b1dc245e6533393c67cfe9107797f803fdba93996e42311bd4a3573fe0c1c395"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/PRE_EXECUTION_DECISIONS_v0.2.9.md",
+      "size_bytes": 3675,
+      "sha256": "ab13dce590199a883fb2a86b4fe2cb54dc0f53a955d18159437d15eacd6bd5e6"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/PROJECT_BLUEPRINT.md",
+      "size_bytes": 63412,
+      "sha256": "9f78dec86fe559042395df6f93eb5ce2b1a0ecacc32d03429ee1067f13bf6d3a"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/QA_TRACEABILITY_AUDIT_v0.3.8.md",
+      "size_bytes": 2149,
+      "sha256": "122b502cc1258b4ab827ef226835316307ef3fb6f9ebfab7031b1b198b4f1c34"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/REQUIREMENT_TRACEABILITY_MATRIX_v0.3.9.md",
+      "size_bytes": 17616,
+      "sha256": "43a6c2c4e6641228bd1cc5ac4699cef53bfc3426118da69bc6f6853fa6ce80e4"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/REQUIREMENT_TRACEABILITY_MATRIX_v0.4.1.md",
+      "size_bytes": 29876,
+      "sha256": "af0e9ecfc88f8c1caf938dcbdbf21fe25f190ceb0d7791158d2d0851b6088e3f"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/REQUIREMENTS_COVERAGE_AUDIT.md",
+      "size_bytes": 5884,
+      "sha256": "8c81c4fae0020c6a5fa3915aec891f6ab63f9ebfa00438d40a7dc8b2082cf578"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/RESTORATION_AND_COMPLETENESS_AUDIT.md",
+      "size_bytes": 7004,
+      "sha256": "4917490bdbaf7ab619a5b8d86f4365251915d0153581fed58aaa6f2bcb22c81d"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/RISK_REGISTER.md",
+      "size_bytes": 1482,
+      "sha256": "52acdb7dee82cc6d56403e26b4476493b98104f45e5401abb94165dc9e0aa964"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/SECURITY_PRIVACY_AUDIT_v0.3.4.md",
+      "size_bytes": 1466,
+      "sha256": "5a478b2eb50b97610eb6b1366a70d01cb65e672259cab777f966bbe7116a59a4"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/SECURITY_PRIVACY_OPERATIONAL_CONTROLS_v0.3.4.md",
+      "size_bytes": 15605,
+      "sha256": "78f7a0b4fb7e4c3041333e6b6289e2a250cc8714a55f945e0ba5a3471bbb2638"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/TECHNICAL_VALIDATION_PLAN_v0.3.3.md",
+      "size_bytes": 7852,
+      "sha256": "3d4ce5b3432a724684770f6d2bbf64703dbeb837225729979e5d1efefa7e1021"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/TEST_STRATEGY_v0.3.8.md",
+      "size_bytes": 9857,
+      "sha256": "021889093d055984616fc35d5649f42c8a51f57666e7245c3ff2d7b25856b66f"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/TEST_STRATEGY.md",
+      "size_bytes": 1120,
+      "sha256": "f0815f4827c6349404e52724128d6bc4912a596a24f8131a7fc279621cb6b54a"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/WORKSPACE_AND_GIT_WORKFLOW.md",
+      "size_bytes": 1138,
+      "sha256": "0758d74e13a8dd7b49c650dc526eeaf69fa53bd0d42beba655f6971252e21a83"
+    },
+    {
+      "path": "archive/PACK_MANIFEST_v0.3.9.json",
+      "size_bytes": 9430,
+      "sha256": "18eb08f1888f7330e8b6e81fb16cb561f402ce7ada96a4ee8cdaef531fe9c586"
+    },
+    {
+      "path": "archive/PACK_MANIFEST_v0.4.0.json",
+      "size_bytes": 9585,
+      "sha256": "672b69c75573a044f778fdb2e991b55e507b42ce2d4f75857f4b55ac461c2018"
+    },
+    {
+      "path": "archive/PACK_MANIFEST_v0.4.1.json",
+      "size_bytes": 9852,
+      "sha256": "72957fea5743df27361b7c1b599776833f8f5f637bc99f628ddb687f3f0d301c"
+    },
+    {
+      "path": "archive/PACK_MANIFEST_v0.5.0.json",
+      "size_bytes": 473,
+      "sha256": "8f16c7404d1677be6be78a1fb3e280a0195262a8e373f6775ae6e32e71f92254"
     },
     {
       "path": "archive/prompts/00_MASTER_PROJECT_PROMPT_AR.md",
@@ -328,6 +299,11 @@
       "sha256": "76173952a449af1f2454bd1e6caf38eaadb653170e42a509cc949a364440a435"
     },
     {
+      "path": "archive/README_ARCHIVE.md",
+      "size_bytes": 1408,
+      "sha256": "84090185eb9b28bc3e083aa06fefb092625fc2c5f0466c2f2f1727b5543384ce"
+    },
+    {
       "path": "archive/source-project/README.md",
       "size_bytes": 317,
       "sha256": "b0fa3f18baeb3537a59b531939b31145ac12005f5406496a7acedc850b9dc207"
@@ -354,8 +330,8 @@
     },
     {
       "path": "docs/DECISIONS_AND_OPEN_GATES.md",
-      "size_bytes": 6556,
-      "sha256": "505b4f62c8761c09be563567aac53ddfcac2cfebbd0d1784b669f7cf8bcf6716"
+      "size_bytes": 14969,
+      "sha256": "f856252192e938cd3bbd46b8751213784ec43b4926a9a6239f934a2ee472cc84"
     },
     {
       "path": "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md",
@@ -364,18 +340,63 @@
     },
     {
       "path": "docs/MVP_AND_ACCEPTANCE.md",
-      "size_bytes": 13097,
-      "sha256": "4e379531200c7b17e1b93a2361cc28c092ade52dcdc292143b79230a02a3f4a7"
+      "size_bytes": 15023,
+      "sha256": "98f1e2472454d1372cdf41fb068d637874afd4393161d91c6a2928d38562e34c"
+    },
+    {
+      "path": "docs/operations/HANDOFF_2026-11-14_STOCK_DOCS_AR.md",
+      "size_bytes": 5703,
+      "sha256": "fbf057b38b25a884c324b2d77b6239c9be0f601b9cfaa2ffcb6ed8eed5f2eeb6"
     },
     {
       "path": "docs/PRODUCT_MASTER.md",
-      "size_bytes": 7240,
-      "sha256": "ab63d7204db6311593628c385578cc08531abc5b2ccbe1eaa054eb4265240a73"
+      "size_bytes": 7999,
+      "sha256": "88d3b42efe1036f3f2ee5149a9ff63e1047c7f128ab55ff49bbc3fd812e5a92a"
+    },
+    {
+      "path": "docs/STOCK_AND_DOCUMENTS_MODEL_AR.md",
+      "size_bytes": 18040,
+      "sha256": "036c0ad968b8f901301b0603c48724e9b2404ac426b7686feb58b6e6b9821ffa"
     },
     {
       "path": "docs/TECHNICAL_AND_SAFETY_RULES.md",
-      "size_bytes": 7495,
-      "sha256": "4a69dbbf5c4cc7a415196f178fd2c556af17c198e4b3d7d5bfea4907a598071e"
+      "size_bytes": 10088,
+      "sha256": "f6e6f03bb0f6adf8f2e076a949c813cc0845c5162e1d931963c1f2c21aefa456"
+    },
+    {
+      "path": "PACK_MANIFEST_v0.5.2.json",
+      "size_bytes": 1189,
+      "sha256": "0622434afed632f3dfe4b7b3a9cab71a69bd9339752d41ea2de9b3ece94771b4"
+    },
+    {
+      "path": "PACK_MANIFEST_v0.5.3.json",
+      "size_bytes": 1576,
+      "sha256": "a81af4cb7c7832d801e5a8952b1d3b82c8902fe34c15fa7703c3095b5f6bb683"
+    },
+    {
+      "path": "PACK_MANIFEST_v0.5.4.json",
+      "size_bytes": 1820,
+      "sha256": "d38a4c24d905a35dd41faa50946e8e4b1a1d756a4a84cb7af6404f80cc98c13f"
+    },
+    {
+      "path": "PACK_MANIFEST_v0.6.0.json",
+      "size_bytes": 2346,
+      "sha256": "77fb605323f3df548dc2766e8067417fab014efd4ac9c09f3e177823a256080d"
+    },
+    {
+      "path": "PROJECT_RULES.md",
+      "size_bytes": 24436,
+      "sha256": "2db38d738d7188ee352e2f4c5af5ecaddf807353968a846439a735ef162bd9b9"
+    },
+    {
+      "path": "README.md",
+      "size_bytes": 10405,
+      "sha256": "c1c9f10d4778981ddbcc4809a40193e936775d449e05e6b135958e86444cfbaa"
     }
-  ]
+  ],
+  "limited_execution_authorizations": [
+    "D-21 H-05 consistent backup and restore service",
+    "D-22 H-02 sale edit inside a single EF transaction"
+  ],
+  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model, the cashier-shift gate and the stock document design."
 }
