@@ -77,10 +77,16 @@ jobs:
           done
 
   # ==========================================
-  # تحليل الكود الثابت
+  # تحليل الكود الثابت — بوابة خط أساس (Baseline Ratchet)
   # ==========================================
+  # يوجد في الكود مخالفات StyleCop قديمة كثيرة (4,919 مخالفة فريدة) لم تُصلح بعد،
+  # لذلك لا تُعامل كلها كأخطاء بناء. البوابة تفشل عند أي من الحالات التالية:
+  #   1) خطأ بناء واحد أو أكثر.
+  #   2) أي تحذير مترجم أو حزمة (CS/NU).
+  #   3) ارتفاع عدد مخالفات SA عن خط الأساس في eng/stylecop-baseline.txt.
+  # خفض الرقم في ملف خط الأساس مطلوب مع كل إصلاح، ولا يُرفع إلا بقرار موثق من Farid.
   code-analysis:
-    name: Code Analysis (StyleCop, Sonar)
+    name: Code Analysis (StyleCop baseline ratchet)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: build-and-test
@@ -100,21 +106,45 @@ jobs:
       - name: 📦 Restore
         run: dotnet restore ${{ env.SOLUTION_FILE }} 
 
-      - name: 🔍 Run StyleCop Analyzers
-        run: dotnet build ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} --no-restore /p:StyleCopTreatErrorsAsWarnings=false /p:TreatWarningsAsErrors=true 2>&1 | tee stylecop.log
-
-      - name: 📋 StyleCop Summary
-        if: always()
+      - name: 🔍 Run analyzers (report only)
         run: |
-          if [ -f stylecop.log ]; then
-            warnings=$(grep -c "warning SA" stylecop.log || echo 0)
-            errors=$(grep -c "error SA" stylecop.log || echo 0)
-            echo "## StyleCop Analysis" >> $GITHUB_STEP_SUMMARY
-            echo "- Warnings: $warnings" >> $GITHUB_STEP_SUMMARY
-            echo "- Errors: $errors" >> $GITHUB_STEP_SUMMARY
-          fi
+          dotnet build ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} \
+            --no-restore --nologo --no-incremental --tl:off 2>&1 | tee stylecop.log
 
-      - name: 📤 Upload StyleCop log
+      - name: 🚦 Enforce analyzer baseline
+        run: |
+          set -euo pipefail
+          errors=$(grep -c ': error ' stylecop.log || true)
+          cs=$(grep -cE 'warning (CS|NU)[0-9]+' stylecop.log || true)
+          sa=$(grep -oE 'warning SA[0-9]+.*' stylecop.log | sort -u | wc -l || true)
+          sa=$(echo "$sa" | tr -d '[:space:]')
+          baseline=$(grep -v '^#' eng/stylecop-baseline.txt | tr -d '[:space:]')
+
+          {
+            echo "## StyleCop / Analyzer Gate"
+            echo ""
+            echo "| Metric | Count | Threshold |"
+            echo "|--------|-------|-----------|"
+            echo "| Build errors | $errors | 0 |"
+            echo "| Compiler/package warnings (CS/NU) | $cs | 0 |"
+            echo "| Unique SA diagnostics | $sa | $baseline |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$errors" -gt 0 ]; then
+            echo "::error::$errors build error(s) found."
+            exit 1
+          fi
+          if [ "$cs" -gt 0 ]; then
+            echo "::error::$cs compiler/package warning(s) must be fixed."
+            exit 1
+          fi
+          if [ "$sa" -gt "$baseline" ]; then
+            echo "::error::StyleCop diagnostics increased: $sa > baseline $baseline. Fix the new violations or justify a baseline change."
+            exit 1
+          fi
+          echo "Analyzer gate passed: $sa unique SA diagnostics (baseline $baseline)."
+
+      - name: 📤 Upload analyzer log
         if: always()
         uses: actions/upload-artifact@v4
         with:

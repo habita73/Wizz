@@ -28,8 +28,6 @@ public sealed class ModelRouter : IModelRouter
 
     private readonly object _statusGate = new();
     private DateTimeOffset _cloudCheckedAt = DateTimeOffset.MinValue;
-    private bool _cloudReachable;
-    private string _cloudCheckedHash = "";
     private string? _lastCloudError;
 
     public ModelRouter(
