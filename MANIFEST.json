@@ -1,6 +1,6 @@
 {
   "package": "Vent au comptoir Documentation Pack",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "date": "2026-11-14",
   "status": "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_AUTHORIZED",
   "execution_authorized": false,
@@ -19,21 +19,23 @@
   "archive_file_count": 57,
   "archive_policy": "Archive files are historical, non-active references; do not load all archive files for routine tasks.",
   "mvp_status": "APPROVED",
-  "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21, D-22, D-30 and D-31.",
+  "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21, D-22, D-30, D-31 and D-32.",
   "change_summary": [
-    "Implemented Phase 2 of the stock document model (D-31) and recorded its evidence; see docs/DECISIONS_AND_OPEN_GATES.md section 9.",
-    "Added CashierShift, Sale.ShiftId, the cancel/modify audit fields, the automatic shift open on the first sale, the D-24 edit-window gate and the MRB partial sales return.",
-    "Added the AddCashierShiftsAndSaleAudit migration with a filtered unique index preventing two open shifts for the same (store, cashier).",
-    "The stock card now shows a cancelled sale as the original outbound entry plus a cancel inbound entry dated CancelledAt, keeping the stored balance reconciled.",
-    "Updated the verified test counts to Domain 24/24 and Integration 245/245 (269 total).",
-    "Kept the approved MVP scope and confirmed the limited execution scopes D-21, D-22, D-30 and D-31; Phase 3 remains unauthorized.",
-    "Refreshed the pack manifestations with new fingerprints for v0.6.2."
+    "Implemented the H-04 security package (D-32) and recorded its evidence; see docs/DECISIONS_AND_OPEN_GATES.md section 9.",
+    "Added cookie authentication on the existing User table, PBKDF2-SHA256 password hashing, SecurityStamp session invalidation, the AuditLog entity and permission policies.",
+    "Added the first-run /setup page, automatic deactivation of accounts still using default passwords, and login lockout after repeated failures.",
+    "Tightened the role matrix and added CancelSale and ModifySale for Manager and Admin.",
+    "Added the AddAuditLogsAndUserSecurityStamp migration and added AuditLogs to the required backup tables.",
+    "Updated the verified test counts to Domain 24/24 and Integration 262/262 (286 total).",
+    "Kept the approved MVP scope and confirmed the limited execution scopes D-21, D-22, D-30, D-31 and D-32; Phase 3 remains unauthorized.",
+    "Refreshed the pack manifestations with new fingerprints for v0.6.3."
   ],
   "review_findings": [
-    "Phase 2 evidence: dotnet build Release = 0 errors; Domain 24/24; Integration 245/245; the 8 new tests (T-02a, T-02b, T-03, T-09, T-11, T-12, T-13, T-14) pass, including an upgrade test from the Phase 1 migration.",
-    "Execution remains unauthorized outside the recorded limited scopes (D-21, D-22, D-30, D-31).",
-    "Phase 3 (cash drawer, purchases, UI, permissions H-04, sync) is not implemented and not authorized.",
-    "MVP-AT-09 still requires a real restore test in a separate environment; MVP-AT-20 is now implemented within the Phase 2 scope."
+    "H-04 evidence: dotnet build Release = 0 errors; Domain 24/24; Integration 262/262; the 17 new tests cover PBKDF2 hashing, password policy, the role matrix, SecurityStamp rotation, login lockout, audit persistence and the migration upgrade.",
+    "HTTP smoke test on a temporary SQLite database: /, /settings, /products and /reports redirect to /login; /login and /setup return 200; creating the admin via /setup then logging in opens /settings; POST /auth/logout invalidates the session; /setup is closed once an active admin exists.",
+    "Execution remains unauthorized outside the recorded limited scopes (D-21, D-22, D-30, D-31, D-32).",
+    "Phase 3 (cash drawer, purchases, UI, sync) is not implemented and not authorized.",
+    "MVP-AT-09 still requires a real restore test in a separate environment."
   ],
   "files": [
     {
@@ -333,8 +335,8 @@
     },
     {
       "path": "docs/DECISIONS_AND_OPEN_GATES.md",
-      "size_bytes": 19861,
-      "sha256": "0b830aac8c2e5faa61daad334ab05ef9fbf071a0b495ca0b8460292e70d554bb"
+      "size_bytes": 23437,
+      "sha256": "6b50686fb77c0b84aa62e247da9ba09b9d398c1d5077ace095b2138939f22a49"
     },
     {
       "path": "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md",
@@ -350,6 +352,11 @@
       "path": "docs/operations/HANDOFF_2026-11-14_PHASE2_SHIFT_AR.md",
       "size_bytes": 6398,
       "sha256": "6332c8e37e48e2d3f9fe882ba562b41ca7c6673b943b5ae22d9955664d146550"
+    },
+    {
+      "path": "docs/operations/HANDOFF_2026-11-14_SECURITY_H04_AR.md",
+      "size_bytes": 8086,
+      "sha256": "c72e582af1eb7ad92215ed5edb8744bda8dacbc0c3c8e28f7df434f8c26a3646"
     },
     {
       "path": "docs/operations/HANDOFF_2026-11-14_STOCK_DOCS_AR.md",
@@ -402,21 +409,27 @@
       "sha256": "a394c1cba2dd451d2e22ac2c292e4f4f3c9dcf21064f91b1fa6a8f5dccb2df8c"
     },
     {
+      "path": "PACK_MANIFEST_v0.6.3.json",
+      "size_bytes": 3627,
+      "sha256": "6e7b85385bbcdcda7df3f22beb1346aa58eb2bba8844beaa08f8684e2a207baa"
+    },
+    {
       "path": "PROJECT_RULES.md",
       "size_bytes": 24436,
       "sha256": "2db38d738d7188ee352e2f4c5af5ecaddf807353968a846439a735ef162bd9b9"
     },
     {
       "path": "README.md",
-      "size_bytes": 10493,
-      "sha256": "9652a6c4f591406eab0dbcecc50e198d7fe6b1bcc90725f8357a2832214212cb"
+      "size_bytes": 11070,
+      "sha256": "4480e7f1cc064e3447ce5a94a915d7d307b0dd2d432ac7f57c19f5ab17f49947"
     }
   ],
   "limited_execution_authorizations": [
     "D-21 H-05 consistent backup and restore service",
     "D-22 H-02 sale edit inside a single EF transaction",
     "D-30 Phase 1 stock documents (StockDocument/DocumentSequence, numbering, opening/count/waste, migration, stock card)",
-    "D-31 Phase 2 cashier shift (CashierShift, shift gate over the current business day, sale cancel/modify audit fields, MRB sales return)"
+    "D-31 Phase 2 cashier shift (CashierShift, shift gate over the current business day, sale cancel/modify audit fields, MRB sales return)",
+    "D-32 H-04 security package (cookie authentication, PBKDF2 hashing, SecurityStamp session invalidation, audit log, permission policies, first-run setup, login lockout)"
   ],
-  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB)."
+  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB); v0.6.3 records the H-04 security implementation."
 }

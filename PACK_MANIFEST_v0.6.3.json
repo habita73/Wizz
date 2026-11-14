@@ -1,0 +1,46 @@
+{
+  "package": "Vent au comptoir Documentation Pack",
+  "version": "0.6.3",
+  "date": "2026-11-14",
+  "status": "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_AUTHORIZED",
+  "execution_authorized": false,
+  "limited_execution_authorizations": [
+    "D-21 H-05 consistent backup and restore service",
+    "D-22 H-02 sale edit inside a single EF transaction",
+    "D-30 Phase 1 stock documents (StockDocument/DocumentSequence, numbering, opening/count/waste, migration, stock card)",
+    "D-31 Phase 2 cashier shift (CashierShift, shift gate over the current business day, sale cancel/modify audit fields, MRB sales return)",
+    "D-32 H-04 security package (cookie authentication, PBKDF2 hashing, SecurityStamp session invalidation, audit log, permission policies, first-run setup, login lockout)"
+  ],
+  "active_files": [
+    "README.md",
+    "PROJECT_RULES.md",
+    "AGENTS.md",
+    "docs/PRODUCT_MASTER.md",
+    "docs/MVP_AND_ACCEPTANCE.md",
+    "docs/TECHNICAL_AND_SAFETY_RULES.md",
+    "docs/DECISIONS_AND_OPEN_GATES.md",
+    "docs/STOCK_AND_DOCUMENTS_MODEL_AR.md",
+    "docs/ARCHIVE_INDEX.md",
+    "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md"
+  ],
+  "archive_file_count": 57,
+  "archive_policy": "Archive files are historical, non-active references; do not load all archive files for routine tasks.",
+  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB); v0.6.3 records the H-04 security implementation.",
+  "mvp_status": "APPROVED",
+  "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21, D-22, D-30, D-31 and D-32.",
+  "change_summary": [
+    "Implemented the H-04 security package (D-32): cookie authentication on the existing User table, PBKDF2-SHA256 password hashing, SecurityStamp-based session invalidation, audit log, permission policies and first-run setup.",
+    "Added login lockout after repeated failures, automatic deactivation of accounts still using the default passwords, and removed the hard-coded credentials from Program.cs.",
+    "Tightened the role matrix: Manager loses ManageUsers, BackupRestore and ManagePermissions; CancelSale and ModifySale were added for Manager and Admin.",
+    "Added the AddAuditLogsAndUserSecurityStamp migration with the AuditLogs table and a backfilled SecurityStamp column, and added AuditLogs to the required backup tables.",
+    "Updated the verified test counts to Domain 24/24 and Integration 262/262 (286 total).",
+    "Kept the approved MVP scope and the Phase 3 boundary (cash, purchases, UI, sync) unchanged and unauthorized."
+  ],
+  "review_findings": [
+    "H-04 evidence: dotnet build Release = 0 errors; Domain 24/24; Integration 262/262; 17 new tests cover PBKDF2 hashing, password policy, the role matrix, SecurityStamp rotation, login lockout, audit persistence and the migration upgrade.",
+    "HTTP smoke test on a temporary SQLite database: /, /settings, /products and /reports redirect to /login; /login and /setup return 200; creating the admin via /setup then logging in opens /settings; POST /auth/logout invalidates the session; /setup is closed once an active admin exists.",
+    "Execution remains unauthorized outside the recorded limited scopes (D-21, D-22, D-30, D-31, D-32).",
+    "Phase 3 (cash drawer, purchases, UI, sync) is not implemented and not authorized.",
+    "MVP-AT-09 still requires a real restore test in a separate environment."
+  ]
+}
