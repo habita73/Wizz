@@ -381,8 +381,8 @@
     },
     {
       "path": "PACK_MANIFEST_v0.6.0.json",
-      "size_bytes": 2346,
-      "sha256": "77fb605323f3df548dc2766e8067417fab014efd4ac9c09f3e177823a256080d"
+      "size_bytes": 2307,
+      "sha256": "f8ccf3f270ae409dcb8654d0d6288cc27c75fde9d7ccd3ecb4080343ba1fe0da"
     },
     {
       "path": "PACK_MANIFEST_v0.6.1.json",
@@ -396,8 +396,8 @@
     },
     {
       "path": "README.md",
-      "size_bytes": 10457,
-      "sha256": "cc0440e9821bc68766a7a80cf48808df3a0c33a6f8f8a719971c904e501d8c38"
+      "size_bytes": 10456,
+      "sha256": "cec5c9d4d3608ef69f4636a40a05905c5670b94e25ce2f0701e568f6e4e2b8b7"
     }
   ],
   "limited_execution_authorizations": [

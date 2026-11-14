@@ -1,0 +1,5 @@
+# Line-ending policy for fingerprinted documentation files.
+# MANIFEST.json stores SHA-256 of these files; pinning LF keeps hashes
+# identical on a fresh checkout even when core.autocrlf=true.
+*.md text eol=lf
+*.json text eol=lf
