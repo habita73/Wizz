@@ -19,7 +19,7 @@ jobs:
   # بناء واختبار
   # ==========================================
   build-and-test:
-    name: Build & Test (.NET ${{ env.DOTNET_VERSION }})
+    name: Build & Test (.NET 10.0.x)
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -223,7 +223,7 @@ jobs:
           zip -r ../../wizz-win-x64-${{ github.event.release.tag_name }}.zip .
 
       - name: 🚀 Upload release asset
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: wizz-win-x64-${{ github.event.release.tag_name }}.zip
           generate_release_notes: true
