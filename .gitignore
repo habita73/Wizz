@@ -96,3 +96,4 @@ coverage.lcov
 # OS specific
 *.orig
 *.bak
+.fake
