@@ -16,7 +16,19 @@ public interface IBackupService
     Task DeleteBackupAsync(string backupPath, CancellationToken ct = default);
 }
 
-public sealed record BackupResult(bool Success, string? BackupPath, string? ErrorMessage, long SizeBytes, DateTime CreatedAt);
+public sealed record BackupResult(
+    bool Success,
+    string? BackupPath,
+    string? ErrorMessage,
+    long SizeBytes,
+    DateTime CreatedAt)
+{
+    /// <summary>مجموع التحقق (SHA-256) لملف النسخة الاحتياطية.</summary>
+    public string? Checksum { get; init; }
+
+    /// <summary>نتيجة التحقق من التكامل (PRAGMA integrity_check).</summary>
+    public string? IntegrityCheckResult { get; init; }
+}
 
 public sealed record RestoreResult(bool Success, string? ErrorMessage, int RestoredEntitiesCount);
 
