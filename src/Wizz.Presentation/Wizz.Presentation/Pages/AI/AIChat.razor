@@ -1,6 +1,7 @@
 @page "/ai"
 @layout MainLayout
 @attribute [Authorize(Policy = PermissionPolicy.AccessAI)]
+@rendermode InteractiveServer
 @using Wizz.Application.AI
 @using Wizz.Application.AI.Artifacts
 @using Wizz.Application.AI.History

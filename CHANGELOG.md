@@ -21,6 +21,12 @@
 - **ملفات المجتمع**: LICENSE (MIT)، CONTRIBUTING، CODE_OF_CONDUCT، SECURITY، SUPPORT
 - **توثيق**: README احترافي مع Badges، CHANGELOG
 
+### الإصلاحات (Fixed)
+- **توجيه الواجهة (2026-11-15):** تعارض التفاعل العام (`<Routes @rendermode="InteractiveServer" />`) مع استثناء
+  `/login` و`/setup` و`/access-denied` من التوجيه التفاعلي كان يجعلها تعرض 404 في المتصفح رغم استجابة الخادم 200،
+  فيتعذّر إنشاء المدير والدخول. صار `<Routes />` و`<HeadOutlet />` ثابتين، والتفاعل (`@rendermode InteractiveServer`)
+  على الصفحات التفاعلية الثماني فقط.
+
 ### الأمن (Security)
 - سياسة أمان (SECURITY.md) مع عملية إبلاغ ثغرات مسؤولة
 - Dependabot للتحديثات التلقائية للتبعيات

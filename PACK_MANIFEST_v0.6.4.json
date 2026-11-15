@@ -1,0 +1,45 @@
+{
+  "package": "Vent au comptoir Documentation Pack",
+  "version": "0.6.4",
+  "date": "2026-11-15",
+  "status": "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_AUTHORIZED",
+  "execution_authorized": false,
+  "limited_execution_authorizations": [
+    "D-21 H-05 consistent backup and restore service",
+    "D-22 H-02 sale edit inside a single EF transaction",
+    "D-30 Phase 1 stock documents (StockDocument/DocumentSequence, numbering, opening/count/waste, migration, stock card)",
+    "D-31 Phase 2 cashier shift (CashierShift, shift gate over the current business day, sale cancel/modify audit fields, MRB sales return)",
+    "D-32 H-04 security package (cookie authentication, PBKDF2 hashing, SecurityStamp session invalidation, audit log, permission policies, first-run setup, login lockout)"
+  ],
+  "active_files": [
+    "README.md",
+    "PROJECT_RULES.md",
+    "AGENTS.md",
+    "docs/PRODUCT_MASTER.md",
+    "docs/MVP_AND_ACCEPTANCE.md",
+    "docs/TECHNICAL_AND_SAFETY_RULES.md",
+    "docs/DECISIONS_AND_OPEN_GATES.md",
+    "docs/STOCK_AND_DOCUMENTS_MODEL_AR.md",
+    "docs/ARCHIVE_INDEX.md",
+    "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md"
+  ],
+  "archive_file_count": 57,
+  "archive_policy": "Archive files are historical, non-active references; do not load all archive files for routine tasks.",
+  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB); v0.6.3 records the H-04 security implementation; v0.6.4 records the routing correction applied on top of H-04.",
+  "mvp_status": "APPROVED",
+  "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21, D-22, D-30, D-31 and D-32.",
+  "change_summary": [
+    "Fixed a routing defect introduced by H-04: global interactive routing kept the excluded /login, /setup and /access-denied pages out of the interactive route table, so the browser replaced them with the 404 template even though the server returned 200.",
+    "Components/App.razor now renders static <Routes /> and <HeadOutlet />; the eight interactive pages carry @rendermode InteractiveServer instead.",
+    "Added @using static Microsoft.AspNetCore.Components.Web.RenderMode to the root _Imports.razor so per-page render modes resolve.",
+    "Recorded the correction and its evidence in docs/DECISIONS_AND_OPEN_GATES.md section 9 and in MVP_IMPLEMENTATION_STATUS.md.",
+    "No new decision, no scope change and no change to the limited execution authorizations; Phase 3 remains unauthorized."
+  ],
+  "review_findings": [
+    "Routing evidence: dotnet build Wizz.sln -c Release = 0 errors; Domain 24/24; Integration 262/262 (286 total).",
+    "Browser check on http://localhost:5183: /setup and /login keep their correct content and title after the Blazor circuit connects, with no 404 and no console errors; / redirects to /login and renders the form.",
+    "Isolated verification on a temporary SQLite database (deleted afterwards): creating the admin through /setup, logging in, then opening /products, /sales/new, /sales/history, /debts, /reports, /ai and /settings returned full pages with no 404.",
+    "Interactivity evidence: each interactive page emits one <!--Blazor:{\"type\":\"server\"} marker while /login and /setup emit none, and clicking the new-product button opened a modal without a page reload.",
+    "Limitation: the 286 automated tests do not cover browser routing, which is why neither the build nor CI caught this defect; navigation is now a full page load per page and authorization is still evaluated server-side on every request."
+  ]
+}

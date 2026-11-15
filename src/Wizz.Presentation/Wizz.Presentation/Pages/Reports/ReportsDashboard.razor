@@ -1,6 +1,7 @@
 @page "/reports"
 @layout MainLayout
 @attribute [Authorize(Policy = PermissionPolicy.ViewReports)]
+@rendermode InteractiveServer
 @inject Wizz.Application.Abstractions.ISaleRepository SaleRepo
 @inject Wizz.Application.Abstractions.IProductRepository ProductRepo
 

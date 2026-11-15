@@ -1,6 +1,7 @@
 @page "/settings"
 @layout MainLayout
 @attribute [Authorize(Policy = PermissionPolicy.ManageStoreSettings)]
+@rendermode InteractiveServer
 @inject Wizz.Application.Abstractions.IStoreRepository StoreRepo
 @inject Wizz.Application.Abstractions.IUserRepository UserRepo
 @inject Wizz.Application.Abstractions.IBackupService BackupService

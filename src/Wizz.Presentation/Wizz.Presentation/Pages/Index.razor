@@ -1,6 +1,7 @@
 @page "/"
 @layout MainLayout
 @attribute [Authorize]
+@rendermode InteractiveServer
 @inject Wizz.Application.Abstractions.ISaleRepository SaleRepo
 @inject Wizz.Application.Abstractions.IProductRepository ProductRepo
 @inject Wizz.Application.Abstractions.IStoreRepository StoreRepo

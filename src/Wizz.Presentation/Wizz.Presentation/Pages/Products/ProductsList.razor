@@ -1,6 +1,7 @@
 @page "/products"
 @layout MainLayout
 @attribute [Authorize(Policy = PermissionPolicy.ViewProducts)]
+@rendermode InteractiveServer
 @inject Wizz.Application.Abstractions.IProductRepository ProductRepo
 @inject Wizz.Application.Abstractions.IStoreRepository StoreRepo
 @inject CurrentUser CurrentUser

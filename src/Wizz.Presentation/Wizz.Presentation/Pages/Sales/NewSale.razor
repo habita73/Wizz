@@ -1,6 +1,7 @@
 @page "/sales/new"
 @layout MainLayout
 @attribute [Authorize(Policy = PermissionPolicy.CreateSale)]
+@rendermode InteractiveServer
 @inject IJSRuntime JS
 @inject Wizz.Application.Abstractions.IProductRepository ProductRepo
 @inject Wizz.Application.Abstractions.IStoreRepository StoreRepo

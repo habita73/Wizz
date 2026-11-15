@@ -1,6 +1,7 @@
 @page "/sales/history"
 @layout MainLayout
 @attribute [Authorize]
+@rendermode InteractiveServer
 @inject Wizz.Application.Abstractions.ISaleRepository SaleRepo
 @inject Wizz.Application.Abstractions.IUserRepository UserRepo
 @inject CurrentUser CurrentUser
