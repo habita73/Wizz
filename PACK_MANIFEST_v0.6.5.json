@@ -1,0 +1,42 @@
+{
+  "package": "Vent au comptoir Documentation Pack",
+  "version": "0.6.5",
+  "date": "2026-11-15",
+  "status": "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_AUTHORIZED",
+  "execution_authorized": false,
+  "limited_execution_authorizations": [
+    "D-21 H-05 consistent backup and restore service",
+    "D-22 H-02 sale edit inside a single EF transaction",
+    "D-30 Phase 1 stock documents (StockDocument/DocumentSequence, numbering, opening/count/waste, migration, stock card)",
+    "D-31 Phase 2 cashier shift (CashierShift, shift gate over the current business day, sale cancel/modify audit fields, MRB sales return)",
+    "D-32 H-04 security package (cookie authentication, PBKDF2 hashing, SecurityStamp session invalidation, audit log, permission policies, first-run setup, login lockout)"
+  ],
+  "active_files": [
+    "README.md",
+    "PROJECT_RULES.md",
+    "AGENTS.md",
+    "docs/PRODUCT_MASTER.md",
+    "docs/MVP_AND_ACCEPTANCE.md",
+    "docs/TECHNICAL_AND_SAFETY_RULES.md",
+    "docs/DECISIONS_AND_OPEN_GATES.md",
+    "docs/STOCK_AND_DOCUMENTS_MODEL_AR.md",
+    "docs/ARCHIVE_INDEX.md",
+    "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md"
+  ],
+  "archive_file_count": 57,
+  "archive_policy": "Archive files are historical, non-active references; do not load all archive files for routine tasks.",
+  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB); v0.6.3 records the H-04 security implementation; v0.6.4 records the routing correction applied on top of H-04; v0.6.5 records the standing communication-style rule requested by the owner.",
+  "mvp_status": "APPROVED",
+  "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21, D-22, D-30, D-31 and D-32.",
+  "change_summary": [
+    "Recorded the owner's standing communication rule as AGENTS.md section 14: explain work in plain, recognizable terms instead of internal codes in conversation, while leaving the project's own terminology and identifiers unchanged in files, code and approved documentation.",
+    "The rule covers conversation only: no code, scope, decision or authorization changes.",
+    "Carries forward the v0.6.4 routing correction (static <Routes /> and <HeadOutlet />, per-page @rendermode InteractiveServer) unchanged."
+  ],
+  "review_findings": [
+    "Documentation-only change: AGENTS.md section 14, the DECISIONS_AND_OPEN_GATES.md version record and the pack manifestations.",
+    "No source file was modified for this version, so the verified build and test evidence from v0.6.4 still applies: dotnet build Wizz.sln -c Release = 0 errors; Domain 24/24; Integration 262/262 (286 total).",
+    "Project terminology, decision identifiers and the limited execution scopes (D-21, D-22, D-30, D-31, D-32) are unchanged; Phase 3 remains unauthorized.",
+    "Fingerprints were regenerated and verified for every file listed in MANIFEST.json."
+  ]
+}

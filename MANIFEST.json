@@ -1,6 +1,6 @@
 {
   "package": "Vent au comptoir Documentation Pack",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "date": "2026-11-15",
   "status": "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_AUTHORIZED",
   "execution_authorized": false,
@@ -21,12 +21,10 @@
   "mvp_status": "APPROVED",
   "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21, D-22, D-30, D-31 and D-32.",
   "change_summary": [
-    "Fixed the routing defect introduced by H-04: global interactive routing excluded /login, /setup and /access-denied from the interactive route table, so the browser replaced them with the 404 template even though the server returned 200.",
-    "Components/App.razor now renders static <Routes /> and <HeadOutlet />; the eight interactive pages carry @rendermode InteractiveServer instead.",
-    "Added @using static Microsoft.AspNetCore.Components.Web.RenderMode to the root _Imports.razor so per-page render modes resolve.",
-    "Recorded the correction and its evidence in docs/DECISIONS_AND_OPEN_GATES.md section 9, in MVP_IMPLEMENTATION_STATUS.md and in CHANGELOG.md.",
-    "Kept the approved MVP scope and the limited execution scopes D-21, D-22, D-30, D-31 and D-32; Phase 3 remains unauthorized.",
-    "Refreshed the pack manifestations with new fingerprints for v0.6.4."
+    "Recorded the owner's standing communication rule as AGENTS.md section 14: explain work in plain, recognizable terms instead of internal codes in conversation, while leaving the project's own terminology and identifiers unchanged in files, code and approved documentation.",
+    "The rule covers conversation only: no code, scope, decision or authorization changes.",
+    "Carries forward the v0.6.4 routing correction (static <Routes /> and <HeadOutlet />, per-page @rendermode InteractiveServer) unchanged.",
+    "Refreshed the pack manifestations with new fingerprints for v0.6.5."
   ],
   "review_findings": [
     "Routing fix evidence: dotnet build Wizz.sln -c Release = 0 errors; Domain 24/24; Integration 262/262 (286 total).",
@@ -41,8 +39,8 @@
   "files": [
     {
       "path": "AGENTS.md",
-      "size_bytes": 22967,
-      "sha256": "d4506f360a66a2704735679f0d129dd32aa847f683c6aeeae1c827b8c40debac"
+      "size_bytes": 24490,
+      "sha256": "ce27d43ed18ac88c02506c7e187d3d7aaee62ff278d8f619283beff85575284c"
     },
     {
       "path": "archive/original-detailed-docs/docs/architecture/AI_ARCHITECTURE.md",
@@ -336,8 +334,8 @@
     },
     {
       "path": "docs/DECISIONS_AND_OPEN_GATES.md",
-      "size_bytes": 26883,
-      "sha256": "8354e8d6b02646a14b8c4eda3a8de4ceb9cb659fbc529f0eedb8f31c5bb4e612"
+      "size_bytes": 27434,
+      "sha256": "b0f86247458b94877b874c0ecd137662d5f7e5a795dd46a435c282d759d683e1"
     },
     {
       "path": "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md",
@@ -420,6 +418,11 @@
       "sha256": "3f70fb4cd1bad48c4c4596d7e29482db97c70ee46e45c9edd20faa6b7e0a0da9"
     },
     {
+      "path": "PACK_MANIFEST_v0.6.5.json",
+      "size_bytes": 3113,
+      "sha256": "455dc91a84ea412fd4a1ccbc58b3e8be2d0653c6f31c2c1be8a19da9078a603b"
+    },
+    {
       "path": "PROJECT_RULES.md",
       "size_bytes": 24436,
       "sha256": "2db38d738d7188ee352e2f4c5af5ecaddf807353968a846439a735ef162bd9b9"
@@ -437,5 +440,5 @@
     "D-31 Phase 2 cashier shift (CashierShift, shift gate over the current business day, sale cancel/modify audit fields, MRB sales return)",
     "D-32 H-04 security package (cookie authentication, PBKDF2 hashing, SecurityStamp session invalidation, audit log, permission policies, first-run setup, login lockout)"
   ],
-  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB); v0.6.3 records the H-04 security implementation; v0.6.4 records the routing correction applied on top of H-04."
+  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB); v0.6.3 records the H-04 security implementation; v0.6.4 records the routing correction applied on top of H-04; v0.6.5 records the standing communication-style rule requested by the owner."
 }
