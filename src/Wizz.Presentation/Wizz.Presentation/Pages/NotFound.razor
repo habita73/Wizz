@@ -1,0 +1,51 @@
+@page "/{*path:nonfile}"
+@layout MainLayout
+@attribute [AllowAnonymous]
+
+@* صفحة «الرابط غير موجود». تلتقط أي مسار غير معروف بدل الاستجابة الفارغة،
+   وتُعرض بسمة النظام الحالية (فاتح/داكن) مع إبقاء رمز الحالة 404.
+   القيد :nonfile يستثني طلبات الملفات (صور، خطوط، سكربتات) فتبقى 404 كما يجب. *@
+
+<PageTitle>الصفحة غير موجودة — Wizz</PageTitle>
+
+<div class="notfound-wrap">
+    <div class="card notfound-card">
+        <div class="card-body text-center py-5">
+            <div class="notfound-code">404</div>
+            <h1 class="h4 mb-2">هذه الصفحة غير موجودة</h1>
+            <p class="notfound-text mb-4">
+                قد يكون الرابط قديماً أو أن الصفحة نُقلت أو حُذفت.
+                لم يتغيّر أي شيء في بياناتك أو فواتيرك أو سلة البيع المحفوظة.
+            </p>
+            <div class="d-flex gap-2 justify-content-center flex-wrap">
+                <a class="btn btn-primary" href="/">العودة إلى الرئيسية</a>
+                <a class="btn btn-outline-secondary" href="/sales/new">فتح شاشة البيع</a>
+            </div>
+            <p class="notfound-hint mb-0">
+                إن وصلت إلى هنا من زر داخل النظام، فأبلغنا بالصفحة التي كنت فيها لنصلح الرابط.
+            </p>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    // مطلوب لقالب المسار الشامل؛ حذف هذه الخاصية يجعل كل رابط غير معروف يفشل بخطأ 500.
+    /// <summary>المسار المطلوب كما وصل — يُمرّره الموجّه من قالب المسار.</summary>
+    [Parameter]
+    public string? Path { get; set; }
+
+    protected override void OnInitialized()
+    {
+        // رمز الحالة 404 يُضبط لحظة إرسال الترويسات، أي بعد بناء الصفحة.
+        // (ضبطه قبل العرض يمنع ظهور جسم الصفحة في هذا الإصدار من الإطار.)
+        HttpContext?.Response.OnStarting(
+            () =>
+            {
+                HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
+                return Task.CompletedTask;
+            });
+    }
+}

@@ -2498,3 +2498,35 @@ html:not([data-theme]) {
   color-scheme: light;
 }
 
+/* صفحة «الرابط غير موجود» — تُعرض بدل الصفحة الفارغة، بسمة النظام الحالية. */
+.notfound-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
+.notfound-card {
+  width: min(34rem, 100%);
+}
+
+.notfound-code {
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  color: var(--wizz-primary);
+  margin-bottom: 0.4rem;
+}
+
+.notfound-text {
+  color: var(--wizz-text-secondary);
+  line-height: 1.7;
+}
+
+.notfound-hint {
+  margin-top: 1.25rem;
+  font-size: 0.78rem;
+  color: var(--wizz-text-muted);
+}
+
+

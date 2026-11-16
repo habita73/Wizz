@@ -159,12 +159,6 @@ else
                                         }
                                     </Authorized>
                                 </AuthorizeView>
-                                @if (!product.IsService)
-                                {
-                                    <a class="btn btn-outline-secondary" href="/stock-movements?productId=@product.Id" title="سجل حركات المخزون">
-                                        <WizzIcon Icon="clock" Size="16" Title="سجل حركات المخزون" />
-                                    </a>
-                                }
                                 <AuthorizeView Policy="@PermissionPolicy.ManageProducts">
                                     <Authorized>
                                         <button class="btn btn-outline-danger" @onclick="() => ToggleActive(product)" title="@(product.IsActive ? "تعطيل" : "تفعيل")">
