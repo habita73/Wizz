@@ -1,8 +1,9 @@
 @using Wizz.Application.UseCases.Store
 
 @* لوحة الإعدادات السريعة — تُعرض دون مغادرة الصفحة الحالية.
-   الغرض: تعديل تفضيلات العرض فقط (المظهر، حجم الخط، الكثافة) ورؤية معلومات
-   المتجر للقراءة دون فقدان عمل جارٍ مثل سلة بيع غير مكتملة.
+   الغرض: تعديل تفضيلات العرض والراحة الشخصية فقط (المظهر، حجم الخط، الكثافة،
+   التباين، الحركة، أهداف اللمس، حفظ السلة غير المكتملة) ورؤية معلومات المتجر
+   للقراءة، دون فقدان عمل جارٍ مثل سلة بيع غير مكتملة.
    الإعدادات المؤثرة في البيانات (العملة، طريقة الحساب، الصلاحيات…) تبقى في
    صفحة الإعدادات الكاملة، وتظهر هنا للقراءة فقط. *@
 
@@ -53,6 +54,63 @@
             <p class="wizz-qs-note">تُطبَّق على هذا الجهاز فقط، ولا تمس البيانات ولا الفاتورة الجارية.</p>
         </section>
 
+        <section class="wizz-qs-section">
+            <h3 class="wizz-qs-label">سهولة القراءة والاستخدام</h3>
+
+            <p class="wizz-qs-sublabel">تباين الألوان</p>
+            <div class="wizz-qs-segment" role="group" aria-label="تباين الألوان">
+                <button type="button" class="wizz-qs-option" data-wizz-qs-contrast="normal" aria-pressed="false">عادي</button>
+                <button type="button" class="wizz-qs-option" data-wizz-qs-contrast="high" aria-pressed="false">عالٍ</button>
+            </div>
+
+            <p class="wizz-qs-sublabel">الحركة والانتقالات</p>
+            <div class="wizz-qs-segment" role="group" aria-label="الحركة والانتقالات">
+                <button type="button" class="wizz-qs-option" data-wizz-qs-motion="normal" aria-pressed="false">عادية</button>
+                <button type="button" class="wizz-qs-option" data-wizz-qs-motion="reduce" aria-pressed="false">مخففة</button>
+            </div>
+
+            <p class="wizz-qs-sublabel">حجم أهداف اللمس</p>
+            <div class="wizz-qs-segment" role="group" aria-label="حجم أهداف اللمس">
+                <button type="button" class="wizz-qs-option" data-wizz-qs-targets="normal" aria-pressed="false">عادية</button>
+                <button type="button" class="wizz-qs-option" data-wizz-qs-targets="large" aria-pressed="false">كبيرة</button>
+            </div>
+            <p class="wizz-qs-note">التباين العالي والحركة المخففة والأهداف الكبيرة تفيد الشاشات المضاءة والأجهزة اللوحية.</p>
+        </section>
+
+        <section class="wizz-qs-section">
+            <h3 class="wizz-qs-label">حفظ السلة غير المكتملة</h3>
+            <div class="wizz-qs-segment" role="group" aria-label="حفظ السلة غير المكتملة">
+                <button type="button" class="wizz-qs-option" data-wizz-qs-draft="on" aria-pressed="false">مفعّل</button>
+                <button type="button" class="wizz-qs-option" data-wizz-qs-draft="off" aria-pressed="false">متوقف</button>
+            </div>
+            <p class="wizz-qs-note">
+                عند التفعيل تُسترجع سلة البيع عند العودة إلى الشاشة بعد إغلاق المتصفح أو انقطاع.
+                الإيقاف يمسح المسودة المحفوظة ويمنع حفظ سلال جديدة، وهو الأنسب للأجهزة المشتركة.
+            </p>
+        </section>
+
+        <details class="wizz-qs-details">
+            <summary class="wizz-qs-details-summary">
+                <WizzIcon Icon="keyboard" Size="16" />
+                <span>اختصارات لوحة المفاتيح</span>
+                <WizzIcon Icon="chevron-down" Size="16" Class="wizz-qs-details-chevron" />
+            </summary>
+            <ul class="shortcut-list wizz-qs-shortcuts">
+                @foreach (var shortcut in Shortcuts)
+                {
+                    <li class="shortcut-row">
+                        <span class="shortcut-label">@shortcut.Label</span>
+                        <span class="shortcut-keys">
+                            @foreach (var key in shortcut.Keys)
+                            {
+                                <kbd>@key</kbd>
+                            }
+                        </span>
+                    </li>
+                }
+            </ul>
+        </details>
+
         <section class="wizz-qs-section wizz-qs-overview">
             <h3 class="wizz-qs-label">نظرة سريعة (للقراءة)</h3>
             <dl class="wizz-qs-facts">
@@ -81,12 +139,26 @@
     </div>
 
     <footer class="wizz-qs-footer">
-        <span><kbd>F1</kbd> أو <kbd>?</kbd> لفتح اللوحة</span>
-        <span><kbd>Esc</kbd> للإغلاق</span>
+        <span><kbd>F1</kbd> أو <kbd>?</kbd> للفتح · <kbd>Esc</kbd> للإغلاق</span>
+        <button type="button" class="wizz-qs-reset" data-wizz-qs-reset>استعادة الافتراضي</button>
     </footer>
 </aside>
 
 @code {
+    /// <summary>مرجع اختصارات لوحة المفاتيح المعروضة في اللوحة.</summary>
+    private static readonly (string Label, string[] Keys)[] Shortcuts =
+    {
+        ("فتح/إغلاق الإعدادات السريعة", new[] { "F1" }),
+        ("فتح الإعدادات السريعة", new[] { "?" }),
+        ("بيع جديد", new[] { "Alt", "1" }),
+        ("الديون المستحقة", new[] { "Alt", "2" }),
+        ("الفواتير المتأخرة", new[] { "Alt", "3" }),
+        ("سجل المبيعات", new[] { "Alt", "4" }),
+        ("تنفيذ الإجراء الافتراضي في النموذج", new[] { "Enter" }),
+        ("إلغاء / إغلاق النافذة", new[] { "Esc" }),
+        ("سطر جديد في المساعد", new[] { "Shift", "Enter" })
+    };
+
     private string storeName = "—";
     private string currency = "—";
     private string creditSales = "—";

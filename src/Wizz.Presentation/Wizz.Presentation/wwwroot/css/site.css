@@ -2399,6 +2399,78 @@ summary:focus-visible,
   line-height: 1.5;
 }
 
+.wizz-qs-sublabel {
+  margin: 0.55rem 0 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--wizz-text-secondary);
+}
+
+.wizz-qs-sublabel:first-of-type {
+  margin-top: 0;
+}
+
+.wizz-qs-details {
+  border-top: 1px solid var(--wizz-border-light);
+  padding-top: 0.75rem;
+}
+
+.wizz-qs-details-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0;
+  list-style: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--wizz-text-secondary);
+}
+
+.wizz-qs-details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.wizz-qs-details-summary:hover {
+  color: var(--wizz-text);
+}
+
+.wizz-qs-details-chevron {
+  margin-inline-start: auto;
+  transition: var(--wizz-transition);
+}
+
+.wizz-qs-details[open] .wizz-qs-details-chevron {
+  transform: rotate(180deg);
+}
+
+.wizz-qs-shortcuts {
+  margin-top: 0.4rem;
+}
+
+.wizz-qs-shortcuts .shortcut-row {
+  padding: 0.3rem 0;
+}
+
+.wizz-qs-shortcuts .shortcut-label {
+  font-size: 0.78rem;
+}
+
+.wizz-qs-reset {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--wizz-primary);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wizz-qs-reset:hover,
+.wizz-qs-reset:focus-visible {
+  text-decoration: underline;
+}
+
 .wizz-qs-overview {
   border-top: 1px solid var(--wizz-border-light);
   padding-top: 0.85rem;
@@ -2436,6 +2508,7 @@ summary:focus-visible,
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+  flex-wrap: wrap;
   padding: 0.55rem 0.9rem;
   border-top: 1px solid var(--wizz-border);
   font-size: 0.7rem;
@@ -2456,7 +2529,8 @@ summary:focus-visible,
 }
 
 /* ============================================================
-   تفضيلات العرض: حجم الخط وكثافة الواجهة (تُحفظ في المتصفح)
+   تفضيلات العرض: حجم الخط، الكثافة، التباين، الحركة، أهداف اللمس
+   (تُحفظ في المتصفح على هذا الجهاز فقط)
    ============================================================ */
 html[data-fontsize="small"] {
   font-size: 93.75%;
@@ -2464,6 +2538,66 @@ html[data-fontsize="small"] {
 
 html[data-fontsize="large"] {
   font-size: 112.5%;
+}
+
+/* تباين عالٍ: نصوص وحدود أوضح، مع الحفاظ على الألوان الدلالية. */
+html[data-contrast="high"] {
+  --wizz-text-secondary: #1f2937;
+  --wizz-text-muted: #334155;
+  --wizz-border: #94a3b8;
+  --wizz-border-light: #cbd5e1;
+}
+
+html[data-theme="dark"][data-contrast="high"] {
+  --wizz-text-secondary: #f1f5f9;
+  --wizz-text-muted: #e2e8f0;
+  --wizz-border: #8f8f8f;
+  --wizz-border-light: #6b6b6b;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme="system"][data-contrast="high"] {
+    --wizz-text-secondary: #f1f5f9;
+    --wizz-text-muted: #e2e8f0;
+    --wizz-border: #8f8f8f;
+    --wizz-border-light: #6b6b6b;
+  }
+}
+
+html[data-contrast="high"] .card,
+html[data-contrast="high"] .form-control,
+html[data-contrast="high"] .form-select,
+html[data-contrast="high"] .btn,
+html[data-contrast="high"] .wizz-qs {
+  border-width: 2px;
+}
+
+/* حركة مخففة: تُلغي الانتقالات والحركات لمن يفضّل واجهة ساكنة. */
+html[data-motion="reduce"] *,
+html[data-motion="reduce"] *::before,
+html[data-motion="reduce"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* أهداف لمس كبيرة: تكبير الأزرار والحقول لتناسب الأصابع والشاشات اللمسية. */
+html[data-targets="large"] .btn,
+html[data-targets="large"] .form-control,
+html[data-targets="large"] .form-select,
+html[data-targets="large"] .wizz-qs-option,
+html[data-targets="large"] .wizz-settings-toggle {
+  min-height: 2.75rem;
+}
+
+html[data-targets="large"] .btn-sm {
+  min-height: 2.25rem;
+}
+
+html[data-targets="large"] .sidebar .nav-link {
+  padding-top: 0.55rem;
+  padding-bottom: 0.55rem;
 }
 
 html[data-density="compact"] .content {
@@ -2490,6 +2624,89 @@ html[data-density="compact"] .mb-3 {
 
 html[data-density="compact"] .top-row {
   height: 3rem;
+}
+
+/* ============================================================
+   صفحة الإعدادات — توزيع متساوٍ، إعادة ترتيب حسب عرض الشاشة، وطي البطاقات
+   ============================================================ */
+.wizz-settings-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--wizz-primary-border);
+  border-radius: var(--wizz-radius);
+  background: var(--wizz-primary-light);
+}
+
+.wizz-settings-hint-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--wizz-surface);
+  color: var(--wizz-primary);
+  flex: 0 0 auto;
+}
+
+.wizz-settings-hint p {
+  flex: 1 1 16rem;
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--wizz-text-secondary);
+  line-height: 1.6;
+}
+
+.wizz-settings-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.9rem;
+}
+
+.wizz-settings-toolbar-title {
+  font-size: 0.8rem;
+  color: var(--wizz-text-muted);
+}
+
+.wizz-settings-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  flex: 0 0 auto;
+  border: 1px solid var(--wizz-border);
+  border-radius: 50%;
+  background: var(--wizz-surface);
+  color: var(--wizz-text-secondary);
+  cursor: pointer;
+  transition: var(--wizz-transition);
+}
+
+.wizz-settings-toggle:hover,
+.wizz-settings-toggle:focus-visible {
+  color: var(--wizz-text);
+  border-color: var(--wizz-primary);
+  background: var(--wizz-surface-hover);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--wizz-primary-light);
+}
+
+/* بطاقة مطوية: يبقى العنوان ظاهراً ويختفي جسمها دون فقدان القيم المدخلة. */
+.wizz-settings-grid .card {
+  height: 100%;
+}
+
+.wizz-settings-grid .card-header {
+  gap: 0.5rem;
 }
 
 /* الوضع الفاتح صريحاً — يثبّت عناصر النظام (قوائم، تواريخ، أشرطة تمرير) فاتحة. */

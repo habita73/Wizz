@@ -23,12 +23,44 @@
     الإعدادات
 </h2>
 
-<div class="row">
+<div class="wizz-settings-hint">
+    <span class="wizz-settings-hint-icon"><WizzIcon Icon="settings" Size="18" /></span>
+    <p>
+        المظهر وحجم الخط وسهولة القراءة واختصارات لوحة المفاتيح صارت في الإعدادات السريعة،
+        تُعدَّل دون مغادرة هذه الصفحة أو فقدان أي تغيير غير محفوظ.
+    </p>
+    <button type="button" class="btn btn-sm btn-outline-primary" data-wizz-qs-open>
+        <WizzIcon Icon="settings" Size="16" />
+        <span>فتح الإعدادات السريعة</span>
+    </button>
+</div>
+
+<div class="wizz-settings-toolbar">
+    <span class="wizz-settings-toolbar-title">المجموعات المفتوحة: @ExpandedCardCount من @VisibleCardCount</span>
+    <div class="btn-group btn-group-sm" role="group" aria-label="طي أو توسيع كل المجموعات">
+        <button type="button" class="btn btn-outline-secondary" @onclick="ExpandAllCards">توسيع الكل</button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="CollapseAllCards">طي الكل</button>
+    </div>
+</div>
+
+<div class="row g-4 wizz-settings-grid">
     <!-- إعدادات المتجر -->
-    <div class="col-lg-6 mb-4">
+    <div class="col-12 col-md-6">
         <div class="card h-100">
-            <div class="card-header"><h5 class="mb-0"><svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="21"/></svg> إعدادات المتجر</h5></div>
-            <div class="card-body">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 d-flex align-items-center gap-2">
+                    <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+                    <span>إعدادات المتجر</span>
+                </h5>
+                <button type="button" class="wizz-settings-toggle"
+                        @onclick="ToggleStoreCard"
+                        aria-expanded="@(!IsCollapsed("store") ? "true" : "false")"
+                        aria-controls="settings-card-store"
+                        title="@(IsCollapsed("store") ? "توسيع إعدادات المتجر" : "طي إعدادات المتجر")">
+                    <WizzIcon Icon="@(IsCollapsed("store") ? "chevron-down" : "chevron-up")" Size="16" />
+                </button>
+            </div>
+            <div id="settings-card-store" class="@CardBodyClass("store")">
                 @if (store == null)
                 {
                     <div class="alert alert-warning">لم يتم إعداد المتجر بعد.</div>
@@ -90,19 +122,28 @@
     <!-- المستخدمون -->
     <AuthorizeView Policy="@PermissionPolicy.ManageUsers">
         <Authorized>
-    <div class="col-lg-6 mb-4">
+    <div class="col-12 col-md-6">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 d-flex align-items-center gap-2">
                     <WizzIcon Icon="users" Size="18" />
                     <span>المستخدمون</span>
                 </h5>
-                <button class="btn btn-sm btn-success" @onclick="NewUser">
-                    <WizzIcon Icon="plus" Size="14" />
-                    <span>مستخدم</span>
-                </button>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-success" @onclick="NewUser">
+                        <WizzIcon Icon="plus" Size="14" />
+                        <span>مستخدم</span>
+                    </button>
+                    <button type="button" class="wizz-settings-toggle"
+                            @onclick="ToggleUsersCard"
+                            aria-expanded="@(!IsCollapsed("users") ? "true" : "false")"
+                            aria-controls="settings-card-users"
+                            title="@(IsCollapsed("users") ? "توسيع المستخدمين" : "طي المستخدمين")">
+                        <WizzIcon Icon="@(IsCollapsed("users") ? "chevron-down" : "chevron-up")" Size="16" />
+                    </button>
+                </div>
             </div>
-            <div class="card-body">
+            <div id="settings-card-users" class="@CardBodyClass("users")">
                 @if (users.Count == 0)
                 {
                     <div class="alert alert-info mb-0">لا يوجد مستخدمون.</div>
@@ -164,22 +205,31 @@
     <!-- النسخ الاحتياطي -->
     <AuthorizeView Policy="@PermissionPolicy.BackupRestore">
         <Authorized>
-    <div class="col-lg-6 mb-4">
+    <div class="col-12 col-md-6">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 d-flex align-items-center gap-2">
                     <WizzIcon Icon="save" Size="18" />
                     <span>النسخ الاحتياطي</span>
                 </h5>
-                <button class="btn btn-sm btn-primary" @onclick="CreateBackup" disabled="@backupInProgress">
-                    @if (backupInProgress)
-                    {
-                        <span class="spinner-border spinner-border-sm me-2"></span>
-                    }
-                    نسخة جديدة
-                </button>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-primary" @onclick="CreateBackup" disabled="@backupInProgress">
+                        @if (backupInProgress)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        نسخة جديدة
+                    </button>
+                    <button type="button" class="wizz-settings-toggle"
+                            @onclick="ToggleBackupCard"
+                            aria-expanded="@(!IsCollapsed("backup") ? "true" : "false")"
+                            aria-controls="settings-card-backup"
+                            title="@(IsCollapsed("backup") ? "توسيع النسخ الاحتياطي" : "طي النسخ الاحتياطي")">
+                        <WizzIcon Icon="@(IsCollapsed("backup") ? "chevron-down" : "chevron-up")" Size="16" />
+                    </button>
+                </div>
             </div>
-            <div class="card-body">
+            <div id="settings-card-backup" class="@CardBodyClass("backup")">
                 @if (backups.Count == 0)
                 {
                     <div class="alert alert-info mb-0">لا توجد نسخ احتياطية.</div>
@@ -226,15 +276,22 @@
     </AuthorizeView>
 
     <!-- معلومات النظام -->
-    <div class="col-lg-6 mb-4">
+    <div class="col-12 col-md-6">
         <div class="card h-100">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 d-flex align-items-center gap-2">
                     <WizzIcon Icon="info" Size="18" />
                     <span>معلومات النظام</span>
                 </h5>
+                <button type="button" class="wizz-settings-toggle"
+                        @onclick="ToggleSystemCard"
+                        aria-expanded="@(!IsCollapsed("system") ? "true" : "false")"
+                        aria-controls="settings-card-system"
+                        title="@(IsCollapsed("system") ? "توسيع معلومات النظام" : "طي معلومات النظام")">
+                    <WizzIcon Icon="@(IsCollapsed("system") ? "chevron-down" : "chevron-up")" Size="16" />
+                </button>
             </div>
-            <div class="card-body">
+            <div id="settings-card-system" class="@CardBodyClass("system")">
                 <table class="table table-sm table-borderless mb-0">
                     <tbody>
                         <tr><td>إصدار التطبيق</td><td class="text-end fw-bold">0.1.0</td></tr>
@@ -250,15 +307,24 @@
     </div>
 
     <!-- إعدادات الذكاء الاصطناعي (بسيط) -->
-    <div class="col-lg-6 mb-4">
+    <div class="col-12">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 d-flex align-items-center gap-2"><WizzIcon Icon="sparkles" Size="18" /><span>المساعد الذكي</span></h5>
-                <span class="badge @(aiCloudEnabled ? "bg-success" : "bg-secondary")">
-                    @(aiCloudEnabled ? "سحابي مجاني مفعل" : "محلي فقط")
-                </span>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge @(aiCloudEnabled ? "bg-success" : "bg-secondary")">
+                        @(aiCloudEnabled ? "سحابي مجاني مفعل" : "محلي فقط")
+                    </span>
+                    <button type="button" class="wizz-settings-toggle"
+                            @onclick="ToggleAiCard"
+                            aria-expanded="@(!IsCollapsed("ai") ? "true" : "false")"
+                            aria-controls="settings-card-ai"
+                            title="@(IsCollapsed("ai") ? "توسيع إعدادات المساعد" : "طي إعدادات المساعد")">
+                        <WizzIcon Icon="@(IsCollapsed("ai") ? "chevron-down" : "chevron-up")" Size="16" />
+                    </button>
+                </div>
             </div>
-            <div class="card-body">
+            <div id="settings-card-ai" class="@CardBodyClass("ai")">
                 <div class="mb-3">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="aiCloud" @bind="aiCloudEnabled" />
@@ -499,76 +565,6 @@
     </div>
 </div>
 
-    <!-- المظهر والوضع اللوني -->
-    <div class="col-lg-6 mb-4">
-        <div class="card h-100">
-            <div class="card-header"><h5 class="mb-0"><svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 1 21 12.79Z"/></svg> المظهر والوضع اللوني</h5></div>
-            <div class="card-body">
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="radio" name="theme" id="themeLight"
-                           checked="@(themeMode == "light")"
-                           @onchange="SetThemeLight" />
-                    <label class="form-check-label" for="themeLight">
-                        <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                        الوضع الفاتح
-                    </label>
-                </div>
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="radio" name="theme" id="themeDark"
-                           checked="@(themeMode == "dark")"
-                           @onchange="SetThemeDark" />
-                    <label class="form-check-label" for="themeDark">
-                        <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 1 21 12.79Z"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                        الوضع الداكن
-                    </label>
-                </div>
-                <div class="form-check mb-3">
-                    <input class="form-check-input" type="radio" name="theme" id="themeSystem"
-                           checked="@(themeMode == "system")"
-                           @onchange="SetThemeSystem" />
-                    <label class="form-check-label" for="themeSystem">
-                        <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-                        تبع النظام (تلقائي)
-                    </label>
-                </div>
-                <div class="form-text">
-                    عند اختيار «النظام» ستتبع الواجهة تفضيلات نظام التشغيل (الوضع الليلي إذا كان مفعلاً في ويندوز/الجهاز).
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- اختصارات لوحة المفاتيح -->
-    <div class="col-lg-6 mb-4">
-        <div class="card h-100">
-            <div class="card-header">
-                <h5 class="mb-0 d-flex align-items-center gap-2">
-                    <WizzIcon Icon="keyboard" Size="18" />
-                    <span>اختصارات لوحة المفاتيح</span>
-                </h5>
-            </div>
-            <div class="card-body">
-                <p class="small text-muted mb-3">
-                    تعمل على الحاسوب. الاختصارات الأربعة الأولى متاحة في الصفحة الرئيسية، وبقية الاختصارات تعمل داخل النماذج والمساعد.
-                </p>
-                <ul class="shortcut-list mb-0">
-                    @foreach (var shortcut in Shortcuts)
-                    {
-                        <li class="shortcut-row">
-                            <span class="shortcut-label">@shortcut.Label</span>
-                            <span class="shortcut-keys">
-                                @foreach (var key in shortcut.Keys)
-                                {
-                                    <kbd>@key</kbd>
-                                }
-                            </span>
-                        </li>
-                    }
-                </ul>
-            </div>
-        </div>
-    </div>
-
 <!-- نافذة المتجر -->
 @if (showStoreModal)
 {
@@ -678,18 +674,6 @@
     private Store? store;
     private StoreForm storeForm = new();
 
-    /// <summary>مرجع اختصارات لوحة المفاتيح المعروضة في بطاقة الإعدادات.</summary>
-    private static readonly (string Label, string[] Keys)[] Shortcuts =
-    {
-        ("بيع جديد", new[] { "Alt", "1" }),
-        ("الديون المستحقة", new[] { "Alt", "2" }),
-        ("الفواتير المتأخرة", new[] { "Alt", "3" }),
-        ("سجل المبيعات", new[] { "Alt", "4" }),
-        ("تنفيذ الإجراء الافتراضي في النموذج", new[] { "Enter" }),
-        ("إلغاء / إغلاق النافذة", new[] { "Esc" }),
-        ("سطر جديد في المساعد", new[] { "Shift", "Enter" })
-    };
-
     private bool showStoreModal;
     private bool savingStore;
 
@@ -728,8 +712,8 @@
     private bool rememberContext = true;
     private bool allowInternetAccess;
 
-    // المظهر والوضع اللوني
-    private string themeMode = "system";
+    // طي بطاقات الإعدادات — حالة الصفحة فقط، ولا تُحفظ بين الجلسات.
+    private readonly HashSet<string> collapsedCards = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -741,7 +725,6 @@
         if (canBackupRestore) await LoadBackups();
         await LoadAiSettings();
         await LoadAiPreferences();
-        await LoadThemeMode();
     }
 
     private bool canManageUsers;
@@ -767,46 +750,55 @@
         return false;
     }
 
-    /// <summary>يحمّل تفضيل الوضع اللوني من التخزين المحلي (الافتراضي: النظام).</summary>
-    private async Task LoadThemeMode()
+    /// <summary>عدد المجموعات الظاهرة حسب صلاحيات المستخدم الحالي.</summary>
+    private int VisibleCardCount => VisibleCardKeys().Count();
+
+    /// <summary>عدد المجموعات غير المطوية حالياً.</summary>
+    private int ExpandedCardCount => VisibleCardKeys().Count(key => !collapsedCards.Contains(key));
+
+    /// <summary>مفاتيح المجموعات الظاهرة فعلاً لهذا المستخدم — تُستخدم في «طي الكل».</summary>
+    private IEnumerable<string> VisibleCardKeys()
     {
-        try
-        {
-            var saved = await JS.InvokeAsync<string?>("localStorage.getItem", "wizz.theme");
-            if (!string.IsNullOrWhiteSpace(saved))
-            {
-                themeMode = saved;
-            }
-        }
-        catch
-        {
-            // استخدام القيمة الافتراضية (النظام)
-        }
-        await ApplyThemeAsync();
+        yield return "store";
+        if (canManageUsers) yield return "users";
+        if (canBackupRestore) yield return "backup";
+        yield return "system";
+        yield return "ai";
     }
 
-    /// <summary>يطبق الوضع اللوني المحدد على عنصر html عبر سمة data-theme.</summary>
-    private async Task ApplyThemeAsync()
+    private bool IsCollapsed(string key) => collapsedCards.Contains(key);
+
+    /// <summary>يُبقي جسم البطاقة في الصفحة ويخفيه فقط، فلا تُفقد أي قيمة غير محفوظة.</summary>
+    private string CardBodyClass(string key) => IsCollapsed(key) ? "card-body d-none" : "card-body";
+
+    private void ToggleCard(string key)
     {
-        try
+        if (!collapsedCards.Remove(key))
         {
-            await JS.InvokeVoidAsync("localStorage.setItem", "wizz.theme", themeMode);
-            await JS.InvokeVoidAsync("document.documentElement.setAttribute", "data-theme", themeMode);
-        }
-        catch
-        {
-            // تجاهل فشل التطبيق
+            collapsedCards.Add(key);
         }
     }
 
-    /// <summary>يضع الوضع الفاتح ويطبقه.</summary>
-    private void SetThemeLight() { themeMode = "light"; _ = ApplyThemeAsync(); }
+    private void ToggleStoreCard() => ToggleCard("store");
 
-    /// <summary>يضع الوضع الداكن ويطبقه.</summary>
-    private void SetThemeDark() { themeMode = "dark"; _ = ApplyThemeAsync(); }
+    private void ToggleUsersCard() => ToggleCard("users");
 
-    /// <summary>يضع وضع النظام ويطبقه.</summary>
-    private void SetThemeSystem() { themeMode = "system"; _ = ApplyThemeAsync(); }
+    private void ToggleBackupCard() => ToggleCard("backup");
+
+    private void ToggleSystemCard() => ToggleCard("system");
+
+    private void ToggleAiCard() => ToggleCard("ai");
+
+    private void ExpandAllCards() => collapsedCards.Clear();
+
+    private void CollapseAllCards()
+    {
+        collapsedCards.Clear();
+        foreach (var key in VisibleCardKeys())
+        {
+            collapsedCards.Add(key);
+        }
+    }
 
     /// <summary>يحمّل تفضيلات المساعد المحفوظة محلياً.</summary>
     private async Task LoadAiPreferences()

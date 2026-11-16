@@ -1,11 +1,18 @@
 // لوحة الإعدادات السريعة — تفضيلات عرض محلية، بلا اعتماديات وبلا مغادرة الصفحة.
-// الهدف: تغيير المظهر/حجم الخط/الكثافة ورؤية معلومات المتجر دون فقدان عمل جارٍ
-// (مثل سلة بيع غير مكتملة)، لأن أي انتقال إلى صفحة أخرى يعيد تحميل الصفحة.
-// المفاتيح: wizz.theme (مشترك مع صفحة الإعدادات) · wizz.fontsize · wizz.density
+// الهدف: تغيير المظهر/حجم الخط/الكثافة/التباين/الحركة/أهداف اللمس وحفظ السلة
+// ورؤية معلومات المتجر دون فقدان عمل جارٍ (مثل سلة بيع غير مكتملة)، لأن أي
+// انتقال إلى صفحة أخرى يعيد تحميل الصفحة.
+// المفاتيح: wizz.theme · wizz.fontsize · wizz.density · wizz.contrast · wizz.motion
+//           wizz.targets · wizz.cart.draft.enabled (مسودة السلة نفسها: wizz.cart.draft.v1)
 window.wizzQuickSettings = {
     themeKey: 'wizz.theme',
     fontKey: 'wizz.fontsize',
     densityKey: 'wizz.density',
+    contrastKey: 'wizz.contrast',
+    motionKey: 'wizz.motion',
+    targetsKey: 'wizz.targets',
+    draftKey: 'wizz.cart.draft.enabled',
+    draftCartKey: 'wizz.cart.draft.v1',
 
     _panel: null,
     _trigger: null,
@@ -32,11 +39,15 @@ window.wizzQuickSettings = {
 
     // تطبيق التفضيلات على عنصر html (المصدر الوحيد للتنسيق).
     applyPreferences: function () {
+        var api = window.wizzQuickSettings;
         var root = document.documentElement;
-        root.setAttribute('data-theme', window.wizzQuickSettings._read(window.wizzQuickSettings.themeKey, 'system'));
-        root.setAttribute('data-fontsize', window.wizzQuickSettings._read(window.wizzQuickSettings.fontKey, 'normal'));
-        root.setAttribute('data-density', window.wizzQuickSettings._read(window.wizzQuickSettings.densityKey, 'comfortable'));
-        window.wizzQuickSettings._syncActive();
+        root.setAttribute('data-theme', api._read(api.themeKey, 'system'));
+        root.setAttribute('data-fontsize', api._read(api.fontKey, 'normal'));
+        root.setAttribute('data-density', api._read(api.densityKey, 'comfortable'));
+        root.setAttribute('data-contrast', api._read(api.contrastKey, 'normal'));
+        root.setAttribute('data-motion', api._read(api.motionKey, 'normal'));
+        root.setAttribute('data-targets', api._read(api.targetsKey, 'normal'));
+        api._syncActive();
     },
 
     // إبراز الخيار المطابق للقيمة الحالية.
@@ -45,16 +56,24 @@ window.wizzQuickSettings = {
         var theme = api._read(api.themeKey, 'system');
         var font = api._read(api.fontKey, 'normal');
         var density = api._read(api.densityKey, 'comfortable');
+        var contrast = api._read(api.contrastKey, 'normal');
+        var motion = api._read(api.motionKey, 'normal');
+        var targets = api._read(api.targetsKey, 'normal');
+        var draft = api._read(api.draftKey, 'on');
 
         api._mark('[data-wizz-qs-theme]', 'wizz-qs-theme', theme);
         api._mark('[data-wizz-qs-font]', 'wizz-qs-font', font);
         api._mark('[data-wizz-qs-density]', 'wizz-qs-density', density);
+        api._mark('[data-wizz-qs-contrast]', 'wizz-qs-contrast', contrast);
+        api._mark('[data-wizz-qs-motion]', 'wizz-qs-motion', motion);
+        api._mark('[data-wizz-qs-targets]', 'wizz-qs-targets', targets);
+        api._mark('[data-wizz-qs-draft]', 'wizz-qs-draft', draft);
     },
 
     _mark: function (selector, attribute, current) {
         var nodes = document.querySelectorAll(selector);
         for (var i = 0; i < nodes.length; i++) {
-            var isActive = nodes[i].getAttribute(attribute) === current;
+            var isActive = nodes[i].getAttribute('data-' + attribute) === current;
             nodes[i].classList.toggle('is-active', isActive);
             nodes[i].setAttribute('aria-pressed', isActive ? 'true' : 'false');
         }
@@ -119,6 +138,56 @@ window.wizzQuickSettings = {
         window.wizzQuickSettings.applyPreferences();
     },
 
+    setContrast: function (value) {
+        window.wizzQuickSettings._write(window.wizzQuickSettings.contrastKey, value);
+        window.wizzQuickSettings.applyPreferences();
+    },
+
+    setMotion: function (value) {
+        window.wizzQuickSettings._write(window.wizzQuickSettings.motionKey, value);
+        window.wizzQuickSettings.applyPreferences();
+    },
+
+    setTargets: function (value) {
+        window.wizzQuickSettings._write(window.wizzQuickSettings.targetsKey, value);
+        window.wizzQuickSettings.applyPreferences();
+    },
+
+    // إيقاف الحفظ يمسح أي مسودة سابقة كي لا تبقى سلة قديمة على الجهاز.
+    setDraft: function (value) {
+        var api = window.wizzQuickSettings;
+        api._write(api.draftKey, value);
+        if (value === 'off') {
+            try {
+                localStorage.removeItem(api.draftCartKey);
+            } catch (e) {
+                // لا شيء يعتمد على نجاح المسح.
+            }
+        }
+        api._syncActive();
+    },
+
+    // استعادة الافتراضي: تفضيلات العرض فقط، دون المساس بالبيانات أو بالمسودة.
+    reset: function () {
+        var api = window.wizzQuickSettings;
+        var keys = [
+            api.themeKey,
+            api.fontKey,
+            api.densityKey,
+            api.contrastKey,
+            api.motionKey,
+            api.targetsKey
+        ];
+        for (var i = 0; i < keys.length; i++) {
+            try {
+                localStorage.removeItem(keys[i]);
+            } catch (e) {
+                // تجاهل: الوضع الافتراضي يُطبَّق في كل الأحوال أدناه.
+            }
+        }
+        api.applyPreferences();
+    },
+
     // يربط الأزرار والاختصارات مرة واحدة لكل تحميل صفحة.
     init: function () {
         var api = window.wizzQuickSettings;
@@ -146,6 +215,21 @@ window.wizzQuickSettings = {
 
             var density = target.closest ? target.closest('[data-wizz-qs-density]') : null;
             if (density) { api.setDensity(density.getAttribute('data-wizz-qs-density')); return; }
+
+            var contrast = target.closest ? target.closest('[data-wizz-qs-contrast]') : null;
+            if (contrast) { api.setContrast(contrast.getAttribute('data-wizz-qs-contrast')); return; }
+
+            var motion = target.closest ? target.closest('[data-wizz-qs-motion]') : null;
+            if (motion) { api.setMotion(motion.getAttribute('data-wizz-qs-motion')); return; }
+
+            var targets = target.closest ? target.closest('[data-wizz-qs-targets]') : null;
+            if (targets) { api.setTargets(targets.getAttribute('data-wizz-qs-targets')); return; }
+
+            var draft = target.closest ? target.closest('[data-wizz-qs-draft]') : null;
+            if (draft) { api.setDraft(draft.getAttribute('data-wizz-qs-draft')); return; }
+
+            var reset = target.closest ? target.closest('[data-wizz-qs-reset]') : null;
+            if (reset) { api.reset(); return; }
 
             var closer = target.closest ? target.closest('[data-wizz-qs-close]') : null;
             if (closer) api.close();
@@ -181,7 +265,20 @@ window.wizzQuickSettings = {
         // مزامنة التفضيلات بين تبويبات المتصفح المفتوحة في الوقت نفسه.
         window.addEventListener('storage', function (event) {
             if (!event.key) return;
-            if (event.key === api.themeKey || event.key === api.fontKey || event.key === api.densityKey) {
+            if (event.key === api.draftKey && event.newValue === 'off') {
+                try {
+                    localStorage.removeItem(api.draftCartKey);
+                } catch (e) {
+                    // تجاهل.
+                }
+            }
+            if (event.key === api.themeKey
+                || event.key === api.fontKey
+                || event.key === api.densityKey
+                || event.key === api.contrastKey
+                || event.key === api.motionKey
+                || event.key === api.targetsKey
+                || event.key === api.draftKey) {
                 api.applyPreferences();
             }
         });

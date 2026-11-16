@@ -17,8 +17,8 @@
 
 <body>
     <script>
-        // تطبيق التفضيلات المحفوظة (المظهر، حجم الخط، الكثافة) قبل تحميل واجهة Blazor
-        // لمنع وميض الشاشة عند فتح الصفحة.
+        // تطبيق التفضيلات المحفوظة (المظهر، حجم الخط، الكثافة، التباين، الحركة،
+        // أهداف اللمس) قبل تحميل واجهة Blazor لمنع وميض الشاشة عند فتح الصفحة.
         (function () {
             try {
                 var root = document.documentElement;
@@ -35,6 +35,15 @@
 
                 var density = localStorage.getItem('wizz.density');
                 if (density) root.setAttribute('data-density', density);
+
+                var contrast = localStorage.getItem('wizz.contrast');
+                if (contrast) root.setAttribute('data-contrast', contrast);
+
+                var motion = localStorage.getItem('wizz.motion');
+                if (motion) root.setAttribute('data-motion', motion);
+
+                var targets = localStorage.getItem('wizz.targets');
+                if (targets) root.setAttribute('data-targets', targets);
             } catch (e) {
                 // تجاهل الأخطاء
             }

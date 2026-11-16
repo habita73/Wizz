@@ -311,6 +311,7 @@
 
     // مسودة السلة: تُحفظ في متصفح الكاشير بعد كل تعديل وتُسترجع عند العودة.
     private const string DraftKey = "wizz.cart.draft.v1";
+    private const string DraftEnabledKey = "wizz.cart.draft.enabled";
     private static readonly TimeSpan DraftMaxAge = TimeSpan.FromHours(24);
     private bool jsReady;
     private bool draftRestored;
@@ -586,11 +587,36 @@
     // مسودة السلة: حفظ تلقائي في المتصفح واسترجاع عند العودة إلى الشاشة
     // ------------------------------------------------------------------
 
+    /// <summary>
+    /// يقرأ تفضيل حفظ السلة من الإعدادات السريعة. الافتراضي مفعّل،
+    /// والقيمة «off» وحدها تعني أن الكاشير أوقف الحفظ على هذا الجهاز.
+    /// </summary>
+    private async Task<bool> IsDraftEnabledAsync()
+    {
+        try
+        {
+            var value = await JS.InvokeAsync<string?>("localStorage.getItem", DraftEnabledKey);
+            return !string.Equals(value, "off", StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            // تعطّل التخزين المحلي لا يمنع البيع؛ نُبقي السلوك الافتراضي.
+            return true;
+        }
+    }
+
     /// <summary>يحفظ السلة الحالية كمسودة، أو يمسح المسودة إن كانت السلة فارغة.</summary>
     private async Task SaveDraftAsync()
     {
         if (!jsReady)
         {
+            return;
+        }
+
+        // الإعدادات السريعة: يمكن للكاشير إيقاف حفظ السلة على هذا الجهاز.
+        if (!await IsDraftEnabledAsync())
+        {
+            await RemoveDraftAsync();
             return;
         }
 
@@ -652,6 +678,12 @@
     private async Task RestoreDraftAsync()
     {
         if (cashierId is null)
+        {
+            return;
+        }
+
+        // لا استرجاع عندما يكون حفظ السلة متوقفاً من الإعدادات السريعة.
+        if (!await IsDraftEnabledAsync())
         {
             return;
         }

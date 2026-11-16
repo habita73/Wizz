@@ -1,0 +1,58 @@
+{
+  "package": "Vent au comptoir Documentation Pack",
+  "version": "0.6.8",
+  "date": "2026-11-16",
+  "status": "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_AUTHORIZED",
+  "execution_authorized": false,
+  "limited_execution_authorizations": [
+    "D-21 H-05 consistent backup and restore service",
+    "D-22 H-02 sale edit inside a single EF transaction",
+    "D-30 Phase 1 stock documents (StockDocument/DocumentSequence, numbering, opening/count/waste, migration, stock card)",
+    "D-31 Phase 2 cashier shift (CashierShift, shift gate over the current business day, sale cancel/modify audit fields, MRB sales return)",
+    "D-32 H-04 security package (cookie authentication, PBKDF2 hashing, SecurityStamp session invalidation, audit log, permission policies, first-run setup, login lockout)",
+    "D-33 quick settings panel opened from the conventional help button (F1 or ?), presentation and personal-device preferences only, plus in-progress sale draft kept in the cashier's browser",
+    "v0.6.7 owner-ordered fix inside the D-33 presentation scope: themed page-not-found screen for unknown URLs and removal of the dead stock-movements button",
+    "v0.6.8 owner-ordered polish inside the D-33 presentation scope: contrast, reduced motion, large touch targets, draft-save toggle, keyboard shortcuts moved into the quick panel, and an evenly distributed collapsible settings grid"
+  ],
+  "active_files": [
+    "README.md",
+    "PROJECT_RULES.md",
+    "AGENTS.md",
+    "docs/PRODUCT_MASTER.md",
+    "docs/MVP_AND_ACCEPTANCE.md",
+    "docs/TECHNICAL_AND_SAFETY_RULES.md",
+    "docs/DECISIONS_AND_OPEN_GATES.md",
+    "docs/STOCK_AND_DOCUMENTS_MODEL_AR.md",
+    "docs/ARCHIVE_INDEX.md",
+    "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md"
+  ],
+  "archive_file_count": 57,
+  "archive_policy": "Archive files are historical, non-active references; do not load all archive files for routine tasks.",
+  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB); v0.6.3 records the H-04 security implementation; v0.6.4 records the routing correction applied on top of H-04; v0.6.5 records the standing communication-style rule requested by the owner; v0.6.6 records the owner-authorized quick settings panel and the sale draft; v0.6.7 records the owner-ordered page-not-found screen and the removal of the dead stock-movements button; v0.6.8 records the owner-ordered expansion of the quick settings and the evenly distributed, collapsible settings groups.",
+  "mvp_status": "APPROVED",
+  "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21, D-22, D-30, D-31, D-32 and the D-33 presentation-only UI scope.",
+  "change_summary": [
+    "Expanded the quick settings panel with a readability section (normal/high contrast, normal/reduced motion, normal/large touch targets) and a toggle for keeping an unfinished sale cart in the browser, all stored as per-device display preferences.",
+    "Turned off saving clears the locally stored unfinished cart immediately; the toggle touches no invoice, stock or database record, and restoring a draft still re-reads prices and stock from the database.",
+    "Moved the keyboard-shortcuts reference from the full settings page into the quick panel as a collapsed section and added a \"restore defaults\" button that only resets display preferences.",
+    "Removed the duplicated appearance card and the shortcuts card from the full settings page; the theme picker now lives only in the quick panel.",
+    "Redistributed the five settings groups (store, users, backup, system info, AI assistant) on one even grid: half width on medium screens and up, full width on phones, with the AI card always full width.",
+    "Added a per-group collapse control that keeps unsaved inputs in the page, plus expand-all/collapse-all buttons, an open-groups counter and a banner that opens the quick panel from the settings page.",
+    "Fixed a pre-existing highlight bug in the quick panel: the active option was looked up without the data- prefix, so no option ever appeared selected.",
+    "Refreshed the pack manifestations with new fingerprints for v0.6.8."
+  ],
+  "review_findings": [
+    "Build and tests after the change: dotnet build Wizz.sln -c Release = 0 errors (pre-existing StyleCop warnings only); Domain 24/24; Integration 262/262 (286 total).",
+    "Browser check on the real instance at http://localhost:5183: the five settings cards render in one grid, four at 604 px and the AI card at 1208 px in a 1496 px window, with no horizontal overflow.",
+    "Collapse check: the store card changes aria-expanded from true to false, hides its body, updates the counter to \"4 of 5\" and renames the button to expand; expanding restores \"5 of 5\".",
+    "Unsaved-value check: an edited store address survived collapse-all (counter \"0 of 5\", nine inputs still in the page) and was restored unchanged by expand-all.",
+    "Quick panel check: six sections, shortcuts closed by default, dark theme, high contrast, reduced motion, large targets and draft-off all get the active state and aria-pressed=true, html data attributes update, keys are stored, and restore-defaults returns normal values and removes the keys; the settings banner opens the panel and Escape closes it.",
+    "Draft gate check: with saving off, adding two products wrote no draft; with saving on, a two-line draft was written; switching saving off from the panel cleared the existing draft immediately. Test keys were removed afterwards.",
+    "Limitation: the 286 automated tests do not cover the panel, the draft or the settings layout in a browser; the evidence above is manual and was not reproduced in CI because GitHub Actions remains unavailable for the account.",
+    "Limitation: phone stacking is verified through the Bootstrap col-12 class, not by resizing a real window.",
+    "Boundary note: contrast, motion and touch targets are display-only, and the draft toggle only controls a local browser copy for that cashier device; money, stock and permission settings stay in the full settings page, and the AI assistant preferences remain there because they live in the assistant's own store.",
+    "Execution remains unauthorized outside the recorded limited scopes (D-21, D-22, D-30, D-31, D-32, D-33).",
+    "Phase 3 (cash drawer, purchases, UI, sync) is not implemented and not authorized.",
+    "MVP-AT-09 still requires a real restore test in a separate environment."
+  ]
+}

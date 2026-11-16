@@ -1,6 +1,6 @@
 {
   "package": "Vent au comptoir Documentation Pack",
-  "version": "0.6.7",
+  "version": "0.6.8",
   "date": "2026-11-16",
   "status": "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_AUTHORIZED",
   "execution_authorized": false,
@@ -21,19 +21,25 @@
   "mvp_status": "APPROVED",
   "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21, D-22, D-30, D-31, D-32 and the D-33 presentation-only UI scope.",
   "change_summary": [
-    "Replaced the empty-body 404 that looked like a blank bright page with a themed \"page not found\" screen shown for every unknown URL (for example /cash, /sales, /purchases, /stock-movements or any random address), keeping the 404 status code and adding clear ways back to the home screen or the sales screen.",
-    "Kept missing file requests (/js/... and /css/...) as plain 404 responses so no HTML page is returned for a missing image, font or script.",
-    "Removed the dead stock-movements button from the products page; it was the only link that led to the removed screen and produced the blank page.",
-    "Recorded the new evidence and a framework note in docs/DECISIONS_AND_OPEN_GATES.md: on .NET 10 setting the 404 status inside the component prevents the page body from being written, so the status is set when the headers are sent.",
-    "Refreshed the pack manifestations with new fingerprints for v0.6.7."
+    "Expanded the quick settings panel with a readability section (normal/high contrast, normal/reduced motion, normal/large touch targets) and a toggle for keeping an unfinished sale cart in the browser, all stored as per-device display preferences.",
+    "Turned off saving clears the locally stored unfinished cart immediately; the toggle touches no invoice, stock or database record, and restoring a draft still re-reads prices and stock from the database.",
+    "Moved the keyboard-shortcuts reference from the full settings page into the quick panel as a collapsed section and added a restore-defaults button that only resets display preferences.",
+    "Removed the duplicated appearance card and the shortcuts card from the full settings page; the theme picker now lives only in the quick panel.",
+    "Redistributed the five settings groups (store, users, backup, system info, AI assistant) on one even grid: half width on medium screens and up, full width on phones, with the AI card always full width.",
+    "Added a per-group collapse control that keeps unsaved inputs in the page, plus expand-all/collapse-all buttons, an open-groups counter and a banner that opens the quick panel from the settings page.",
+    "Fixed a pre-existing highlight bug in the quick panel: the active option was looked up without the data- prefix, so no option ever appeared selected.",
+    "Refreshed the pack manifestations with new fingerprints for v0.6.8."
   ],
   "review_findings": [
     "Build and tests after the change: dotnet build Wizz.sln -c Release = 0 errors (pre-existing StyleCop warnings only); Domain 24/24; Integration 262/262 (286 total).",
-    "HTTP check on an isolated instance with a temporary SQLite database (deleted afterwards): /cash, /sales, /purchases, /stock-movements?productId=x, /random-page and /some/deep/unknown return 404 with a 12,958-byte themed body; /login and /setup return 200; / and /products redirect to login (302); /js/missing.js and /css/missing.css stay 404 with no body; /js/quick-settings.js and /css/site.css return 200.",
-    "Browser check on the same instance: dark theme body rgb(31,31,31) with a rgb(37,37,38) card and rgb(204,204,204) text, light theme body rgb(241,245,249) with a white card and rgb(71,85,105) text, page title الصفحة غير موجودة — Wizz, and no console error other than the 404 status itself.",
-    "Repeated the same 404, login, static-asset and home-redirect checks on the real instance at http://localhost:5183 after the change.",
-    "Correction: /Error is not missing; Components/Pages/Error.razor exists and answers 200, but it is still the default English template without layout or theme. The earlier note in this pack claimed the page did not exist because the first search only covered the Pages folder. Improving that page is not ordered yet.",
-    "Limitation: the 286 automated tests do not cover routing, the not-found screen or browser behaviour; the evidence above is manual and was not reproduced in CI because GitHub Actions remains unavailable for the account.",
+    "Browser check on the real instance at http://localhost:5183: the five settings cards render in one grid, four at 604 px and the AI card at 1208 px in a 1496 px window, with no horizontal overflow.",
+    "Collapse check: the store card changes aria-expanded from true to false, hides its body, updates the counter to 4 of 5 and renames the button to expand; expanding restores 5 of 5.",
+    "Unsaved-value check: an edited store address survived collapse-all (counter 0 of 5, nine inputs still in the page) and was restored unchanged by expand-all.",
+    "Quick panel check: six sections, shortcuts closed by default, dark theme, high contrast, reduced motion, large targets and draft-off all get the active state and aria-pressed=true, html data attributes update, keys are stored, and restore-defaults returns normal values and removes the keys; the settings banner opens the panel and Escape closes it.",
+    "Draft gate check: with saving off, adding two products wrote no draft; with saving on, a two-line draft was written; switching saving off from the panel cleared the existing draft immediately. Test keys were removed afterwards.",
+    "Limitation: the 286 automated tests do not cover the panel, the draft or the settings layout in a browser; the evidence above is manual and was not reproduced in CI because GitHub Actions remains unavailable for the account.",
+    "Limitation: phone stacking is verified through the Bootstrap col-12 class, not by resizing a real window.",
+    "Boundary note: contrast, motion and touch targets are display-only, and the draft toggle only controls a local browser copy for that cashier device; money, stock and permission settings stay in the full settings page, and the AI assistant preferences remain there because they live in the assistant's own store.",
     "Execution remains unauthorized outside the recorded limited scopes (D-21, D-22, D-30, D-31, D-32, D-33).",
     "Phase 3 (cash drawer, purchases, UI, sync) is not implemented and not authorized.",
     "MVP-AT-09 still requires a real restore test in a separate environment."
@@ -336,8 +342,8 @@
     },
     {
       "path": "docs/DECISIONS_AND_OPEN_GATES.md",
-      "size_bytes": 38234,
-      "sha256": "d59948775297d3959327a38853ee5942a86266eaf360c0f722e9b1d0b986e0d3"
+      "size_bytes": 45059,
+      "sha256": "9f0104748b6de7692c0c0c321badd25aadcb97f459455d1f58e6c97731c25173"
     },
     {
       "path": "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md",
@@ -435,6 +441,11 @@
       "sha256": "deb7087f783b33b3c573b44df61c8f5a88e5617da0c9122a4e1453b242a15391"
     },
     {
+      "path": "PACK_MANIFEST_v0.6.8.json",
+      "size_bytes": 6670,
+      "sha256": "af2956db9be5e6be769583648f5cc404f407433960f7111b49f05d95677cd564"
+    },
+    {
       "path": "PROJECT_RULES.md",
       "size_bytes": 24436,
       "sha256": "2db38d738d7188ee352e2f4c5af5ecaddf807353968a846439a735ef162bd9b9"
@@ -451,8 +462,9 @@
     "D-30 Phase 1 stock documents (StockDocument/DocumentSequence, numbering, opening/count/waste, migration, stock card)",
     "D-31 Phase 2 cashier shift (CashierShift, shift gate over the current business day, sale cancel/modify audit fields, MRB sales return)",
     "D-32 H-04 security package (cookie authentication, PBKDF2 hashing, SecurityStamp session invalidation, audit log, permission policies, first-run setup, login lockout)",
-    "D-33 quick settings panel opened from the conventional help button (F1 or ?), presentation preferences only, plus in-progress sale draft kept in the cashier's browser",
-    "v0.6.7 owner-ordered fix inside the D-33 presentation scope: themed page-not-found screen for unknown URLs and removal of the dead stock-movements button"
+    "D-33 quick settings panel opened from the conventional help button (F1 or ?), presentation and personal-device preferences only, plus in-progress sale draft kept in the cashier's browser",
+    "v0.6.7 owner-ordered fix inside the D-33 presentation scope: themed page-not-found screen for unknown URLs and removal of the dead stock-movements button",
+    "v0.6.8 owner-ordered polish inside the D-33 presentation scope: contrast, reduced motion, large touch targets, draft-save toggle, keyboard shortcuts moved into the quick panel, and an evenly distributed collapsible settings grid"
   ],
-  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB); v0.6.3 records the H-04 security implementation; v0.6.4 records the routing correction applied on top of H-04; v0.6.5 records the standing communication-style rule requested by the owner; v0.6.6 records the owner-authorized quick settings panel and the sale draft; v0.6.7 records the owner-ordered page-not-found screen and the removal of the dead stock-movements button."
+  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB); v0.6.3 records the H-04 security implementation; v0.6.4 records the routing correction applied on top of H-04; v0.6.5 records the standing communication-style rule requested by the owner; v0.6.6 records the owner-authorized quick settings panel and the sale draft; v0.6.7 records the owner-ordered page-not-found screen and the removal of the dead stock-movements button; v0.6.8 records the owner-ordered expansion of the quick settings and the evenly distributed, collapsible settings groups."
 }
