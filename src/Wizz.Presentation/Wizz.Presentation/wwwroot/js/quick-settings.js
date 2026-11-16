@@ -308,6 +308,34 @@ window.wizzQuickSettings = {
             }
         }, true);
 
+        // التنقل بين الصفحات داخل Blazor يعيد رسم <html> من استجابة الخادم، فيُفقد المظهر
+        // المختار بعد كل انتقال. نعيد تطبيق التفضيلات بعد أي نقرة على رابط، وبعد الرجوع
+        // والتقدم في المتصفح: دفعة فورية ثم متابعة على إطارات الرسم القليلة التالية
+        // لتغطية لحظة استبدال الصفحة دون وميض طويل.
+        var reapplyPreferences = function () {
+            api.applyPreferences();
+            var frames = 0;
+            var step = function () {
+                api.applyPreferences();
+                frames += 1;
+                if (frames < 20) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+            window.setTimeout(function () { api.applyPreferences(); }, 400);
+        };
+
+        document.addEventListener('click', function (event) {
+            var target = event.target;
+            if (target && target.closest && target.closest('a[href]')) {
+                reapplyPreferences();
+            }
+        }, true);
+
+        window.addEventListener('popstate', reapplyPreferences);
+        window.addEventListener('hashchange', reapplyPreferences);
+
         // مزامنة التفضيلات بين تبويبات المتصفح المفتوحة في الوقت نفسه.
         window.addEventListener('storage', function (event) {
             if (!event.key) return;

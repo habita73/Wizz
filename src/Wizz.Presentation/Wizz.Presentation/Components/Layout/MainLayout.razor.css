@@ -13,8 +13,8 @@ main {
     background: var(--wizz-sidebar-bg, var(--wizz-primary));
     color: var(--wizz-text-on-primary);
     border-inline-end: 1px solid var(--wizz-sidebar-border, transparent);
-    min-height: 100vh;
-    transition: var(--wizz-transition);
+    /* انتقال محدود: تغيّر خلفية الشريط مع المظهر يجب أن يظهر فوراً لا بعد تأخير. */
+    transition: color 0.22s ease, border-color 0.22s ease;
 }
 
 .top-row {

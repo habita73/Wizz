@@ -1125,12 +1125,14 @@ a.btn-primary:hover,
 /* ============================================================
    16. Sidebar navigation (الشريط الجانبي وقائمة التنقل)
    ============================================================ */
+/* ارتفاع الشريط الجانبي يأتي من التخطيط نفسه: 100vh على الشاشات الواسعة فقط.
+   لا نضع min-height هنا حتى لا يمتلئ أول شاشة الهاتف بشريط كحلي فارغ. */
 .sidebar {
     background: var(--wizz-sidebar-bg, var(--wizz-primary));
     color: var(--wizz-text-on-primary);
     border-inline-end: 1px solid var(--wizz-sidebar-border, transparent);
-    min-height: 100vh;
-    transition: var(--wizz-transition);
+    /* لا نضمّن الخلفية في الانتقال: تغيّر لونها مع المظهر يجب أن يقع فوراً. */
+    transition: color 0.22s ease, border-color 0.22s ease;
 }
 
 .navbar-dark .navbar-brand,
