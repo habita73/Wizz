@@ -1,0 +1,58 @@
+{
+  "package": "Vent au comptoir Documentation Pack",
+  "version": "0.6.10",
+  "date": "2026-11-16",
+  "status": "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_AUTHORIZED",
+  "execution_authorized": false,
+  "limited_execution_authorizations": [
+    "D-21 H-05 consistent backup and restore service",
+    "D-22 H-02 sale edit inside a single EF transaction",
+    "D-30 Phase 1 stock documents (StockDocument/DocumentSequence, numbering, opening/count/waste, migration, stock card)",
+    "D-31 Phase 2 cashier shift (CashierShift, shift gate over the current business day, sale cancel/modify audit fields, MRB sales return)",
+    "D-32 H-04 security package (cookie authentication, PBKDF2 hashing, SecurityStamp session invalidation, audit log, permission policies, first-run setup, login lockout)",
+    "D-33 quick settings panel opened from the conventional help button (F1 or ?), presentation and personal-device preferences only, plus in-progress sale draft kept in the cashier's browser",
+    "v0.6.7 owner-ordered fix inside the D-33 presentation scope: themed page-not-found screen for unknown URLs and removal of the dead stock-movements button",
+    "v0.6.8 owner-ordered polish inside the D-33 presentation scope: contrast, reduced motion, large touch targets, draft-save toggle, keyboard shortcuts moved into the quick panel, and an evenly distributed collapsible settings grid",
+    "v0.6.9 owner-ordered behavior inside the D-33 presentation scope: the quick settings panel now also closes on an outside click or lost focus, while its own close button and Escape keep working",
+    "v0.6.10 owner-ordered presentation fixes inside the D-33 presentation scope: the free-key card inside the AI assistant settings card keeps its natural height, the AI route badges and test buttons wrap instead of overflowing the card, and the detailed-assistant-settings link jumps to the assistant card on the settings page"
+  ],
+  "active_files": [
+    "README.md",
+    "PROJECT_RULES.md",
+    "AGENTS.md",
+    "docs/PRODUCT_MASTER.md",
+    "docs/MVP_AND_ACCEPTANCE.md",
+    "docs/TECHNICAL_AND_SAFETY_RULES.md",
+    "docs/DECISIONS_AND_OPEN_GATES.md",
+    "docs/STOCK_AND_DOCUMENTS_MODEL_AR.md",
+    "docs/ARCHIVE_INDEX.md",
+    "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md"
+  ],
+  "archive_file_count": 57,
+  "archive_policy": "Archive files are historical, non-active references; do not load all archive files for routine tasks.",
+  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB); v0.6.3 records the H-04 security implementation; v0.6.4 records the routing correction applied on top of H-04; v0.6.5 records the standing communication-style rule requested by the owner; v0.6.6 records the owner-authorized quick settings panel and the sale draft; v0.6.7 records the owner-ordered page-not-found screen and the removal of the dead stock-movements button; v0.6.8 records the owner-ordered expansion of the quick settings and the evenly distributed, collapsible settings groups; v0.6.9 records the owner-ordered close-on-outside-click and close-on-lost-focus behavior of the quick settings panel; v0.6.10 records the owner-ordered removal of the large blank gap inside the AI assistant settings card, the wrapping of the AI route badges, and the direct link to the assistant card.",
+  "mvp_status": "APPROVED",
+  "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21, D-22, D-30, D-31, D-32 and the D-33 presentation-only UI scope.",
+  "change_summary": [
+    "Removed the large blank gap inside the AI assistant card on the full settings page, between the optional free-key card and the assistant status line.",
+    "Root cause: the grid rule that stretched cards to full height applied to every card in the settings grid, including the nested free-key card, which grew to the entire AI card height (about 1858 px).",
+    "The height rule and the card-header gap rule now apply only to the direct outer cards of the grid, so the free-key card keeps its natural content height (about 219 px).",
+    "Added normal spacing before the assistant status line so it keeps a small, even gap instead of sitting flush against the key card.",
+    "On the AI assistant page, the route badges and their test buttons no longer overflow the side card on narrow widths: the header row, the badge line and the three detail rows now wrap onto new lines instead of crossing the card boundary.",
+    "The detailed-assistant-settings link now points to /settings#ai-settings, the assistant card carries an ai-settings id with a scroll margin, and a small script re-scrolls to the section after the page renders and on enhanced navigation.",
+    "Only presentation changed; no money, data, permission or database semantics were touched."
+  ],
+  "review_findings": [
+    "Build after the change: dotnet build Wizz.Presentation -c Release = 0 errors (pre-existing StyleCop warnings only).",
+    "Solution tests: Domain 24/24; Integration 262/262 (286 total).",
+    "Browser measurement on the real instance at http://localhost:5183/settings: the free-key card is now 219 px high instead of 1858 px, and the gap before the assistant status alert is 16 px.",
+    "The AI card body no longer overflows (scrollHeight equals clientHeight, 1796 px), the paired cards keep equal heights (612/612 and 293/293), and there is no horizontal page overflow.",
+    "Browser check on http://localhost:5183/ai before the fix: the badge container started at left = -5 outside the card (card left = 24) and the page scrollWidth was 1493 against a 1488 viewport; after the fix no element overflows the card, the badges move to a second line (66 px header), and there is no horizontal scrolling.",
+    "Anchor check: clicking the detailed-assistant-settings link from /ai ends at /settings#ai-settings with the assistant card 72 px from the top (scrollY = 1131); opening /settings#ai-settings directly gives the same result. No console errors were reported.",
+    "Limitation: the 286 automated tests do not cover the browser grid layout, wrapping or anchor scrolling; the evidence above is manual and was not reproduced in CI because GitHub Actions remains unavailable for the account.",
+    "Boundary note: the changes are presentation-only; money, stock and permission settings stay in the full settings page and were not altered.",
+    "Execution remains unauthorized outside the recorded limited scopes (D-21, D-22, D-30, D-31, D-32, D-33).",
+    "Phase 3 (cash drawer, purchases, UI, sync) is not implemented and not authorized.",
+    "MVP-AT-09 still requires a real restore test in a separate environment."
+  ]
+}

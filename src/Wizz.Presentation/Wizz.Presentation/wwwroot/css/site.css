@@ -1021,8 +1021,8 @@ a.btn-primary:hover,
     align-items: center;
     gap: .25rem;
     min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .ai-status-line .badge {
@@ -2701,12 +2701,18 @@ html[data-density="compact"] .top-row {
 }
 
 /* بطاقة مطوية: يبقى العنوان ظاهراً ويختفي جسمها دون فقدان القيم المدخلة. */
-.wizz-settings-grid .card {
+/* البطاقات الخارجية فقط: لا نمدّ بطاقة داخلية (مثل صندوق المفتاح المجاني) إلى ارتفاع البطاقة كلها. */
+.wizz-settings-grid > [class*="col-"] > .card {
   height: 100%;
 }
 
-.wizz-settings-grid .card-header {
+.wizz-settings-grid > [class*="col-"] > .card > .card-header {
   gap: 0.5rem;
+}
+
+/* رابط «الإعدادات التفصيلية للمساعد» يقف على بطاقة المساعد نفسها لا أعلى الصفحة. */
+#ai-settings {
+  scroll-margin-top: 4.5rem;
 }
 
 /* الوضع الفاتح صريحاً — يثبّت عناصر النظام (قوائم، تواريخ، أشرطة تمرير) فاتحة. */

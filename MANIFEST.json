@@ -1,6 +1,6 @@
 {
   "package": "Vent au comptoir Documentation Pack",
-  "version": "0.6.9",
+  "version": "0.6.10",
   "date": "2026-11-16",
   "status": "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_AUTHORIZED",
   "execution_authorized": false,
@@ -21,23 +21,23 @@
   "mvp_status": "APPROVED",
   "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21, D-22, D-30, D-31, D-32 and the D-33 presentation-only UI scope.",
   "change_summary": [
-    "The quick settings panel now closes when the user clicks anywhere outside it, including the dimmed page backdrop.",
-    "The panel also closes when keyboard focus leaves it for another page element, and when the browser window or tab loses focus.",
-    "Clicks inside the panel no longer close it: clicking static text keeps it open, and clicking an option applies the choice and keeps the panel open.",
-    "The panel's own close button, Escape and the F1/question-mark shortcuts keep working exactly as before, and the help trigger still toggles the panel.",
-    "The footer hint now tells the user that Escape or a click outside closes the panel.",
-    "Fixed a regression found during verification: replacing the trigger listener had briefly removed the click handler that opens the panel from the help button and the settings banner; it was restored.",
-    "Only presentation behavior changed; no money, data, permission or database semantics were touched.",
-    "Refreshed the pack manifestations with new fingerprints for v0.6.9."
+    "Removed the large blank gap inside the AI assistant card on the full settings page, between the optional free-key card and the assistant status line.",
+    "Root cause: the grid rule that stretched cards to full height applied to every card in the settings grid, including the nested free-key card, which grew to the entire AI card height (about 1858 px).",
+    "The height rule and the card-header gap rule now apply only to the direct outer cards of the grid, so the free-key card keeps its natural content height (about 219 px).",
+    "Added normal spacing before the assistant status line so it keeps a small, even gap instead of sitting flush against the key card.",
+    "On the AI assistant page, the route badges and their test buttons no longer overflow the side card on narrow widths: the header row, the badge line and the three detail rows now wrap onto new lines instead of crossing the card boundary.",
+    "The detailed-assistant-settings link now points to /settings#ai-settings, the assistant card carries an ai-settings id with a scroll margin, and a small script re-scrolls to the section after the page renders and on enhanced navigation.",
+    "Only presentation changed; no money, data, permission or database semantics were touched."
   ],
   "review_findings": [
-    "Build and tests after the change: dotnet build Wizz.sln -c Release = 0 errors (pre-existing StyleCop warnings only); Domain 24/24; Integration 262/262 (286 total).",
-    "Browser check on the real instance at http://localhost:5183/settings with the help button (F1): the panel opens with the first option focused.",
-    "Close paths verified: the panel close button closes it; Escape closes it; F1 opens then closes it; a click outside the panel on the page hits the backdrop and closes it; moving focus with Tab from the last panel button to a navigation link closes it and returns focus to the help button; a window blur event closes it.",
-    "Inside-click check: clicking static text inside the panel keeps it open, and clicking the dark theme option keeps it open while applying the dark theme; the theme was restored to system afterwards.",
-    "Trigger check: clicking the help button opens the panel and clicking it again closes it; no console errors were reported during any of the checks.",
-    "Limitation: the 286 automated tests do not cover the panel behavior in a browser; the evidence above is manual and was not reproduced in CI because GitHub Actions remains unavailable for the account.",
-    "Boundary note: the change is presentation-only; money, stock and permission settings stay in the full settings page.",
+    "Build after the change: dotnet build Wizz.Presentation -c Release = 0 errors (pre-existing StyleCop warnings only).",
+    "Solution tests: Domain 24/24; Integration 262/262 (286 total).",
+    "Browser measurement on the real instance at http://localhost:5183/settings: the free-key card is now 219 px high instead of 1858 px, and the gap before the assistant status alert is 16 px.",
+    "The AI card body no longer overflows (scrollHeight equals clientHeight, 1796 px), the paired cards keep equal heights (612/612 and 293/293), and there is no horizontal page overflow.",
+    "Browser check on http://localhost:5183/ai before the fix: the badge container started at left = -5 outside the card (card left = 24) and the page scrollWidth was 1493 against a 1488 viewport; after the fix no element overflows the card, the badges move to a second line (66 px header), and there is no horizontal scrolling.",
+    "Anchor check: clicking the detailed-assistant-settings link from /ai ends at /settings#ai-settings with the assistant card 72 px from the top (scrollY = 1131); opening /settings#ai-settings directly gives the same result. No console errors were reported.",
+    "Limitation: the 286 automated tests do not cover the browser grid layout, wrapping or anchor scrolling; the evidence above is manual and was not reproduced in CI because GitHub Actions remains unavailable for the account.",
+    "Boundary note: the changes are presentation-only; money, stock and permission settings stay in the full settings page and were not altered.",
     "Execution remains unauthorized outside the recorded limited scopes (D-21, D-22, D-30, D-31, D-32, D-33).",
     "Phase 3 (cash drawer, purchases, UI, sync) is not implemented and not authorized.",
     "MVP-AT-09 still requires a real restore test in a separate environment."
@@ -47,341 +47,6 @@
       "path": "AGENTS.md",
       "size_bytes": 24490,
       "sha256": "ce27d43ed18ac88c02506c7e187d3d7aaee62ff278d8f619283beff85575284c"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/architecture/AI_ARCHITECTURE.md",
-      "size_bytes": 1990,
-      "sha256": "058ef26fe2494426310e0362ffcfb8b0d581816d70a04dca596fa02229ebf9c6"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/architecture/COMMANDS_EVENTS_AUTOMATION.md",
-      "size_bytes": 1484,
-      "sha256": "0bcc9b58ee25cacb2d457f672632175b2472557ba363db78d0755013bf709e4f"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/architecture/DATA_MODEL.md",
-      "size_bytes": 3086,
-      "sha256": "a9aedbfd4f5e6b12a9e180f2ddddbdb38d3f5f199c1f88f8bd9a250f4679d2ff"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/architecture/SOLUTION_STRUCTURE.md",
-      "size_bytes": 2004,
-      "sha256": "08879f158c40cd1ad2e546c515e58d0578b99cac5be05acb0e26b7a9c76f5fcb"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/architecture/SYNC_AND_CONFLICT_POLICY.md",
-      "size_bytes": 2681,
-      "sha256": "7efd09201dc090b3d3a5e8a8ba02c0f492ad687e891e420f48ee153d4045e9ff"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/architecture/TECHNICAL_OPEN_DECISIONS_v0.3.2.md",
-      "size_bytes": 8427,
-      "sha256": "27a0530dca8841b1cb9c5049f50f5cc08ae9648c3f50f2ffbebf70a65d9a0f2c"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/business/BUSINESS_MODEL_AND_RISK_AUDIT_v0.2.5.md",
-      "size_bytes": 8106,
-      "sha256": "c6e7490a72ddfff0407fdedf6556438057d072445a0189a39c3a54d4bcbcd3cf"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/business/BUSINESS_MODEL.md",
-      "size_bytes": 2351,
-      "sha256": "03dae5d50de1b42423f09e948cc59005b2a25789424d40d801fbcde1407c3297"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/business/LICENSING_AND_SUBSCRIPTIONS.md",
-      "size_bytes": 2259,
-      "sha256": "b1e65d60b9209bfdde91915b328ef7b6385495ad54b3967688bb853a2be4d69b"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/compliance/ALGERIA_COMPLIANCE.md",
-      "size_bytes": 12504,
-      "sha256": "8940191a981678ff0109b1d3577f673f6362f01b456374041f5d3298e2497789"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/DECISION_REGISTER.md",
-      "size_bytes": 3417,
-      "sha256": "f53a1197f59b5c6982c92a1d45c1d2fbe46255dc43800e5d7c55fc09397f8bc1"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/DECISION_TRACEABILITY_Q1-Q247.md",
-      "size_bytes": 38218,
-      "sha256": "97294883eb7cd2a948214b00e33c08eb5e3bcd84acb718b9b032316d4c94b529"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/DOCUMENTATION_WORKFLOW_AUDIT_v0.5.1.md",
-      "size_bytes": 1847,
-      "sha256": "145502ae8eed1e8f131b4b60aad25c76ccc6bbcce7c2c1f76fcdf335779247a8"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/FINAL_DOCUMENTATION_READINESS_AUDIT_v0.4.0.md",
-      "size_bytes": 8507,
-      "sha256": "63000b18136e39fe262abe8059775dde42b9184514f4ae543310779135f05df8"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/LEGAL_MARKET_RESEARCH_AUDIT_v0.2.4.md",
-      "size_bytes": 3033,
-      "sha256": "00c51e56c034404290abb959fe5f237d0eeaaec515934e04e5492b95962c7eea"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/LOCALIZATION_AND_RTL.md",
-      "size_bytes": 1365,
-      "sha256": "46637b628460728f793c3c8f305118b0f5df132ad86b9fac35d74be09c1fd2ad"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/MVP_ACCEPTANCE_TEST_AUDIT_v0.3.1.md",
-      "size_bytes": 1268,
-      "sha256": "67545fbb9c22c2e456b2b036fa5c5dd28c9f18f1cf824ebd3536335fa9713163"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/MVP_ACCEPTANCE_TESTS_v0.3.1.md",
-      "size_bytes": 9995,
-      "sha256": "8d031016d01ce0c21e6179865639012e6bd7e9f2d3a7c120cba7ca89e2dfd361"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/MVP_SCOPE_AUDIT_v0.2.8.md",
-      "size_bytes": 1023,
-      "sha256": "88007929bbbf9417147be4e5401a1fc36846ea4e7273382228180d5932ad79e7"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/MVP_SCOPE_AUDIT_v0.2.9.md",
-      "size_bytes": 927,
-      "sha256": "dc66e4ae924e9151d153e34139d544926cca51cb64f1e4c2ebdfb410e2232110"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/MVP_SCOPE_PROPOSAL.md",
-      "size_bytes": 11696,
-      "sha256": "a02c839f667c97bf229aa050c02104bfb33164521a36944152208a9f4dd6ac8a"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/OPEN_QUESTIONS.md",
-      "size_bytes": 2988,
-      "sha256": "cbc52b71627bb93f2f7d1c455abe9f7c9ac08f3ff5773da639600f7e9e9714de"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/operations/DATA_MIGRATION_AND_PORTABILITY_v0.3.7.md",
-      "size_bytes": 11818,
-      "sha256": "b71abb655df7c401e3b17f91475c51cae1e945319e850c46e323f5537eb2880b"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/operations/RELEASE_DISTRIBUTION_AND_SAFE_UPDATE_v0.3.6.md",
-      "size_bytes": 9357,
-      "sha256": "9c4b4a962c6eacc98bdcd298f11deca910efb04f7d116cafb89e43c3921647a7"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/operations/SUPPORT_MAINTENANCE_AND_POST_RELEASE_v0.3.5.md",
-      "size_bytes": 9755,
-      "sha256": "b041166aa400600d9e3df87a3ae56b0d1409a75090de678dfdbbfa92b5750487"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/operations/VPS_AND_DEPLOYMENT.md",
-      "size_bytes": 1020,
-      "sha256": "b4598629a7560b37a9592694620f349de16e8cf34af1f64763e8bbd8bb38b873"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/PILOT_RECRUITMENT_AND_TEST_PLAN_v0.3.0.md",
-      "size_bytes": 4064,
-      "sha256": "b1dc245e6533393c67cfe9107797f803fdba93996e42311bd4a3573fe0c1c395"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/PRE_EXECUTION_DECISIONS_v0.2.9.md",
-      "size_bytes": 3675,
-      "sha256": "ab13dce590199a883fb2a86b4fe2cb54dc0f53a955d18159437d15eacd6bd5e6"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/PROJECT_BLUEPRINT.md",
-      "size_bytes": 63412,
-      "sha256": "9f78dec86fe559042395df6f93eb5ce2b1a0ecacc32d03429ee1067f13bf6d3a"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/QA_TRACEABILITY_AUDIT_v0.3.8.md",
-      "size_bytes": 2149,
-      "sha256": "122b502cc1258b4ab827ef226835316307ef3fb6f9ebfab7031b1b198b4f1c34"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/REQUIREMENT_TRACEABILITY_MATRIX_v0.3.9.md",
-      "size_bytes": 17616,
-      "sha256": "43a6c2c4e6641228bd1cc5ac4699cef53bfc3426118da69bc6f6853fa6ce80e4"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/REQUIREMENT_TRACEABILITY_MATRIX_v0.4.1.md",
-      "size_bytes": 29876,
-      "sha256": "af0e9ecfc88f8c1caf938dcbdbf21fe25f190ceb0d7791158d2d0851b6088e3f"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/REQUIREMENTS_COVERAGE_AUDIT.md",
-      "size_bytes": 5884,
-      "sha256": "8c81c4fae0020c6a5fa3915aec891f6ab63f9ebfa00438d40a7dc8b2082cf578"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/RESTORATION_AND_COMPLETENESS_AUDIT.md",
-      "size_bytes": 7004,
-      "sha256": "4917490bdbaf7ab619a5b8d86f4365251915d0153581fed58aaa6f2bcb22c81d"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/RISK_REGISTER.md",
-      "size_bytes": 1482,
-      "sha256": "52acdb7dee82cc6d56403e26b4476493b98104f45e5401abb94165dc9e0aa964"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/SECURITY_PRIVACY_AUDIT_v0.3.4.md",
-      "size_bytes": 1466,
-      "sha256": "5a478b2eb50b97610eb6b1366a70d01cb65e672259cab777f966bbe7116a59a4"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/SECURITY_PRIVACY_OPERATIONAL_CONTROLS_v0.3.4.md",
-      "size_bytes": 15605,
-      "sha256": "78f7a0b4fb7e4c3041333e6b6289e2a250cc8714a55f945e0ba5a3471bbb2638"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/TECHNICAL_VALIDATION_PLAN_v0.3.3.md",
-      "size_bytes": 7852,
-      "sha256": "3d4ce5b3432a724684770f6d2bbf64703dbeb837225729979e5d1efefa7e1021"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/TEST_STRATEGY_v0.3.8.md",
-      "size_bytes": 9857,
-      "sha256": "021889093d055984616fc35d5649f42c8a51f57666e7245c3ff2d7b25856b66f"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/TEST_STRATEGY.md",
-      "size_bytes": 1120,
-      "sha256": "f0815f4827c6349404e52724128d6bc4912a596a24f8131a7fc279621cb6b54a"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/WORKSPACE_AND_GIT_WORKFLOW.md",
-      "size_bytes": 1138,
-      "sha256": "0758d74e13a8dd7b49c650dc526eeaf69fa53bd0d42beba655f6971252e21a83"
-    },
-    {
-      "path": "archive/PACK_MANIFEST_v0.3.9.json",
-      "size_bytes": 9430,
-      "sha256": "18eb08f1888f7330e8b6e81fb16cb561f402ce7ada96a4ee8cdaef531fe9c586"
-    },
-    {
-      "path": "archive/PACK_MANIFEST_v0.4.0.json",
-      "size_bytes": 9585,
-      "sha256": "672b69c75573a044f778fdb2e991b55e507b42ce2d4f75857f4b55ac461c2018"
-    },
-    {
-      "path": "archive/PACK_MANIFEST_v0.4.1.json",
-      "size_bytes": 9852,
-      "sha256": "72957fea5743df27361b7c1b599776833f8f5f637bc99f628ddb687f3f0d301c"
-    },
-    {
-      "path": "archive/PACK_MANIFEST_v0.5.0.json",
-      "size_bytes": 473,
-      "sha256": "8f16c7404d1677be6be78a1fb3e280a0195262a8e373f6775ae6e32e71f92254"
-    },
-    {
-      "path": "archive/prompts/00_MASTER_PROJECT_PROMPT_AR.md",
-      "size_bytes": 1556,
-      "sha256": "365bff4c3d91591ac58fc5717891115b75cb7b36e39bbfdfc8424e165774b9cc"
-    },
-    {
-      "path": "archive/prompts/01_DOCUMENTATION_SESSION_PROMPT_AR.md",
-      "size_bytes": 587,
-      "sha256": "fb699c474800c6993cd33d55204c47c1aff859b0a6283a5748a314feb9498d05"
-    },
-    {
-      "path": "archive/prompts/02_ARCHITECTURE_REVIEW_PROMPT_AR.md",
-      "size_bytes": 502,
-      "sha256": "c153b7f78664219e1f58049b31be8ad96b99c0528410c36eae2ee5365b5c8659"
-    },
-    {
-      "path": "archive/prompts/03_MULTI_AGENT_TASK_PROMPT_AR.md",
-      "size_bytes": 446,
-      "sha256": "bc7f2806ce197a867335d91c0f211b32f712e78334b03c46057aac5b966330f7"
-    },
-    {
-      "path": "archive/prompts/04_IMPLEMENTATION_GATE.md",
-      "size_bytes": 426,
-      "sha256": "c0aea166a82835edaac10eb971fa3ffbc187df5f342ec3218a166b364f952906"
-    },
-    {
-      "path": "archive/prompts/05_LEGAL_MARKET_RESEARCH_PROMPT_AR.md",
-      "size_bytes": 589,
-      "sha256": "de50a5516da65a5318d36cf4a8da8e63cf9a5d00810f868fb775f5e1691cb60d"
-    },
-    {
-      "path": "archive/prompts/06_DOCUMENT_APPROVAL_REVIEW_AR.md",
-      "size_bytes": 499,
-      "sha256": "76173952a449af1f2454bd1e6caf38eaadb653170e42a509cc949a364440a435"
-    },
-    {
-      "path": "archive/README_ARCHIVE.md",
-      "size_bytes": 1408,
-      "sha256": "84090185eb9b28bc3e083aa06fefb092625fc2c5f0466c2f2f1727b5543384ce"
-    },
-    {
-      "path": "archive/source-project/README.md",
-      "size_bytes": 317,
-      "sha256": "b0fa3f18baeb3537a59b531939b31145ac12005f5406496a7acedc850b9dc207"
-    },
-    {
-      "path": "archive/templates/ADR_TEMPLATE.md",
-      "size_bytes": 278,
-      "sha256": "d92b910fc9edbd729ad7d2c396594a61a64b56910d4766759079cf4e29cfd9b3"
-    },
-    {
-      "path": "archive/templates/CHANGE_PROPOSAL_TEMPLATE.md",
-      "size_bytes": 396,
-      "sha256": "b481796c8538b5e7d0f1e6ab63c1102874fa61ce4a4d238de007b09af7c088e4"
-    },
-    {
-      "path": "archive/templates/REQUIREMENT_TEMPLATE.md",
-      "size_bytes": 349,
-      "sha256": "38f07e626789417ab231e0dbc6948a7babedee7ffe69164870a8c39ba7ef9a4e"
-    },
-    {
-      "path": "docs/ARCHIVE_INDEX.md",
-      "size_bytes": 2378,
-      "sha256": "a088ee6bfe535a22aa3c4b32184c4619bd32e317c5d072d456b9a3d0b6323b94"
-    },
-    {
-      "path": "docs/DECISIONS_AND_OPEN_GATES.md",
-      "size_bytes": 48458,
-      "sha256": "90144ddf423e50f2f0d0204e2292c55a389ee5476d0865aba59333901a39a074"
-    },
-    {
-      "path": "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md",
-      "size_bytes": 14761,
-      "sha256": "9a6753f3018d8800210eb81c5bdcdb6bdea3ad5b6b7bececacd596fc02402962"
-    },
-    {
-      "path": "docs/MVP_AND_ACCEPTANCE.md",
-      "size_bytes": 15265,
-      "sha256": "8a985797a0f39161fc495c1350b3e2ab7d5050bc0882c49edd7d5eec8e7ac330"
-    },
-    {
-      "path": "docs/operations/HANDOFF_2026-11-14_PHASE2_SHIFT_AR.md",
-      "size_bytes": 6398,
-      "sha256": "6332c8e37e48e2d3f9fe882ba562b41ca7c6673b943b5ae22d9955664d146550"
-    },
-    {
-      "path": "docs/operations/HANDOFF_2026-11-14_SECURITY_H04_AR.md",
-      "size_bytes": 8086,
-      "sha256": "c72e582af1eb7ad92215ed5edb8744bda8dacbc0c3c8e28f7df434f8c26a3646"
-    },
-    {
-      "path": "docs/operations/HANDOFF_2026-11-14_STOCK_DOCS_AR.md",
-      "size_bytes": 6120,
-      "sha256": "6c4ce7d2d1bb34e4c30786b3f15d553fa3af788ab84026dacc9479713f43964a"
-    },
-    {
-      "path": "docs/PRODUCT_MASTER.md",
-      "size_bytes": 7999,
-      "sha256": "ebd50d42d813fefc99cbfe8b543cba4e0ef8dd6eeaf959b693d6e5ff56e1cc80"
-    },
-    {
-      "path": "docs/STOCK_AND_DOCUMENTS_MODEL_AR.md",
-      "size_bytes": 18040,
-      "sha256": "450638e1ce1e8492a64724a1a03e8d397a49a82452ed6d05bed41ddccfdc2192"
-    },
-    {
-      "path": "docs/TECHNICAL_AND_SAFETY_RULES.md",
-      "size_bytes": 10088,
-      "sha256": "72f90a4a0e869289ded7fa867c139fb3be5ba08b7e84c90e4fa1b11bcb9b4cf6"
     },
     {
       "path": "PACK_MANIFEST_v0.5.2.json",
@@ -407,6 +72,11 @@
       "path": "PACK_MANIFEST_v0.6.1.json",
       "size_bytes": 2589,
       "sha256": "2bffe7c42d48ce10e2471747f04462c0f1a26e88526fc80787c2e3ec81cd46aa"
+    },
+    {
+      "path": "PACK_MANIFEST_v0.6.10.json",
+      "size_bytes": 6864,
+      "sha256": "0698e04440c8b809c1ca144fc21b08fe777eb936066ba8751645364586472b5a"
     },
     {
       "path": "PACK_MANIFEST_v0.6.2.json",
@@ -457,6 +127,341 @@
       "path": "README.md",
       "size_bytes": 11070,
       "sha256": "4480e7f1cc064e3447ce5a94a915d7d307b0dd2d432ac7f57c19f5ab17f49947"
+    },
+    {
+      "path": "archive/PACK_MANIFEST_v0.3.9.json",
+      "size_bytes": 9430,
+      "sha256": "18eb08f1888f7330e8b6e81fb16cb561f402ce7ada96a4ee8cdaef531fe9c586"
+    },
+    {
+      "path": "archive/PACK_MANIFEST_v0.4.0.json",
+      "size_bytes": 9585,
+      "sha256": "672b69c75573a044f778fdb2e991b55e507b42ce2d4f75857f4b55ac461c2018"
+    },
+    {
+      "path": "archive/PACK_MANIFEST_v0.4.1.json",
+      "size_bytes": 9852,
+      "sha256": "72957fea5743df27361b7c1b599776833f8f5f637bc99f628ddb687f3f0d301c"
+    },
+    {
+      "path": "archive/PACK_MANIFEST_v0.5.0.json",
+      "size_bytes": 473,
+      "sha256": "8f16c7404d1677be6be78a1fb3e280a0195262a8e373f6775ae6e32e71f92254"
+    },
+    {
+      "path": "archive/README_ARCHIVE.md",
+      "size_bytes": 1408,
+      "sha256": "84090185eb9b28bc3e083aa06fefb092625fc2c5f0466c2f2f1727b5543384ce"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/DECISION_REGISTER.md",
+      "size_bytes": 3417,
+      "sha256": "f53a1197f59b5c6982c92a1d45c1d2fbe46255dc43800e5d7c55fc09397f8bc1"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/DECISION_TRACEABILITY_Q1-Q247.md",
+      "size_bytes": 38218,
+      "sha256": "97294883eb7cd2a948214b00e33c08eb5e3bcd84acb718b9b032316d4c94b529"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/DOCUMENTATION_WORKFLOW_AUDIT_v0.5.1.md",
+      "size_bytes": 1847,
+      "sha256": "145502ae8eed1e8f131b4b60aad25c76ccc6bbcce7c2c1f76fcdf335779247a8"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/FINAL_DOCUMENTATION_READINESS_AUDIT_v0.4.0.md",
+      "size_bytes": 8507,
+      "sha256": "63000b18136e39fe262abe8059775dde42b9184514f4ae543310779135f05df8"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/LEGAL_MARKET_RESEARCH_AUDIT_v0.2.4.md",
+      "size_bytes": 3033,
+      "sha256": "00c51e56c034404290abb959fe5f237d0eeaaec515934e04e5492b95962c7eea"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/LOCALIZATION_AND_RTL.md",
+      "size_bytes": 1365,
+      "sha256": "46637b628460728f793c3c8f305118b0f5df132ad86b9fac35d74be09c1fd2ad"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/MVP_ACCEPTANCE_TESTS_v0.3.1.md",
+      "size_bytes": 9995,
+      "sha256": "8d031016d01ce0c21e6179865639012e6bd7e9f2d3a7c120cba7ca89e2dfd361"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/MVP_ACCEPTANCE_TEST_AUDIT_v0.3.1.md",
+      "size_bytes": 1268,
+      "sha256": "67545fbb9c22c2e456b2b036fa5c5dd28c9f18f1cf824ebd3536335fa9713163"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/MVP_SCOPE_AUDIT_v0.2.8.md",
+      "size_bytes": 1023,
+      "sha256": "88007929bbbf9417147be4e5401a1fc36846ea4e7273382228180d5932ad79e7"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/MVP_SCOPE_AUDIT_v0.2.9.md",
+      "size_bytes": 927,
+      "sha256": "dc66e4ae924e9151d153e34139d544926cca51cb64f1e4c2ebdfb410e2232110"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/MVP_SCOPE_PROPOSAL.md",
+      "size_bytes": 11696,
+      "sha256": "a02c839f667c97bf229aa050c02104bfb33164521a36944152208a9f4dd6ac8a"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/OPEN_QUESTIONS.md",
+      "size_bytes": 2988,
+      "sha256": "cbc52b71627bb93f2f7d1c455abe9f7c9ac08f3ff5773da639600f7e9e9714de"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/PILOT_RECRUITMENT_AND_TEST_PLAN_v0.3.0.md",
+      "size_bytes": 4064,
+      "sha256": "b1dc245e6533393c67cfe9107797f803fdba93996e42311bd4a3573fe0c1c395"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/PRE_EXECUTION_DECISIONS_v0.2.9.md",
+      "size_bytes": 3675,
+      "sha256": "ab13dce590199a883fb2a86b4fe2cb54dc0f53a955d18159437d15eacd6bd5e6"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/PROJECT_BLUEPRINT.md",
+      "size_bytes": 63412,
+      "sha256": "9f78dec86fe559042395df6f93eb5ce2b1a0ecacc32d03429ee1067f13bf6d3a"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/QA_TRACEABILITY_AUDIT_v0.3.8.md",
+      "size_bytes": 2149,
+      "sha256": "122b502cc1258b4ab827ef226835316307ef3fb6f9ebfab7031b1b198b4f1c34"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/REQUIREMENTS_COVERAGE_AUDIT.md",
+      "size_bytes": 5884,
+      "sha256": "8c81c4fae0020c6a5fa3915aec891f6ab63f9ebfa00438d40a7dc8b2082cf578"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/REQUIREMENT_TRACEABILITY_MATRIX_v0.3.9.md",
+      "size_bytes": 17616,
+      "sha256": "43a6c2c4e6641228bd1cc5ac4699cef53bfc3426118da69bc6f6853fa6ce80e4"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/REQUIREMENT_TRACEABILITY_MATRIX_v0.4.1.md",
+      "size_bytes": 29876,
+      "sha256": "af0e9ecfc88f8c1caf938dcbdbf21fe25f190ceb0d7791158d2d0851b6088e3f"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/RESTORATION_AND_COMPLETENESS_AUDIT.md",
+      "size_bytes": 7004,
+      "sha256": "4917490bdbaf7ab619a5b8d86f4365251915d0153581fed58aaa6f2bcb22c81d"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/RISK_REGISTER.md",
+      "size_bytes": 1482,
+      "sha256": "52acdb7dee82cc6d56403e26b4476493b98104f45e5401abb94165dc9e0aa964"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/SECURITY_PRIVACY_AUDIT_v0.3.4.md",
+      "size_bytes": 1466,
+      "sha256": "5a478b2eb50b97610eb6b1366a70d01cb65e672259cab777f966bbe7116a59a4"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/SECURITY_PRIVACY_OPERATIONAL_CONTROLS_v0.3.4.md",
+      "size_bytes": 15605,
+      "sha256": "78f7a0b4fb7e4c3041333e6b6289e2a250cc8714a55f945e0ba5a3471bbb2638"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/TECHNICAL_VALIDATION_PLAN_v0.3.3.md",
+      "size_bytes": 7852,
+      "sha256": "3d4ce5b3432a724684770f6d2bbf64703dbeb837225729979e5d1efefa7e1021"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/TEST_STRATEGY.md",
+      "size_bytes": 1120,
+      "sha256": "f0815f4827c6349404e52724128d6bc4912a596a24f8131a7fc279621cb6b54a"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/TEST_STRATEGY_v0.3.8.md",
+      "size_bytes": 9857,
+      "sha256": "021889093d055984616fc35d5649f42c8a51f57666e7245c3ff2d7b25856b66f"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/WORKSPACE_AND_GIT_WORKFLOW.md",
+      "size_bytes": 1138,
+      "sha256": "0758d74e13a8dd7b49c650dc526eeaf69fa53bd0d42beba655f6971252e21a83"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/architecture/AI_ARCHITECTURE.md",
+      "size_bytes": 1990,
+      "sha256": "058ef26fe2494426310e0362ffcfb8b0d581816d70a04dca596fa02229ebf9c6"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/architecture/COMMANDS_EVENTS_AUTOMATION.md",
+      "size_bytes": 1484,
+      "sha256": "0bcc9b58ee25cacb2d457f672632175b2472557ba363db78d0755013bf709e4f"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/architecture/DATA_MODEL.md",
+      "size_bytes": 3086,
+      "sha256": "a9aedbfd4f5e6b12a9e180f2ddddbdb38d3f5f199c1f88f8bd9a250f4679d2ff"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/architecture/SOLUTION_STRUCTURE.md",
+      "size_bytes": 2004,
+      "sha256": "08879f158c40cd1ad2e546c515e58d0578b99cac5be05acb0e26b7a9c76f5fcb"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/architecture/SYNC_AND_CONFLICT_POLICY.md",
+      "size_bytes": 2681,
+      "sha256": "7efd09201dc090b3d3a5e8a8ba02c0f492ad687e891e420f48ee153d4045e9ff"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/architecture/TECHNICAL_OPEN_DECISIONS_v0.3.2.md",
+      "size_bytes": 8427,
+      "sha256": "27a0530dca8841b1cb9c5049f50f5cc08ae9648c3f50f2ffbebf70a65d9a0f2c"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/business/BUSINESS_MODEL.md",
+      "size_bytes": 2351,
+      "sha256": "03dae5d50de1b42423f09e948cc59005b2a25789424d40d801fbcde1407c3297"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/business/BUSINESS_MODEL_AND_RISK_AUDIT_v0.2.5.md",
+      "size_bytes": 8106,
+      "sha256": "c6e7490a72ddfff0407fdedf6556438057d072445a0189a39c3a54d4bcbcd3cf"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/business/LICENSING_AND_SUBSCRIPTIONS.md",
+      "size_bytes": 2259,
+      "sha256": "b1e65d60b9209bfdde91915b328ef7b6385495ad54b3967688bb853a2be4d69b"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/compliance/ALGERIA_COMPLIANCE.md",
+      "size_bytes": 12504,
+      "sha256": "8940191a981678ff0109b1d3577f673f6362f01b456374041f5d3298e2497789"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/operations/DATA_MIGRATION_AND_PORTABILITY_v0.3.7.md",
+      "size_bytes": 11818,
+      "sha256": "b71abb655df7c401e3b17f91475c51cae1e945319e850c46e323f5537eb2880b"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/operations/RELEASE_DISTRIBUTION_AND_SAFE_UPDATE_v0.3.6.md",
+      "size_bytes": 9357,
+      "sha256": "9c4b4a962c6eacc98bdcd298f11deca910efb04f7d116cafb89e43c3921647a7"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/operations/SUPPORT_MAINTENANCE_AND_POST_RELEASE_v0.3.5.md",
+      "size_bytes": 9755,
+      "sha256": "b041166aa400600d9e3df87a3ae56b0d1409a75090de678dfdbbfa92b5750487"
+    },
+    {
+      "path": "archive/original-detailed-docs/docs/operations/VPS_AND_DEPLOYMENT.md",
+      "size_bytes": 1020,
+      "sha256": "b4598629a7560b37a9592694620f349de16e8cf34af1f64763e8bbd8bb38b873"
+    },
+    {
+      "path": "archive/prompts/00_MASTER_PROJECT_PROMPT_AR.md",
+      "size_bytes": 1556,
+      "sha256": "365bff4c3d91591ac58fc5717891115b75cb7b36e39bbfdfc8424e165774b9cc"
+    },
+    {
+      "path": "archive/prompts/01_DOCUMENTATION_SESSION_PROMPT_AR.md",
+      "size_bytes": 587,
+      "sha256": "fb699c474800c6993cd33d55204c47c1aff859b0a6283a5748a314feb9498d05"
+    },
+    {
+      "path": "archive/prompts/02_ARCHITECTURE_REVIEW_PROMPT_AR.md",
+      "size_bytes": 502,
+      "sha256": "c153b7f78664219e1f58049b31be8ad96b99c0528410c36eae2ee5365b5c8659"
+    },
+    {
+      "path": "archive/prompts/03_MULTI_AGENT_TASK_PROMPT_AR.md",
+      "size_bytes": 446,
+      "sha256": "bc7f2806ce197a867335d91c0f211b32f712e78334b03c46057aac5b966330f7"
+    },
+    {
+      "path": "archive/prompts/04_IMPLEMENTATION_GATE.md",
+      "size_bytes": 426,
+      "sha256": "c0aea166a82835edaac10eb971fa3ffbc187df5f342ec3218a166b364f952906"
+    },
+    {
+      "path": "archive/prompts/05_LEGAL_MARKET_RESEARCH_PROMPT_AR.md",
+      "size_bytes": 589,
+      "sha256": "de50a5516da65a5318d36cf4a8da8e63cf9a5d00810f868fb775f5e1691cb60d"
+    },
+    {
+      "path": "archive/prompts/06_DOCUMENT_APPROVAL_REVIEW_AR.md",
+      "size_bytes": 499,
+      "sha256": "76173952a449af1f2454bd1e6caf38eaadb653170e42a509cc949a364440a435"
+    },
+    {
+      "path": "archive/source-project/README.md",
+      "size_bytes": 317,
+      "sha256": "b0fa3f18baeb3537a59b531939b31145ac12005f5406496a7acedc850b9dc207"
+    },
+    {
+      "path": "archive/templates/ADR_TEMPLATE.md",
+      "size_bytes": 278,
+      "sha256": "d92b910fc9edbd729ad7d2c396594a61a64b56910d4766759079cf4e29cfd9b3"
+    },
+    {
+      "path": "archive/templates/CHANGE_PROPOSAL_TEMPLATE.md",
+      "size_bytes": 396,
+      "sha256": "b481796c8538b5e7d0f1e6ab63c1102874fa61ce4a4d238de007b09af7c088e4"
+    },
+    {
+      "path": "archive/templates/REQUIREMENT_TEMPLATE.md",
+      "size_bytes": 349,
+      "sha256": "38f07e626789417ab231e0dbc6948a7babedee7ffe69164870a8c39ba7ef9a4e"
+    },
+    {
+      "path": "docs/ARCHIVE_INDEX.md",
+      "size_bytes": 2378,
+      "sha256": "a088ee6bfe535a22aa3c4b32184c4619bd32e317c5d072d456b9a3d0b6323b94"
+    },
+    {
+      "path": "docs/DECISIONS_AND_OPEN_GATES.md",
+      "size_bytes": 53816,
+      "sha256": "52117d3deaea2346afa882a94fcd9e9beb79ca08b03014fb07128ca8629f96a8"
+    },
+    {
+      "path": "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md",
+      "size_bytes": 14761,
+      "sha256": "9a6753f3018d8800210eb81c5bdcdb6bdea3ad5b6b7bececacd596fc02402962"
+    },
+    {
+      "path": "docs/MVP_AND_ACCEPTANCE.md",
+      "size_bytes": 15265,
+      "sha256": "8a985797a0f39161fc495c1350b3e2ab7d5050bc0882c49edd7d5eec8e7ac330"
+    },
+    {
+      "path": "docs/PRODUCT_MASTER.md",
+      "size_bytes": 7999,
+      "sha256": "ebd50d42d813fefc99cbfe8b543cba4e0ef8dd6eeaf959b693d6e5ff56e1cc80"
+    },
+    {
+      "path": "docs/STOCK_AND_DOCUMENTS_MODEL_AR.md",
+      "size_bytes": 18040,
+      "sha256": "450638e1ce1e8492a64724a1a03e8d397a49a82452ed6d05bed41ddccfdc2192"
+    },
+    {
+      "path": "docs/TECHNICAL_AND_SAFETY_RULES.md",
+      "size_bytes": 10088,
+      "sha256": "72f90a4a0e869289ded7fa867c139fb3be5ba08b7e84c90e4fa1b11bcb9b4cf6"
+    },
+    {
+      "path": "docs/operations/HANDOFF_2026-11-14_PHASE2_SHIFT_AR.md",
+      "size_bytes": 6398,
+      "sha256": "6332c8e37e48e2d3f9fe882ba562b41ca7c6673b943b5ae22d9955664d146550"
+    },
+    {
+      "path": "docs/operations/HANDOFF_2026-11-14_SECURITY_H04_AR.md",
+      "size_bytes": 8086,
+      "sha256": "c72e582af1eb7ad92215ed5edb8744bda8dacbc0c3c8e28f7df434f8c26a3646"
+    },
+    {
+      "path": "docs/operations/HANDOFF_2026-11-14_STOCK_DOCS_AR.md",
+      "size_bytes": 6120,
+      "sha256": "6c4ce7d2d1bb34e4c30786b3f15d553fa3af788ab84026dacc9479713f43964a"
     }
   ],
   "limited_execution_authorizations": [
@@ -468,7 +473,8 @@
     "D-33 quick settings panel opened from the conventional help button (F1 or ?), presentation and personal-device preferences only, plus in-progress sale draft kept in the cashier's browser",
     "v0.6.7 owner-ordered fix inside the D-33 presentation scope: themed page-not-found screen for unknown URLs and removal of the dead stock-movements button",
     "v0.6.8 owner-ordered polish inside the D-33 presentation scope: contrast, reduced motion, large touch targets, draft-save toggle, keyboard shortcuts moved into the quick panel, and an evenly distributed collapsible settings grid",
-    "v0.6.9 owner-ordered behavior inside the D-33 presentation scope: the quick settings panel now also closes on an outside click or lost focus, while its own close button and Escape keep working"
+    "v0.6.9 owner-ordered behavior inside the D-33 presentation scope: the quick settings panel now also closes on an outside click or lost focus, while its own close button and Escape keep working",
+    "v0.6.10 owner-ordered presentation fixes inside the D-33 presentation scope: the free-key card inside the AI assistant settings card keeps its natural height, the AI route badges and test buttons wrap instead of overflowing the card, and the detailed-assistant-settings link jumps to the assistant card on the settings page"
   ],
-  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB); v0.6.3 records the H-04 security implementation; v0.6.4 records the routing correction applied on top of H-04; v0.6.5 records the standing communication-style rule requested by the owner; v0.6.6 records the owner-authorized quick settings panel and the sale draft; v0.6.7 records the owner-ordered page-not-found screen and the removal of the dead stock-movements button; v0.6.8 records the owner-ordered expansion of the quick settings and the evenly distributed, collapsible settings groups; v0.6.9 records the owner-ordered close-on-outside-click and close-on-lost-focus behavior of the quick settings panel."
+  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB); v0.6.3 records the H-04 security implementation; v0.6.4 records the routing correction applied on top of H-04; v0.6.5 records the standing communication-style rule requested by the owner; v0.6.6 records the owner-authorized quick settings panel and the sale draft; v0.6.7 records the owner-ordered page-not-found screen and the removal of the dead stock-movements button; v0.6.8 records the owner-ordered expansion of the quick settings and the evenly distributed, collapsible settings groups; v0.6.9 records the owner-ordered close-on-outside-click and close-on-lost-focus behavior of the quick settings panel. v0.6.10 records the owner-ordered removal of the large blank gap inside the AI assistant settings card, the wrapping of the AI route badges, and the direct link to the assistant card."
 }
