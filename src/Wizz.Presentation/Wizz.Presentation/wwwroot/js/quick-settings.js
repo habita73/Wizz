@@ -18,6 +18,7 @@ window.wizzQuickSettings = {
     _trigger: null,
     _lastFocus: null,
     _ready: false,
+    _downInside: false,
 
     // قراءة قيمة محفوظة مع بديل آمن عند تعطّل التخزين المحلي.
     _read: function (key, fallback) {
@@ -235,11 +236,56 @@ window.wizzQuickSettings = {
             if (closer) api.close();
         });
 
+        // النقر خارج اللوحة يغلقها (على الخلفية المعتمة أو أي عنصر آخر في الصفحة).
+        // يُستثنى زر الفتح نفسه حتى يتولى هو فتحها/إغلاقها بدل الإغلاق المزدوج.
+        document.addEventListener('pointerdown', function (event) {
+            var target = event.target;
+            api._downInside = !!(target && api._panel && api._panel.contains(target));
+        }, true);
+
+        // إعادة ضبط المؤشر بعد كل نقرة كي لا تبقى القيمة عالقة وتُبقي اللوحة مفتوحة عند Tab لاحقًا.
+        document.addEventListener('pointerup', function () {
+            api._downInside = false;
+        }, true);
+
+        document.addEventListener('click', function (event) {
+            if (!api.isOpen()) return;
+
+            var target = event.target;
+            if (!target || !target.closest) return;
+            if (api._panel.contains(target)) return;
+            if (target.closest('[data-wizz-qs-open]')) return;
+
+            api.close();
+        }, true);
+
+        // زر/شريط الفتح: يفتح اللوحة إن كانت مغلقة، ويغلقها إن كانت مفتوحة.
         document.addEventListener('click', function (event) {
             var trigger = event.target && event.target.closest ? event.target.closest('[data-wizz-qs-open]') : null;
             if (!trigger) return;
             event.preventDefault();
             api.toggle();
+        });
+
+        // مغادرة التركيز للوحة (Tab إلى عنصر خارجها أو انتقال التركيز لنافذة أخرى).
+        // النقر داخل اللوحة على نص غير قابل للتركيز لا يُغلقها.
+        api._panel.addEventListener('focusout', function (event) {
+            if (!api.isOpen()) return;
+
+            var next = event.relatedTarget;
+            if (next) {
+                if (api._panel.contains(next) || (api._trigger && api._trigger.contains(next))) return;
+                api.close();
+                return;
+            }
+
+            if (api._downInside) return;
+            api.close();
+        });
+
+        // مغادرة التطبيق أو النافذة (Alt+Tab أو النقر على شريط العنوان) تُغلق اللوحة.
+        window.addEventListener('blur', function () {
+            if (api.isOpen()) api.close();
         });
 
         document.addEventListener('keydown', function (event) {
