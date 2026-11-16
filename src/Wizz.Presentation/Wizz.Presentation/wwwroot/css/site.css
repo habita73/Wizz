@@ -2245,3 +2245,256 @@ summary:focus-visible,
   }
 }
 
+/* ============================================================
+   الإعدادات السريعة — لوحة منسدلة تُفتح من زر المساعدة (F1 / ?)
+   تُعدّل تفضيلات العرض فقط، فلا تمس البيانات ولا تُغادر الصفحة الحالية.
+   ============================================================ */
+.wizz-qs-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 50%;
+  border: 1px solid var(--wizz-border);
+  background: var(--wizz-surface);
+  color: var(--wizz-text-secondary);
+  cursor: pointer;
+  transition: var(--wizz-transition);
+  padding: 0;
+}
+
+.wizz-qs-trigger:hover,
+.wizz-qs-trigger:focus-visible {
+  color: var(--wizz-text);
+  border-color: var(--wizz-primary);
+  background: var(--wizz-surface-hover);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--wizz-primary-light);
+}
+
+.wizz-qs-trigger-badge {
+  position: absolute;
+  inset-inline-end: -3px;
+  bottom: -3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 50%;
+  background: var(--wizz-primary);
+  color: var(--wizz-text-on-primary);
+}
+
+.wizz-qs-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.28);
+  z-index: 1035;
+}
+
+.wizz-qs-backdrop[hidden],
+.wizz-qs[hidden] {
+  display: none;
+}
+
+.wizz-qs {
+  position: fixed;
+  top: 4.2rem;
+  inset-inline-end: 1rem;
+  width: min(22rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 5.5rem);
+  overflow-y: auto;
+  z-index: 1040;
+  background: var(--wizz-surface);
+  color: var(--wizz-text);
+  border: 1px solid var(--wizz-border);
+  border-radius: var(--wizz-radius);
+  box-shadow: var(--wizz-shadow-hover);
+}
+
+.wizz-qs-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.7rem 0.9rem;
+  background: var(--wizz-surface);
+  border-bottom: 1px solid var(--wizz-border);
+}
+
+.wizz-qs-chip {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  padding: 0.1rem 0.42rem;
+  border-radius: 999px;
+  border: 1px solid var(--wizz-primary-border);
+  background: var(--wizz-primary-light);
+  color: var(--wizz-primary);
+}
+
+.wizz-qs-body {
+  padding: 0.85rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.wizz-qs-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--wizz-text-secondary);
+  margin-bottom: 0.4rem;
+}
+
+.wizz-qs-segment {
+  display: flex;
+  border: 1px solid var(--wizz-border);
+  border-radius: var(--wizz-radius);
+  overflow: hidden;
+  background: var(--wizz-bg);
+}
+
+.wizz-qs-option {
+  flex: 1 1 0;
+  border: 0;
+  background: transparent;
+  color: var(--wizz-text-secondary);
+  padding: 0.42rem 0.3rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: var(--wizz-transition);
+}
+
+.wizz-qs-option + .wizz-qs-option {
+  border-inline-start: 1px solid var(--wizz-border);
+}
+
+.wizz-qs-option:hover {
+  background: var(--wizz-surface-hover);
+  color: var(--wizz-text);
+}
+
+.wizz-qs-option.is-active {
+  background: var(--wizz-primary);
+  color: var(--wizz-text-on-primary);
+  font-weight: 700;
+}
+
+.wizz-qs-option:focus-visible {
+  outline: 2px solid var(--wizz-primary);
+  outline-offset: -2px;
+}
+
+.wizz-qs-note {
+  margin: 0.4rem 0 0;
+  font-size: 0.72rem;
+  color: var(--wizz-text-muted);
+  line-height: 1.5;
+}
+
+.wizz-qs-overview {
+  border-top: 1px solid var(--wizz-border-light);
+  padding-top: 0.85rem;
+}
+
+.wizz-qs-facts {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0 0 0.5rem;
+}
+
+.wizz-qs-fact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+}
+
+.wizz-qs-fact dt {
+  font-weight: 500;
+  color: var(--wizz-text-secondary);
+  margin: 0;
+}
+
+.wizz-qs-fact dd {
+  margin: 0;
+  font-weight: 700;
+  color: var(--wizz-text);
+  text-align: end;
+}
+
+.wizz-qs-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.9rem;
+  border-top: 1px solid var(--wizz-border);
+  font-size: 0.7rem;
+  color: var(--wizz-text-muted);
+}
+
+.wizz-qs-footer kbd {
+  font-size: 0.66rem;
+}
+
+@media (max-width: 640.98px) {
+  .wizz-qs {
+    top: 3.9rem;
+    inset-inline: 0.5rem;
+    width: auto;
+    max-height: calc(100vh - 4.6rem);
+  }
+}
+
+/* ============================================================
+   تفضيلات العرض: حجم الخط وكثافة الواجهة (تُحفظ في المتصفح)
+   ============================================================ */
+html[data-fontsize="small"] {
+  font-size: 93.75%;
+}
+
+html[data-fontsize="large"] {
+  font-size: 112.5%;
+}
+
+html[data-density="compact"] .content {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+html[data-density="compact"] .card-body {
+  padding: 0.7rem 0.85rem;
+}
+
+html[data-density="compact"] .card-header {
+  padding: 0.55rem 0.85rem;
+}
+
+html[data-density="compact"] .table > :not(caption) > * > * {
+  padding-top: 0.3rem;
+  padding-bottom: 0.3rem;
+}
+
+html[data-density="compact"] .mb-3 {
+  margin-bottom: 0.75rem !important;
+}
+
+html[data-density="compact"] .top-row {
+  height: 3rem;
+}
+
+/* الوضع الفاتح صريحاً — يثبّت عناصر النظام (قوائم، تواريخ، أشرطة تمرير) فاتحة. */
+html[data-theme="light"],
+html:not([data-theme]) {
+  color-scheme: light;
+}
+

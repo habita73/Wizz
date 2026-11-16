@@ -15,6 +15,20 @@
             <AuthorizeView>
                 <Authorized Context="auth">
                     <div class="d-flex align-items-center gap-3">
+                        <button type="button"
+                                id="wizz-qs-trigger"
+                                class="wizz-qs-trigger"
+                                title="الإعدادات السريعة (F1)"
+                                aria-label="الإعدادات السريعة — SETTINGS (F1)"
+                                aria-haspopup="dialog"
+                                aria-controls="wizz-quick-settings"
+                                aria-expanded="false"
+                                data-wizz-qs-open>
+                            <WizzIcon Icon="help" Size="18" />
+                            <span class="wizz-qs-trigger-badge" aria-hidden="true">
+                                <WizzIcon Icon="settings" Size="10" />
+                            </span>
+                        </button>
                         <span class="app-user">
                             <WizzIcon Icon="user" Size="16" />
                             <span>@(auth.User.FindFirst(ClaimTypes.GivenName)?.Value ?? auth.User.Identity?.Name)</span>
@@ -36,6 +50,8 @@
         </article>
     </main>
 </div>
+
+<QuickSettingsPanel />
 
 <div id="blazor-error-ui" data-nosnippet>
     حدث خطأ غير متوقع.

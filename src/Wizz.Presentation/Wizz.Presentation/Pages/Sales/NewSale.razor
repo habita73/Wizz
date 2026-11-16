@@ -20,6 +20,27 @@
     بيع جديد
 </h2>
 
+@if (draftRestored)
+{
+    <div class="alert alert-info d-flex align-items-center flex-wrap gap-2 justify-content-between">
+        <span class="d-flex align-items-center gap-2">
+            <WizzIcon Icon="info" Size="16" />
+            <span>تم استرجاع سلة غير مكتملة (@cartItems.Count صنف) كانت محفوظة تلقائياً على هذا الجهاز.</span>
+        </span>
+        <span class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="DiscardDraft">بدء بيع جديد</button>
+            <button type="button" class="btn-close" aria-label="إخفاء التنبيه" @onclick="() => draftRestored = false"></button>
+        </span>
+    </div>
+}
+
+@if (draftSkippedCount > 0)
+{
+    <div class="alert alert-warning py-2 small mb-3">
+        تعذّر استرجاع @draftSkippedCount صنف من المسودة لأن المنتج لم يعد موجوداً. راجع السلة قبل إتمام البيع.
+    </div>
+}
+
 <div class="row">
     <!-- Product Search & Cart -->
     <div class="col-lg-8">
@@ -195,7 +216,7 @@
                 <div class="mb-3">
                     <label class="form-label">الخصم</label>
                     <input type="number" step="0.01" min="0" max="@Subtotal" class="form-control"
-                           @bind="discount" @bind:event="oninput" @onkeydown="OnFormKeyDown" />
+                           @bind="discount" @bind:event="oninput" @bind:after="SaveDraftAsync" @onkeydown="OnFormKeyDown" />
                     @if (discount > Subtotal)
                     {
                         <div class="text-danger small mt-1">الخصم لا يمكن أن يتجاوز المجموع الفرعي.</div>
@@ -222,7 +243,7 @@
                 <div class="mb-3">
                     <label class="form-label">المبلغ المدفوع</label>
                     <input type="number" step="0.01" min="0" class="form-control form-control-lg fw-bold"
-                           @bind="paidAmount" @bind:event="oninput" @onkeydown="OnFormKeyDown" />
+                           @bind="paidAmount" @bind:event="oninput" @bind:after="SaveDraftAsync" @onkeydown="OnFormKeyDown" />
                     @if (Remaining > 0)
                     {
                         <div class="text-danger small mt-1">المتبقي: @Remaining.ToString("N2") د.ج</div>
@@ -237,7 +258,7 @@
                 {
                     <div class="mb-3">
                         <label class="form-label">تاريخ الاستحقاق</label>
-                        <input type="date" class="form-control" @bind="dueDate" @onkeydown="OnFormKeyDown" />
+                        <input type="date" class="form-control" @bind="dueDate" @bind:after="SaveDraftAsync" @onkeydown="OnFormKeyDown" />
                     </div>
                 }
 
@@ -288,6 +309,13 @@
     private bool savingSale;
     private bool inventoryEnabled;
 
+    // مسودة السلة: تُحفظ في متصفح الكاشير بعد كل تعديل وتُسترجع عند العودة.
+    private const string DraftKey = "wizz.cart.draft.v1";
+    private static readonly TimeSpan DraftMaxAge = TimeSpan.FromHours(24);
+    private bool jsReady;
+    private bool draftRestored;
+    private int draftSkippedCount;
+
     private bool isFiltering => !string.IsNullOrWhiteSpace(searchQuery);
 
     private decimal Subtotal => cartItems.Sum(i => i.LineTotal);
@@ -312,10 +340,15 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (!firstRender)
         {
-            await FocusSearchAsync();
+            return;
         }
+
+        // JS متاح بعد أول رسم فقط (لا يعمل في التصيير المسبق على الخادم).
+        jsReady = true;
+        await RestoreDraftAsync();
+        await FocusSearchAsync();
     }
 
     /// <summary>يعيد المؤشر إلى حقل البحث — أساس العمل بالباركود ولوحة المفاتيح.</summary>
@@ -440,23 +473,11 @@
         }
         else
         {
-            var baseUnit = product.BaseUnit ?? product.Units.FirstOrDefault();
-            cartItems.Add(new CartItem
+            var item = CreateCartItem(product, 1, isWholesale: false);
+            if (item is not null)
             {
-                ProductId = product.Id,
-                ProductName = product.Name,
-                UnitId = baseUnit?.Id ?? Guid.Empty,
-                UnitSymbol = baseUnit?.Symbol ?? "قطعة",
-                UnitBaseQuantity = baseUnit?.BaseQuantity ?? 1m,
-                BaseUnitSymbol = product.BaseUnit?.Symbol ?? baseUnit?.Symbol ?? "قطعة",
-                AvailableStock = product.StockQuantity,
-                Quantity = 1,
-                UnitPrice = product.RetailPrice,
-                RetailPrice = product.RetailPrice,
-                WholesalePrice = product.WholesalePrice,
-                IsWholesale = false,
-                LineTotal = product.RetailPrice,
-            });
+                cartItems.Add(item);
+            }
         }
 
         // نُبقي شبكة المنتجات ظاهرة بعد الإضافة — لا تُفرَّغ ولا تختفي
@@ -465,11 +486,46 @@
         ApplyFilter();
         StateHasChanged();
 
+        await SaveDraftAsync();
+
         // المؤشر يعود للبحث تلقائياً — يسمح بتمرير منتجات متتالية بلا فأرة.
         await FocusSearchAsync();
     }
 
-    private void UpdateCartItem(CartItem item)
+    /// <summary>
+    /// يبني سطر سلة من بيانات المنتج الحالية. تُقرأ الأسعار والمخزون من قاعدة
+    /// البيانات لا من المسودة، حتى لا تُبنى فاتورة على سعر قديم.
+    /// </summary>
+    private static CartItem? CreateCartItem(Wizz.Application.DTOs.ProductDto product, decimal quantity, bool isWholesale)
+    {
+        var baseUnit = product.BaseUnit ?? product.Units.FirstOrDefault();
+        if (baseUnit is null)
+        {
+            return null;
+        }
+
+        var safeQuantity = quantity > 0 ? quantity : 1;
+        var unitPrice = isWholesale ? product.WholesalePrice : product.RetailPrice;
+
+        return new CartItem
+        {
+            ProductId = product.Id,
+            ProductName = product.Name,
+            UnitId = baseUnit.Id,
+            UnitSymbol = baseUnit.Symbol,
+            UnitBaseQuantity = baseUnit.BaseQuantity,
+            BaseUnitSymbol = product.BaseUnit?.Symbol ?? baseUnit.Symbol,
+            AvailableStock = product.StockQuantity,
+            Quantity = safeQuantity,
+            UnitPrice = unitPrice,
+            RetailPrice = product.RetailPrice,
+            WholesalePrice = product.WholesalePrice,
+            IsWholesale = isWholesale,
+            LineTotal = Math.Round(safeQuantity * unitPrice, 2, MidpointRounding.AwayFromZero),
+        };
+    }
+
+    private async Task UpdateCartItem(CartItem item)
     {
         if (item.Quantity <= 0)
         {
@@ -479,15 +535,17 @@
         item.UnitPrice = item.IsWholesale ? item.WholesalePrice : item.RetailPrice;
         item.LineTotal = Math.Round(item.Quantity * item.UnitPrice, 2, MidpointRounding.AwayFromZero);
         StateHasChanged();
+        await SaveDraftAsync();
     }
 
-    private void RemoveFromCart(CartItem item)
+    private async Task RemoveFromCart(CartItem item)
     {
         cartItems.Remove(item);
         StateHasChanged();
+        await SaveDraftAsync();
     }
 
-    private void OnPaymentMethodChanged()
+    private async Task OnPaymentMethodChanged()
     {
         if (paymentMethod == 2)
         {
@@ -499,9 +557,10 @@
         }
 
         StateHasChanged();
+        await SaveDraftAsync();
     }
 
-    private void ClearCart()
+    private async Task ClearCart()
     {
         cartItems.Clear();
         discount = 0;
@@ -510,8 +569,161 @@
         dueDate = DateTime.Today.AddDays(30);
         justAdded = null;
         searchQuery = "";
+        draftRestored = false;
+        draftSkippedCount = 0;
         ApplyFilter();
         StateHasChanged();
+        await RemoveDraftAsync();
+    }
+
+    /// <summary>يتخلّى عن المسودة المسترجعة ويبدأ سلة جديدة.</summary>
+    private async Task DiscardDraft()
+    {
+        await ClearCart();
+    }
+
+    // ------------------------------------------------------------------
+    // مسودة السلة: حفظ تلقائي في المتصفح واسترجاع عند العودة إلى الشاشة
+    // ------------------------------------------------------------------
+
+    /// <summary>يحفظ السلة الحالية كمسودة، أو يمسح المسودة إن كانت السلة فارغة.</summary>
+    private async Task SaveDraftAsync()
+    {
+        if (!jsReady)
+        {
+            return;
+        }
+
+        try
+        {
+            if (cartItems.Count == 0 || cashierId is null)
+            {
+                await RemoveDraftAsync();
+                return;
+            }
+
+            var draft = new SaleDraft
+            {
+                CashierId = cashierId.Value.ToString(),
+                SavedAtUtc = DateTime.UtcNow,
+                Discount = discount,
+                PaidAmount = paidAmount,
+                PaymentMethod = paymentMethod,
+                DueDate = dueDate,
+                Lines = cartItems.Select(c => new SaleDraftLine
+                {
+                    ProductId = c.ProductId,
+                    Quantity = c.Quantity,
+                    IsWholesale = c.IsWholesale,
+                }).ToList(),
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(draft);
+            await JS.InvokeVoidAsync("localStorage.setItem", DraftKey, json);
+        }
+        catch
+        {
+            // تعطّل التخزين المحلي لا يوقف البيع؛ المسودة رفاهية لا شرط.
+        }
+    }
+
+    /// <summary>يمسح المسودة المحفوظة في المتصفح.</summary>
+    private async Task RemoveDraftAsync()
+    {
+        if (!jsReady)
+        {
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.removeItem", DraftKey);
+        }
+        catch
+        {
+            // تجاهل: لا شيء يعتمد على نجاح المسح.
+        }
+    }
+
+    /// <summary>
+    /// يسترجع مسودة الكاشير الحالي إن وُجدت وكانت حديثة، ويعيد بناء الأسعار
+    /// والمخزون من قاعدة البيانات. المسودة التالفة أو القديمة تُمسح بهدوء.
+    /// </summary>
+    private async Task RestoreDraftAsync()
+    {
+        if (cashierId is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var json = await JS.InvokeAsync<string?>("localStorage.getItem", DraftKey);
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return;
+            }
+
+            var draft = System.Text.Json.JsonSerializer.Deserialize<SaleDraft>(json);
+            if (draft?.Lines is null || draft.Lines.Count == 0)
+            {
+                await RemoveDraftAsync();
+                return;
+            }
+
+            if (!string.Equals(draft.CashierId, cashierId.Value.ToString(), StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            if (draft.SavedAtUtc == default || DateTime.UtcNow - draft.SavedAtUtc > DraftMaxAge)
+            {
+                await RemoveDraftAsync();
+                return;
+            }
+
+            var restored = new List<CartItem>();
+            var skipped = 0;
+            foreach (var line in draft.Lines)
+            {
+                var product = await ProductRepo.GetByIdAsync(line.ProductId);
+                if (product is null || !product.IsActive)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                var item = CreateCartItem(Wizz.Application.DTOs.ProductDto.FromDomain(product), line.Quantity, line.IsWholesale);
+                if (item is null)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                restored.Add(item);
+            }
+
+            if (restored.Count == 0)
+            {
+                await RemoveDraftAsync();
+                return;
+            }
+
+            cartItems = restored;
+            discount = draft.Discount;
+            paidAmount = draft.PaidAmount;
+            paymentMethod = draft.PaymentMethod is >= 0 and <= 4 ? draft.PaymentMethod : 0;
+            dueDate = draft.DueDate == default ? DateTime.Today.AddDays(30) : draft.DueDate;
+            draftSkippedCount = skipped;
+            draftRestored = true;
+            ApplyFilter();
+            StateHasChanged();
+        }
+        catch
+        {
+            // مسودة غير صالحة (تنسيق قديم أو تالف): نمسحها ونبدأ بسلة فارغة.
+            await RemoveDraftAsync();
+        }
     }
 
     private async Task CompleteSale()
@@ -581,7 +793,7 @@
                 "Sale",
                 result.Value.Id.ToString(),
                 $"إجمالي البيع {result.Value.Total:N2} د.ج"));
-            ClearCart();
+            await ClearCart();
             await LoadInitialProducts();
             await JS.InvokeVoidAsync("alert", $"تم البيع بنجاح — الإجمالي {result.Value.Total:N2} د.ج");
             // بعد إتمام البيع نعود إلى قائمة المبيعات.

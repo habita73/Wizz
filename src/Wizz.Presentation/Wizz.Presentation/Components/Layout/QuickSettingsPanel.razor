@@ -1,0 +1,117 @@
+@using Wizz.Application.UseCases.Store
+
+@* لوحة الإعدادات السريعة — تُعرض دون مغادرة الصفحة الحالية.
+   الغرض: تعديل تفضيلات العرض فقط (المظهر، حجم الخط، الكثافة) ورؤية معلومات
+   المتجر للقراءة دون فقدان عمل جارٍ مثل سلة بيع غير مكتملة.
+   الإعدادات المؤثرة في البيانات (العملة، طريقة الحساب، الصلاحيات…) تبقى في
+   صفحة الإعدادات الكاملة، وتظهر هنا للقراءة فقط. *@
+
+@inject GetStoreSettingsUseCase StoreSettings
+
+<div class="wizz-qs-backdrop" data-wizz-qs-close hidden></div>
+
+<aside id="wizz-quick-settings"
+       class="wizz-qs"
+       role="dialog"
+       aria-modal="false"
+       aria-labelledby="wizz-qs-title"
+       hidden>
+    <header class="wizz-qs-header">
+        <div class="d-flex align-items-center gap-2">
+            <WizzIcon Icon="settings" Size="18" />
+            <h2 id="wizz-qs-title" class="h6 mb-0">الإعدادات السريعة</h2>
+            <span class="wizz-qs-chip" title="هذه لوحة إعدادات، وليست صفحة مساعدة">SETTINGS</span>
+        </div>
+        <button type="button" class="btn-close" aria-label="إغلاق الإعدادات السريعة" data-wizz-qs-close></button>
+    </header>
+
+    <div class="wizz-qs-body">
+        <section class="wizz-qs-section">
+            <h3 class="wizz-qs-label">المظهر</h3>
+            <div class="wizz-qs-segment" role="group" aria-label="الوضع اللوني">
+                <button type="button" class="wizz-qs-option" data-wizz-qs-theme="light" aria-pressed="false">فاتح</button>
+                <button type="button" class="wizz-qs-option" data-wizz-qs-theme="dark" aria-pressed="false">داكن</button>
+                <button type="button" class="wizz-qs-option" data-wizz-qs-theme="system" aria-pressed="false">تلقائي</button>
+            </div>
+        </section>
+
+        <section class="wizz-qs-section">
+            <h3 class="wizz-qs-label">حجم الخط</h3>
+            <div class="wizz-qs-segment" role="group" aria-label="حجم الخط">
+                <button type="button" class="wizz-qs-option" data-wizz-qs-font="small" aria-pressed="false">صغير</button>
+                <button type="button" class="wizz-qs-option" data-wizz-qs-font="normal" aria-pressed="false">عادي</button>
+                <button type="button" class="wizz-qs-option" data-wizz-qs-font="large" aria-pressed="false">كبير</button>
+            </div>
+        </section>
+
+        <section class="wizz-qs-section">
+            <h3 class="wizz-qs-label">كثافة الواجهة</h3>
+            <div class="wizz-qs-segment" role="group" aria-label="كثافة الواجهة">
+                <button type="button" class="wizz-qs-option" data-wizz-qs-density="comfortable" aria-pressed="false">مريح</button>
+                <button type="button" class="wizz-qs-option" data-wizz-qs-density="compact" aria-pressed="false">مضغوط</button>
+            </div>
+            <p class="wizz-qs-note">تُطبَّق على هذا الجهاز فقط، ولا تمس البيانات ولا الفاتورة الجارية.</p>
+        </section>
+
+        <section class="wizz-qs-section wizz-qs-overview">
+            <h3 class="wizz-qs-label">نظرة سريعة (للقراءة)</h3>
+            <dl class="wizz-qs-facts">
+                <div class="wizz-qs-fact">
+                    <dt>المتجر</dt>
+                    <dd>@storeName</dd>
+                </div>
+                <div class="wizz-qs-fact">
+                    <dt>العملة</dt>
+                    <dd>@currency</dd>
+                </div>
+                <div class="wizz-qs-fact">
+                    <dt>البيع بالدين</dt>
+                    <dd>@creditSales</dd>
+                </div>
+                <div class="wizz-qs-fact">
+                    <dt>المخزون</dt>
+                    <dd>@inventoryState</dd>
+                </div>
+            </dl>
+            <p class="wizz-qs-note">
+                هذه القيم تُعدَّل من الإعدادات الكاملة فقط، لأنها تؤثر في حساب الفواتير والمخزون.
+            </p>
+            <a class="btn btn-sm btn-outline-secondary w-100" href="/settings">فتح كل الإعدادات</a>
+        </section>
+    </div>
+
+    <footer class="wizz-qs-footer">
+        <span><kbd>F1</kbd> أو <kbd>?</kbd> لفتح اللوحة</span>
+        <span><kbd>Esc</kbd> للإغلاق</span>
+    </footer>
+</aside>
+
+@code {
+    private string storeName = "—";
+    private string currency = "—";
+    private string creditSales = "—";
+    private string inventoryState = "—";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var result = await StoreSettings.ExecuteAsync();
+            if (!result.IsSuccess)
+            {
+                storeName = "لم يُضبط المتجر بعد";
+                return;
+            }
+
+            var store = result.Value;
+            storeName = string.IsNullOrWhiteSpace(store.Name) ? "—" : store.Name;
+            currency = string.IsNullOrWhiteSpace(store.Currency) ? "—" : store.Currency;
+            creditSales = store.AllowCreditSales ? "مسموح" : "غير مسموح";
+            inventoryState = store.InventoryEnabled ? "مفعّل" : "معطّل";
+        }
+        catch
+        {
+            // تعذّر قراءة إعدادات المتجر لا يمنع عرض تفضيلات العرض.
+        }
+    }
+}

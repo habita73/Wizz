@@ -17,15 +17,24 @@
 
 <body>
     <script>
-        // تطبيق السمة المحفوظة من localStorage قبل تحميل واجهة Blazor
+        // تطبيق التفضيلات المحفوظة (المظهر، حجم الخط، الكثافة) قبل تحميل واجهة Blazor
+        // لمنع وميض الشاشة عند فتح الصفحة.
         (function () {
             try {
-                var saved = localStorage.getItem('wizz.theme');
-                if (saved) {
-                    document.documentElement.setAttribute('data-theme', saved);
-                } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                    document.documentElement.setAttribute('data-theme', 'system');
+                var root = document.documentElement;
+                var theme = localStorage.getItem('wizz.theme');
+                if (!theme) {
+                    theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+                        ? 'system'
+                        : 'light';
                 }
+                root.setAttribute('data-theme', theme);
+
+                var font = localStorage.getItem('wizz.fontsize');
+                if (font) root.setAttribute('data-fontsize', font);
+
+                var density = localStorage.getItem('wizz.density');
+                if (density) root.setAttribute('data-density', density);
             } catch (e) {
                 // تجاهل الأخطاء
             }
@@ -39,6 +48,7 @@
     <script src="@Assets["js/ai-memory.js"]"></script>
     <script src="@Assets["js/ai-route-priority.js"]"></script>
 <script src="@Assets["js/quick-actions.js"]"></script>
+<script src="@Assets["js/quick-settings.js"]"></script>
 <script src="@Assets["js/keyboard.js"]"></script>
 </body>
 

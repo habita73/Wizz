@@ -1,0 +1,47 @@
+{
+  "package": "Vent au comptoir Documentation Pack",
+  "version": "0.6.6",
+  "date": "2026-11-15",
+  "status": "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_AUTHORIZED",
+  "execution_authorized": false,
+  "limited_execution_authorizations": [
+    "D-21 H-05 consistent backup and restore service",
+    "D-22 H-02 sale edit inside a single EF transaction",
+    "D-30 Phase 1 stock documents (StockDocument/DocumentSequence, numbering, opening/count/waste, migration, stock card)",
+    "D-31 Phase 2 cashier shift (CashierShift, shift gate over the current business day, sale cancel/modify audit fields, MRB sales return)",
+    "D-32 H-04 security package (cookie authentication, PBKDF2 hashing, SecurityStamp session invalidation, audit log, permission policies, first-run setup, login lockout)",
+    "D-33 quick settings panel opened from the conventional help button (F1 or ?), presentation preferences only, plus in-progress sale draft kept in the cashier's browser"
+  ],
+  "active_files": [
+    "README.md",
+    "PROJECT_RULES.md",
+    "AGENTS.md",
+    "docs/PRODUCT_MASTER.md",
+    "docs/MVP_AND_ACCEPTANCE.md",
+    "docs/TECHNICAL_AND_SAFETY_RULES.md",
+    "docs/DECISIONS_AND_OPEN_GATES.md",
+    "docs/STOCK_AND_DOCUMENTS_MODEL_AR.md",
+    "docs/ARCHIVE_INDEX.md",
+    "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md"
+  ],
+  "archive_file_count": 57,
+  "archive_policy": "Archive files are historical, non-active references; do not load all archive files for routine tasks.",
+  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB); v0.6.3 records the H-04 security implementation; v0.6.4 records the routing correction applied on top of H-04; v0.6.5 records the standing communication-style rule requested by the owner; v0.6.6 records the owner-authorized quick settings panel and the sale draft.",
+  "mvp_status": "APPROVED",
+  "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21, D-22, D-30, D-31, D-32 and the D-33 presentation-only UI scope.",
+  "change_summary": [
+    "Added the in-app quick settings panel: static server-rendered markup in the main layout plus a small vanilla script, opened from the conventional help button in the header or by F1 / ?, labelled with a SETTINGS chip, and limited to theme, font size and interface density stored in the browser.",
+    "The panel shows read-only store facts (name, currency, credit sales allowed, inventory enabled) and links to the full settings page; anything affecting money, data or permissions stays in /settings only.",
+    "Added automatic persistence of an unfinished sale cart in the cashier's browser, restored on return with a clear notice and a start-new-sale action, expiring after 24 hours and always re-reading prices and stock from the database.",
+    "Fixed the blank theme flash by applying the stored presentation preferences before the page renders.",
+    "Recorded decision D-33 and the verification evidence in docs/DECISIONS_AND_OPEN_GATES.md; no MVP scope or prior limited authorization changed."
+  ],
+  "review_findings": [
+    "Build and tests after the change: dotnet build Wizz.sln -c Release = 0 errors (pre-existing StyleCop warnings only); Domain 24/24; Integration 262/262 (286 total).",
+    "Browser verification on an isolated instance with a temporary SQLite database (deleted afterwards): the panel opens and closes (button, F1, ? and Esc), the SETTINGS chip and title are correct, store facts render, and theme (rgb(241,245,249) light / rgb(31,31,31) dark), large font (18px) and compact density all apply while the page URL and the live page state stay unchanged.",
+    "Cart continuity evidence on the same isolated instance: a cart with quantity 3 and a 50 discount (total 1,300.00) survived panel use, was restored after navigating to /settings and back with the restore notice and identical values, start-new-sale cleared both cart and draft, and a completed sale (450.00 DZD) cleared the draft with no leftover data.",
+    "Diagnosis recorded but not fixed: /sales, /cash, /purchases and any unknown URL return an empty-body 404 (blank white page), and the leftover stock-movements link in the products page still points to a removed page. This remains open pending the owner's order.",
+    "Limitation: the 286 automated tests do not cover browser behaviour of the panel or the draft; the evidence above is manual and was not reproduced in CI because GitHub Actions remains unavailable for the account.",
+    "Execution remains unauthorized outside the recorded limited scopes (D-21, D-22, D-30, D-31, D-32, D-33). Phase 3 remains unauthorized."
+  ]
+}
