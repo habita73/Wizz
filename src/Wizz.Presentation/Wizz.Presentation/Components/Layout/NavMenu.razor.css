@@ -1,25 +1,3 @@
-.navbar-toggler {
-    appearance: none;
-    cursor: pointer;
-    width: 3.5rem;
-    height: 2.5rem;
-    color: var(--wizz-text-on-primary);
-    position: absolute;
-    top: 0.5rem;
-    left: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: var(--wizz-primary);
-    transition: var(--wizz-transition);
-}
-
-.navbar-toggler:hover {
-    background: var(--wizz-primary-hover);
-}
-
-.navbar-toggler:checked {
-    background-color: rgba(255, 255, 255, 0.15);
-}
-
 .top-row {
     min-height: 3.5rem;
     /* خلفية شفافة لتأخذ لون الشريط الجانبي الكحلي بدل شريط أبيض يُخفي الشعار */
@@ -111,18 +89,10 @@
 }
 
 .nav-scrollable {
-    display: none;
-}
-
-.navbar-toggler:checked ~ .nav-scrollable {
     display: block;
 }
 
 @media (min-width: 641px) {
-    .navbar-toggler {
-        display: none;
-    }
-
     .nav-scrollable {
         display: block;
         height: calc(100vh - 3.5rem);

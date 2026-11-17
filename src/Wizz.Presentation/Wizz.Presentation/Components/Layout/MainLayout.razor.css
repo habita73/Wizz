@@ -9,6 +9,20 @@ main {
     min-width: 0;
 }
 
+/* زر القائمة في الوضع الضيق: مخفي بصرياً لكنه يبقى قابلاً للوصول بلوحة المفاتيح. */
+.wizz-nav-toggle {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.wizz-nav-toggle-button,
+.wizz-nav-backdrop {
+    display: none;
+}
+
 .sidebar {
     background: var(--wizz-sidebar-bg, var(--wizz-primary));
     color: var(--wizz-text-on-primary);
@@ -60,6 +74,73 @@ main {
 @media (max-width: 640.98px) {
     .top-row {
         justify-content: space-between;
+        /* مساحة لزر القائمة الثابت على الجهة المقابلة لاتجاه العربية. */
+        padding-inline-start: 3.75rem !important;
+    }
+
+    /* القائمة درج جانبي منزلق، لا يدفع المحتوى إلى الأسفل عند فتحه. */
+    .sidebar {
+        position: fixed;
+        inset-block-start: 0;
+        inset-inline-start: 0;
+        width: min(85vw, 19rem);
+        height: 100dvh;
+        overflow-y: auto;
+        z-index: 1030;
+        visibility: hidden;
+        transform: translateX(100%);
+        box-shadow: var(--wizz-shadow-hover);
+        transition: transform 0.24s ease, visibility 0s linear 0.24s, color 0.22s ease, border-color 0.22s ease;
+    }
+
+    .wizz-nav-toggle:checked ~ .sidebar {
+        visibility: visible;
+        transform: translateX(0);
+        transition: transform 0.24s ease, visibility 0s, color 0.22s ease, border-color 0.22s ease;
+    }
+
+    .wizz-nav-toggle-button {
+        position: fixed;
+        inset-block-start: 0.5rem;
+        inset-inline-start: 0.9rem;
+        z-index: 1032;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.6rem;
+        height: 2.5rem;
+        padding: 0;
+        cursor: pointer;
+        color: var(--wizz-text-on-primary);
+        background: var(--wizz-primary);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: var(--wizz-radius-sm);
+    }
+
+    .wizz-nav-toggle-button svg {
+        width: 1.5rem;
+        height: 1.5rem;
+    }
+
+    .wizz-nav-toggle:focus-visible + .wizz-nav-toggle-button {
+        outline: 2px solid var(--wizz-primary);
+        outline-offset: 2px;
+    }
+
+    .wizz-nav-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 1025;
+        display: block;
+        background: rgba(0, 0, 0, 0.42);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.24s ease;
+    }
+
+    .wizz-nav-toggle:checked ~ .wizz-nav-backdrop {
+        opacity: 1;
+        pointer-events: auto;
     }
 }
 

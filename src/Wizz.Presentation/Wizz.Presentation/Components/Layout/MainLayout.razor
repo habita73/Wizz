@@ -2,6 +2,16 @@
 @inherits LayoutComponentBase
 
 <div class="page">
+    <input type="checkbox" id="wizz-nav-toggle" class="wizz-nav-toggle" title="القائمة" aria-label="فتح القائمة" />
+    <label for="wizz-nav-toggle" class="wizz-nav-toggle-button" title="القائمة" aria-label="القائمة">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <line x1="4" y1="7" x2="20" y2="7" />
+            <line x1="4" y1="12" x2="20" y2="12" />
+            <line x1="4" y1="17" x2="20" y2="17" />
+        </svg>
+    </label>
+    <label for="wizz-nav-toggle" class="wizz-nav-backdrop" aria-hidden="true"></label>
+
     <div class="sidebar">
         <NavMenu />
     </div>
