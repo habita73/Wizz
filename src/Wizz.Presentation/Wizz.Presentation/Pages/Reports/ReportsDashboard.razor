@@ -4,6 +4,9 @@
 @rendermode InteractiveServer
 @inject Wizz.Application.Abstractions.ISaleRepository SaleRepo
 @inject Wizz.Application.Abstractions.IProductRepository ProductRepo
+@inject Wizz.Application.UseCases.Sales.GetCashReportUseCase GetCashReport
+@inject Wizz.Application.UseCases.StockDocuments.GetPurchaseReportUseCase GetPurchaseReport
+@inject Services.CurrentUser CurrentUser
 
 <h2 class="d-flex align-items-center gap-2">
     <WizzIcon Icon="chart" Size="24" />
@@ -23,6 +26,8 @@
             <option value="daily">المبيعات اليومية</option>
             <option value="products">أفضل المنتجات</option>
             <option value="payment">طرق الدفع</option>
+            <option value="cash">الصندوق</option>
+            <option value="purchases">المشتريات</option>
         </select>
     </div>
     <div class="col-md-3">
@@ -33,7 +38,9 @@
     </div>
 </div>
 
-<!-- Summary Cards -->
+<!-- Summary Cards — تخص تقارير المبيعات فقط -->
+@if (reportType is not ("cash" or "purchases"))
+{
 <div class="row mb-4">
     <div class="col-md-3">
         <div class="card bg-primary text-white">
@@ -68,6 +75,7 @@
         </div>
     </div>
 </div>
+}
 
 <!-- Report Content -->
 <div class="card">
@@ -167,6 +175,125 @@
                     </table>
                 </div>
                 break;
+
+            case "cash":
+                @if (!string.IsNullOrWhiteSpace(cashError))
+                {
+                    <div class="alert alert-danger">@cashError</div>
+                }
+                else
+                {
+                    <div class="alert alert-light border mb-3">
+                        ورديات مفتوحة: <strong>@cashReport.OpenShiftCount</strong> ·
+                        مغلقة: <strong>@cashReport.ClosedShiftCount</strong> ·
+                        بيانات سابقة بلا عدّ: <strong>@cashReport.LegacyShiftCount</strong>.
+                        الورديات المفتوحة موسومة «مباشر» لأن أرقامها حساب حي؛ والمغلقة تعرض اللقطة المجمّدة كما هي.
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>الفتح</th><th>الإغلاق</th><th>الكاشير</th>
+                                    <th class="text-end">الفكة</th><th class="text-end">مبيعات نقدية</th>
+                                    <th class="text-end">إيداعات</th><th class="text-end">سحوبات</th>
+                                    <th class="text-end">المتوقع</th><th class="text-end">المعدود</th>
+                                    <th class="text-end">الفرق</th><th>الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in cashReport.Rows)
+                                {
+                                    <tr>
+                                        <td class="text-nowrap">@row.OpenedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                                        <td class="text-nowrap">@(row.ClosedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
+                                        <td>@row.CashierName</td>
+                                        <td class="text-end">@row.OpeningFloat.ToString("N2")</td>
+                                        <td class="text-end">@row.CashSalesTotal.ToString("N2")</td>
+                                        <td class="text-end">@row.DepositsTotal.ToString("N2")</td>
+                                        <td class="text-end">@row.WithdrawalsTotal.ToString("N2")</td>
+                                        <td class="text-end fw-bold">@row.ExpectedCash.ToString("N2")</td>
+                                        <td class="text-end">@(row.CountedCash?.ToString("N2") ?? "—")</td>
+                                        <td class="text-end @(row.CashDifference > 0 ? "text-success" : row.CashDifference < 0 ? "text-danger" : "")">
+                                            @(row.CashDifference?.ToString("N2") ?? "—")
+                                        </td>
+                                        <td><span class="badge @(row.IsOpen ? "bg-success" : row.HasCashCount ? "bg-secondary" : "bg-dark")">@row.StatusLabel</span></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                        @if (cashReport.Rows.Count == 0)
+                        {
+                            <div class="text-muted small">لا توجد ورديات في الفترة المحددة.</div>
+                        }
+                    </div>
+                    @if (cashReport.Rows.Any(r => !string.IsNullOrWhiteSpace(r.CloseNote)))
+                    {
+                        <h6 class="mt-3">ملاحظات الإغلاق</h6>
+                        <ul>
+                            @foreach (var row in cashReport.Rows.Where(r => !string.IsNullOrWhiteSpace(r.CloseNote)))
+                            {
+                                <li>@row.OpenedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm") — @row.CloseNote</li>
+                            }
+                        </ul>
+                    }
+                }
+                break;
+
+            case "purchases":
+                @if (!string.IsNullOrWhiteSpace(purchaseError))
+                {
+                    <div class="alert alert-danger">@purchaseError</div>
+                }
+                else
+                {
+                    <div class="alert alert-light border mb-3">
+                        مستندات نشطة: <strong>@purchaseReport.DocumentCount</strong> ·
+                        ملغاة: <strong>@purchaseReport.VoidedDocumentCount</strong>.
+                        @if (canViewCosts)
+                        {
+                            <span>إجمالي الشراء: <strong>@purchaseReport.TotalPurchase.ToString("N2") د.ج</strong>.</span>
+                        }
+                        else
+                        {
+                            <span>إجمالي الشراء مخفي لعدم صلاحية عرض التكلفة.</span>
+                        }
+                        الرقم ليس ربحًا ولا تكلفة مبيعات.
+                    </div>
+                    @if (canViewCosts)
+                    {
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>حسب المورد</h6>
+                                <table class="table table-sm table-striped">
+                                    <thead class="table-dark"><tr><th>المورد</th><th class="text-end">المستندات</th><th class="text-end">إجمالي الشراء</th></tr></thead>
+                                    <tbody>
+                                        @foreach (var row in purchaseReport.BySupplier)
+                                        {
+                                            <tr><td>@row.SupplierName</td><td class="text-end">@row.DocumentCount</td><td class="text-end">@row.TotalPurchase.ToString("N2") د.ج</td></tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>حسب المنتج</h6>
+                                <table class="table table-sm table-striped">
+                                    <thead class="table-dark"><tr><th>المنتج</th><th class="text-end">الكمية</th><th class="text-end">إجمالي الشراء</th></tr></thead>
+                                    <tbody>
+                                        @foreach (var row in purchaseReport.ByProduct)
+                                        {
+                                            <tr><td>@row.ProductName</td><td class="text-end">@row.Quantity.ToString("N2")</td><td class="text-end">@row.TotalPurchase.ToString("N2") د.ج</td></tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info">لا تملك صلاحية عرض أسعار الشراء؛ تظهر أعداد المستندات فقط.</div>
+                    }
+                }
+                break;
         }
     </div>
 </div>
@@ -186,17 +313,27 @@
     private List<Wizz.Application.DTOs.DailySalesDto> dailySales = new();
     private List<(string Name, decimal QuantitySold, decimal TotalSales)> topProducts = new();
 
+    // Phase 3 reports
+    private Wizz.Application.DTOs.CashReportDto cashReport = new(new DateOnly(), new DateOnly(), Array.Empty<Wizz.Application.DTOs.CashReportRowDto>(), 0, 0, 0);
+    private Wizz.Application.DTOs.PurchaseReportDto purchaseReport = new(new DateOnly(), new DateOnly(), 0, 0, 0, Array.Empty<Wizz.Application.DTOs.PurchaseSupplierRowDto>(), Array.Empty<Wizz.Application.DTOs.PurchaseProductRowDto>());
+    private string? cashError;
+    private string? purchaseError;
+    private bool canViewCosts;
+
     private string ReportTitle => reportType switch
     {
         "summary" => "ملخص المبيعات",
         "daily" => "المبيعات اليومية",
         "products" => "أفضل المنتجات",
         "payment" => "تحليل طرق الدفع",
+        "cash" => "تقرير الصندوق",
+        "purchases" => "تقرير المشتريات",
         _ => "تقرير"
     };
 
     protected override async Task OnInitializedAsync()
     {
+        canViewCosts = await CurrentUser.HasPermissionAsync(Wizz.Domain.Permission.ViewPurchaseCosts);
         await GenerateReport();
     }
 
@@ -204,6 +341,28 @@
     {
         var from = fromDate.Date.ToUniversalTime();
         var to = toDate.Date.AddDays(1).ToUniversalTime();
+
+        // تقارير المرحلة 3 تستخدم التاريخ التجاري للمتجر داخل حالات الاستخدام.
+        var businessFrom = DateOnly.FromDateTime(fromDate.Date);
+        var businessTo = DateOnly.FromDateTime(toDate.Date);
+
+        if (reportType == "cash")
+        {
+            var cash = await GetCashReport.ExecuteAsync(businessFrom, businessTo);
+            cashError = cash.IsSuccess ? null : cash.Errors.FirstOrDefault();
+            if (cash.IsSuccess)
+                cashReport = cash.Value;
+            return;
+        }
+
+        if (reportType == "purchases")
+        {
+            var purchases = await GetPurchaseReport.ExecuteAsync(businessFrom, businessTo);
+            purchaseError = purchases.IsSuccess ? null : purchases.Errors.FirstOrDefault();
+            if (purchases.IsSuccess)
+                purchaseReport = purchases.Value;
+            return;
+        }
 
         // Get all sales in period
         var sales = await SaleRepo.GetByDateRangeAsync(from, to);

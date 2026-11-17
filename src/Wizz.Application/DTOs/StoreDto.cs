@@ -11,7 +11,9 @@ public sealed record StoreDto(
     bool AllowCreditSales,
     string Currency,
     string TimeZone,
-    bool InventoryEnabled = true
+    bool InventoryEnabled = true,
+    bool CashDrawerEnabled = true,
+    decimal CashDifferenceTolerance = 0m
 );
 
 /// <summary>إدخال إعدادات المتجر.</summary>
@@ -22,5 +24,7 @@ public sealed record StoreInputDto(
     string? TaxNumber,
     string? CommercialRegister,
     bool AllowCreditSales,
-    bool InventoryEnabled = true
+    bool InventoryEnabled = true,
+    bool CashDrawerEnabled = true,
+    decimal CashDifferenceTolerance = 0m
 );

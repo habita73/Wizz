@@ -6,7 +6,7 @@
 
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/download/dotnet/10.0)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/habita73/wizz/ci.yml?branch=main&logo=github-actions&logoColor=white)](https://github.com/habita73/wizz/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-286%2F286%20passing-brightgreen?logo=xunit&logoColor=white)](https://github.com/habita73/wizz/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-298%2F298%20passing-brightgreen?logo=xunit&logoColor=white)](https://github.com/habita73/wizz/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-coming%20soon-yellow)](https://github.com/habita73/wizz/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?logo=opensourceinitiative&logoColor=white)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/habita73/wizz?style=social)](https://github.com/habita73/wizz/stargazers)
@@ -93,7 +93,7 @@ Wizz.sln
 │       └── wwwroot (Assets, JS Interop)
 └── tests/
     ├── Wizz.Domain.Tests/        ✅ 24 اختبار للنواة المالية
-    └── Wizz.Integration.Tests/   ✅ 245 اختبار تكامل (بيع، آجل، إيصال، SQLite، نسخ احتياطي، مستندات مخزون، وردية كاشير ومرتجع)
+    └── Wizz.Integration.Tests/   ✅ 274 اختبار تكامل (بيع، آجل، إيصال، SQLite، نسخ احتياطي، مستندات مخزون، وردية كاشير ومرتجع، صندوق ومشتريات)
 ```
 
 ### المبادئ المعمارية

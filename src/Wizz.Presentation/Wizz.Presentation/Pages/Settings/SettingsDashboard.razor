@@ -107,6 +107,20 @@
                             عند التعطيل تعمل المبيعات دون خصم المخزون ولا تظهر تنبيهات النقص.
                         </div>
                     </div>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="cashDrawerEnabled" @bind="storeForm.CashDrawerEnabled" />
+                        <label class="form-check-label" for="cashDrawerEnabled">تفعيل وحدة الصندوق وعدّ النقدية</label>
+                        <div class="form-text">
+                            عند التعطيل يعود إغلاق الوردية إلى سلوكه السابق بلا عدّ نقدي.
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">حدّ فرق الصندوق المسموح به (د.ج)</label>
+                        <input type="number" class="form-control" min="0" step="0.01" @bind="storeForm.CashDifferenceTolerance" />
+                        <div class="form-text">
+                            فرق الإغلاق الذي يتجاوز هذا الحد يتطلب ملاحظة؛ القيمة الافتراضية صفر.
+                        </div>
+                    </div>
                     <button type="button" class="btn btn-primary" @onclick="SaveStoreSettings" disabled="@savingStore">
                         @if (savingStore)
                         {
@@ -612,6 +626,14 @@
                         <input type="checkbox" class="form-check-input" id="inventoryEnabledModal" @bind="storeForm.InventoryEnabled" />
                         <label class="form-check-label" for="inventoryEnabledModal">تتبع المخزون (خصم تلقائي عند البيع)</label>
                     </div>
+                    <div class="form-check mt-2">
+                        <input type="checkbox" class="form-check-input" id="cashDrawerEnabledModal" @bind="storeForm.CashDrawerEnabled" />
+                        <label class="form-check-label" for="cashDrawerEnabledModal">تفعيل وحدة الصندوق وعدّ النقدية</label>
+                    </div>
+                    <div class="mt-2">
+                        <label class="form-label">حدّ فرق الصندوق المسموح به (د.ج)</label>
+                        <input type="number" class="form-control" min="0" step="0.01" @bind="storeForm.CashDifferenceTolerance" />
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" @onclick="() => showStoreModal = false">إلغاء</button>
@@ -1040,6 +1062,8 @@
                 CommercialRegister = store.CommercialRegister,
                 AllowCreditSales = store.AllowCreditSales,
                 InventoryEnabled = store.InventoryEnabled,
+                CashDrawerEnabled = store.CashDrawerEnabled,
+                CashDifferenceTolerance = store.CashDifferenceTolerance,
                 Currency = store.Currency,
             };
         }
@@ -1066,6 +1090,13 @@
             return;
         }
 
+        if (storeForm.CashDifferenceTolerance < 0 ||
+            decimal.Round(storeForm.CashDifferenceTolerance, 2, MidpointRounding.ToZero) != storeForm.CashDifferenceTolerance)
+        {
+            await JS.InvokeVoidAsync("alert", "حدّ فرق الصندوق يجب ألا يكون سالبًا ويقبل منزلتين عشريتين على الأكثر");
+            return;
+        }
+
         savingStore = true;
         try
         {
@@ -1079,7 +1110,9 @@
                     storeForm.CommercialRegister,
                     storeForm.AllowCreditSales,
                     string.IsNullOrWhiteSpace(storeForm.Currency) ? "DZD" : storeForm.Currency,
-                    inventoryEnabled: storeForm.InventoryEnabled);
+                    inventoryEnabled: storeForm.InventoryEnabled,
+                    cashDrawerEnabled: storeForm.CashDrawerEnabled,
+                    cashDifferenceTolerance: storeForm.CashDifferenceTolerance);
                 await StoreRepo.AddAsync(created);
             }
             else
@@ -1092,7 +1125,9 @@
                     storeForm.CommercialRegister,
                     storeForm.AllowCreditSales,
                     storeForm.Currency,
-                    inventoryEnabled: storeForm.InventoryEnabled);
+                    inventoryEnabled: storeForm.InventoryEnabled,
+                    cashDrawerEnabled: storeForm.CashDrawerEnabled,
+                    cashDifferenceTolerance: storeForm.CashDifferenceTolerance);
                 StoreRepo.Update(store);
             }
 
@@ -1104,7 +1139,7 @@
                 await CurrentUser.UsernameAsync(),
                 "Store",
                 store?.Id.ToString(),
-                $"اسم المتجر: {storeForm.Name} — عملة: {storeForm.Currency} — بيع آجل: {storeForm.AllowCreditSales} — تتبع مخزون: {storeForm.InventoryEnabled}"));
+                $"اسم المتجر: {storeForm.Name} — عملة: {storeForm.Currency} — بيع آجل: {storeForm.AllowCreditSales} — تتبع مخزون: {storeForm.InventoryEnabled} — صندوق: {storeForm.CashDrawerEnabled} — حد الفرق: {storeForm.CashDifferenceTolerance.ToString("N2")}"));
             showStoreModal = false;
             await LoadStore();
             await JS.InvokeVoidAsync("alert", "تم حفظ إعدادات المتجر بنجاح");
@@ -1509,6 +1544,8 @@
         public string? CommercialRegister { get; set; }
         public bool AllowCreditSales { get; set; }
         public bool InventoryEnabled { get; set; } = true;
+        public bool CashDrawerEnabled { get; set; } = true;
+        public decimal CashDifferenceTolerance { get; set; }
         public string Currency { get; set; } = "DZD";
     }
 

@@ -1,0 +1,354 @@
+@page "/purchases"
+@layout MainLayout
+@attribute [Authorize(Policy = PermissionPolicy.ManagePurchases)]
+@rendermode InteractiveServer
+@inject Wizz.Application.UseCases.StockDocuments.CreatePurchaseUseCase CreatePurchase
+@inject Wizz.Application.UseCases.StockDocuments.VoidPurchaseUseCase VoidPurchase
+@inject Wizz.Application.UseCases.StockDocuments.GetPurchasesUseCase GetPurchases
+@inject Wizz.Application.Abstractions.IProductRepository ProductRepo
+@inject Services.CurrentUser CurrentUser
+@inject Services.SafeAudit Audit
+
+<h2 class="d-flex align-items-center gap-2">
+    <WizzIcon Icon="box" Size="24" />
+    <span>المشتريات</span>
+</h2>
+
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="alert alert-danger" role="alert">@errorMessage</div>
+}
+@if (!string.IsNullOrWhiteSpace(successMessage))
+{
+    <div class="alert alert-success" role="alert">@successMessage</div>
+}
+@if (!canViewCosts)
+{
+    <div class="alert alert-info">لا تملك صلاحية عرض تكلفة الشراء؛ تظهر المستندات دون أرقام التكلفة.</div>
+}
+
+@if (canViewCosts)
+{
+<div class="card mb-4">
+    <div class="card-header"><h5 class="mb-0">شراء جديد (مستند SHR)</h5></div>
+    <div class="card-body">
+        <div class="row g-3 mb-3">
+            <div class="col-md-3">
+                <label class="form-label">تاريخ المستند</label>
+                <input type="date" class="form-control" @bind="documentDate" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">المورد (اختياري)</label>
+                <input class="form-control" @bind="supplierName" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">رقم فاتورة المورد (اختياري)</label>
+                <input class="form-control" @bind="supplierInvoiceNumber" />
+            </div>
+        </div>
+
+        <h6>الأصناف</h6>
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead class="table-dark">
+                    <tr><th>المنتج</th><th>الوحدة</th><th class="text-end">الكمية</th><th class="text-end">سعر الوحدة</th><th class="text-end">الإجمالي</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in lines)
+                    {
+                        <tr>
+                            <td>
+                                <select class="form-select form-select-sm" @bind="line.ProductId" @bind:after="() => OnProductChanged(line)">
+                                    <option value="@Guid.Empty">— اختر منتجًا —</option>
+                                    @foreach (var product in products)
+                                    {
+                                        <option value="@product.Id">@product.Name</option>
+                                    }
+                                </select>
+                            </td>
+                            <td>
+                                <select class="form-select form-select-sm" @bind="line.UnitId">
+                                    @foreach (var unit in UnitsOf(line))
+                                    {
+                                        <option value="@unit.Id">@unit.Name</option>
+                                    }
+                                </select>
+                            </td>
+                            <td><input type="number" class="form-control form-control-sm" min="0.0001" step="0.0001" @bind="line.Quantity" /></td>
+                            <td><input type="number" class="form-control form-control-sm" min="0" step="0.01" @bind="line.UnitCost" /></td>
+                            <td class="text-end">@LineTotal(line).ToString("N2") د.ج</td>
+                            <td><button class="btn btn-sm btn-outline-danger" @onclick="() => lines.Remove(line)">حذف</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <button class="btn btn-sm btn-outline-secondary mb-3" @onclick="AddLine">إضافة صنف</button>
+
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="fw-bold">الإجمالي الحي: @LiveTotal.ToString("N2") د.ج</div>
+            <button class="btn btn-primary" @onclick="SavePurchaseAsync">حفظ مستند الشراء</button>
+        </div>
+        <div class="form-text">لا يُحتسب ربح أو تكلفة مبيعات؛ هذا الرقم هو إجمالي الشراء فقط. لا يمكن تعديل المستند بعد إنشائه.</div>
+    </div>
+</div>
+}
+
+<h4>قائمة المشتريات</h4>
+<div class="row mb-3">
+    <div class="col-md-4">
+        <label class="form-label">من تاريخ</label>
+        <input type="date" class="form-control" @bind="fromDate" @bind:after="LoadPurchasesAsync" />
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">إلى تاريخ</label>
+        <input type="date" class="form-control" @bind="toDate" @bind:after="LoadPurchasesAsync" />
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-sm table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>الرقم</th><th>التاريخ</th><th>المورد</th>
+                @if (canViewCosts) { <th class="text-end">الإجمالي</th> }
+                <th>الحالة</th><th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var document in documents)
+            {
+                <tr>
+                    <td>@document.Number</td>
+                    <td>@document.DocumentDate.ToString("yyyy-MM-dd")</td>
+                    <td>@(document.SupplierName ?? "—")</td>
+                    @if (canViewCosts) { <td class="text-end">@document.TotalCost.ToString("N2") د.ج</td> }
+                    <td>
+                        <span class="badge @(document.IsVoided ? "bg-danger" : "bg-success")">
+                            @(document.IsVoided ? "ملغى" : "نشط")
+                        </span>
+                    </td>
+                    <td class="text-nowrap">
+                        <button class="btn btn-sm btn-outline-info" @onclick="() => ToggleDetails(document.Id)">تفاصيل</button>
+                        @if (!document.IsVoided)
+                        {
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => BeginVoid(document.Id)">إلغاء</button>
+                        }
+                    </td>
+                </tr>
+                @if (selectedDocumentId == document.Id)
+                {
+                    <tr>
+                        <td colspan="@(canViewCosts ? 6 : 5)">
+                            <div class="p-2 bg-light">
+                                <div><strong>رقم الفاتورة:</strong> @(document.SupplierInvoiceNumber ?? "—")</div>
+                                @if (!string.IsNullOrWhiteSpace(document.VoidReasonText))
+                                {
+                                    <div><strong>سبب الإلغاء:</strong> @document.VoidReasonText</div>
+                                }
+                                <table class="table table-sm mt-2 mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>المنتج</th><th class="text-end">الكمية</th>
+                                            @if (canViewCosts) { <th class="text-end">سعر الوحدة</th><th class="text-end">إجمالي السطر</th> }
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var line in document.Lines)
+                                        {
+                                            <tr>
+                                                <td>@ProductName(line.ProductId)</td>
+                                                <td class="text-end">@line.Quantity.ToString("N4")</td>
+                                                @if (canViewCosts)
+                                                {
+                                                    <td class="text-end">@(line.UnitCost?.ToString("N2") ?? "—")</td>
+                                                    <td class="text-end">@(line.LineCost?.ToString("N2") ?? "—")</td>
+                                                }
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (voidingDocumentId == document.Id)
+                {
+                    <tr>
+                        <td colspan="@(canViewCosts ? 6 : 5)">
+                            <div class="p-2 border rounded">
+                                <label class="form-label">سبب الإلغاء (إلزامي)</label>
+                                <div class="input-group">
+                                    <input class="form-control" @bind="voidReason" />
+                                    <button class="btn btn-danger" @onclick="() => ConfirmVoidAsync(document.Id)">تأكيد الإلغاء</button>
+                                    <button class="btn btn-outline-secondary" @onclick="() => voidingDocumentId = null">تراجع</button>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private sealed class PurchaseLineForm
+    {
+        public Guid ProductId { get; set; }
+        public Guid UnitId { get; set; }
+        public decimal Quantity { get; set; } = 1;
+        public decimal UnitCost { get; set; }
+    }
+
+    // غلاف عرض يضيف سبب الإلغاء دون تعديل DTO التطبيق.
+    private sealed record PurchaseDocView(
+        Wizz.Application.DTOs.StockDocumentDto Document,
+        string VoidReasonText)
+    {
+        public Guid Id => Document.Id;
+        public string Number => Document.Number;
+        public DateOnly DocumentDate => Document.DocumentDate;
+        public string? SupplierName => Document.SupplierName;
+        public string? SupplierInvoiceNumber => Document.SupplierInvoiceNumber;
+        public bool IsVoided => Document.IsVoided;
+        public decimal TotalCost => Document.TotalCost;
+        public IReadOnlyList<Wizz.Application.DTOs.StockDocumentLineDto> Lines => Document.Lines;
+    }
+
+    private DateTime documentDate = DateTime.Today;
+    private DateTime fromDate = DateTime.Today.AddDays(-30);
+    private DateTime toDate = DateTime.Today;
+    private string supplierName = string.Empty;
+    private string supplierInvoiceNumber = string.Empty;
+    private List<PurchaseLineForm> lines = new() { new PurchaseLineForm() };
+    private List<Wizz.Domain.Product> products = new();
+    private List<PurchaseDocView> documents = new();
+    private Guid selectedDocumentId;
+    private Guid? voidingDocumentId;
+    private string voidReason = string.Empty;
+    private string? errorMessage;
+    private string? successMessage;
+    private Guid? currentUserId;
+    private bool canViewCosts;
+
+    private decimal LiveTotal => lines.Sum(LineTotal);
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUserId = await CurrentUser.IdAsync();
+        canViewCosts = await CurrentUser.HasPermissionAsync(Wizz.Domain.Permission.ViewPurchaseCosts);
+        products = (await ProductRepo.GetAllAsync()).Where(p => p.IsActive && !p.IsService).ToList();
+        if (lines.Count > 0 && lines[0].ProductId == Guid.Empty && products.Count > 0)
+            OnProductChanged(lines[0]);
+        await LoadPurchasesAsync();
+    }
+
+    private IEnumerable<Wizz.Domain.UnitOfMeasure> UnitsOf(PurchaseLineForm line)
+    {
+        var product = products.FirstOrDefault(p => p.Id == line.ProductId);
+        return product?.Units ?? Array.Empty<Wizz.Domain.UnitOfMeasure>();
+    }
+
+    private void OnProductChanged(PurchaseLineForm line)
+    {
+        var product = products.FirstOrDefault(p => p.Id == line.ProductId);
+        line.UnitId = product?.Units.FirstOrDefault(u => u.IsBaseUnit)?.Id
+                      ?? product?.Units.FirstOrDefault()?.Id
+                      ?? Guid.Empty;
+    }
+
+    private decimal LineTotal(PurchaseLineForm line) => decimal.Round(line.Quantity * line.UnitCost, 2, MidpointRounding.AwayFromZero);
+
+    private void AddLine() => lines.Add(new PurchaseLineForm());
+
+    private async Task SavePurchaseAsync()
+    {
+        errorMessage = null;
+        successMessage = null;
+
+        var inputs = lines
+            .Where(l => l.ProductId != Guid.Empty)
+            .Select(l => new Wizz.Application.DTOs.PurchaseLineInputDto(l.ProductId, l.UnitId, l.Quantity, l.UnitCost))
+            .ToList();
+
+        var result = await CreatePurchase.ExecuteAsync(
+            DateOnly.FromDateTime(documentDate.Date),
+            supplierName,
+            supplierInvoiceNumber,
+            inputs,
+            currentUserId);
+
+        if (!result.IsSuccess)
+        {
+            errorMessage = result.Errors.FirstOrDefault();
+            return;
+        }
+
+        await Audit.LogAsync(new Wizz.Application.Abstractions.AuditEntry(
+            Wizz.Domain.AuditAction.PurchaseCreated,
+            Wizz.Domain.AuditOutcome.Success,
+            currentUserId,
+            await CurrentUser.UsernameAsync(),
+            "StockDocument",
+            result.Value.Id.ToString(),
+            $"شراء {result.Value.Number} بإجمالي {result.Value.TotalCost.ToString("N2")}"));
+
+        supplierName = string.Empty;
+        supplierInvoiceNumber = string.Empty;
+        lines = new() { new PurchaseLineForm() };
+        successMessage = $"سُجِّل مستند الشراء {result.Value.Number}.";
+        await LoadPurchasesAsync();
+    }
+
+    private async Task LoadPurchasesAsync()
+    {
+        if (fromDate.Date > toDate.Date) return;
+        var result = await GetPurchases.ExecuteAsync(
+            DateOnly.FromDateTime(fromDate.Date), DateOnly.FromDateTime(toDate.Date));
+        if (!result.IsSuccess)
+        {
+            errorMessage = result.Errors.FirstOrDefault();
+            return;
+        }
+        documents = result.Value.Select(d => new PurchaseDocView(d, d.IsVoided ? d.Reason ?? string.Empty : string.Empty)).ToList();
+    }
+
+    private void ToggleDetails(Guid id) => selectedDocumentId = selectedDocumentId == id ? Guid.Empty : id;
+
+    private void BeginVoid(Guid id)
+    {
+        voidingDocumentId = id;
+        voidReason = string.Empty;
+    }
+
+    private async Task ConfirmVoidAsync(Guid id)
+    {
+        errorMessage = null;
+        successMessage = null;
+        var result = await VoidPurchase.ExecuteAsync(id, voidReason, currentUserId);
+        if (!result.IsSuccess)
+        {
+            errorMessage = result.Errors.FirstOrDefault();
+            return;
+        }
+
+        await Audit.LogAsync(new Wizz.Application.Abstractions.AuditEntry(
+            Wizz.Domain.AuditAction.PurchaseVoided,
+            Wizz.Domain.AuditOutcome.Success,
+            currentUserId,
+            await CurrentUser.UsernameAsync(),
+            "StockDocument",
+            result.Value.Id.ToString(),
+            $"إلغاء شراء {result.Value.Number} — {voidReason}"));
+
+        voidingDocumentId = Guid.Empty;
+        voidReason = string.Empty;
+        successMessage = $"أُلغي مستند الشراء {result.Value.Number} مع عكس الكميات.";
+        await LoadPurchasesAsync();
+    }
+
+    private string ProductName(Guid productId)
+        => products.FirstOrDefault(p => p.Id == productId)?.Name ?? "منتج غير معروف";
+}

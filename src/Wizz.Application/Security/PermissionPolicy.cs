@@ -21,6 +21,10 @@ public static class PermissionPolicy
     public const string AccessAI = "Permission:AccessAI";
     public const string CancelSale = "Permission:CancelSale";
     public const string ModifySale = "Permission:ModifySale";
+    public const string OperateCashDrawer = "Permission:OperateCashDrawer";
+    public const string ManageCashDrawer = "Permission:ManageCashDrawer";
+    public const string ManagePurchases = "Permission:ManagePurchases";
+    public const string ViewPurchaseCosts = "Permission:ViewPurchaseCosts";
 
     public static string For(Permission permission) => "Permission:" + permission;
 }

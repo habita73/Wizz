@@ -1,0 +1,367 @@
+@page "/cash"
+@layout MainLayout
+@attribute [Authorize(Policy = PermissionPolicy.OperateCashDrawer)]
+@rendermode InteractiveServer
+@inject Wizz.Application.UseCases.Sales.OpenShiftUseCase OpenShift
+@inject Wizz.Application.UseCases.Sales.CloseShiftUseCase CloseShift
+@inject Wizz.Application.UseCases.Sales.RecordCashMovementUseCase RecordMovement
+@inject Wizz.Application.UseCases.Sales.GetShiftCashSummaryUseCase GetSummary
+@inject Wizz.Application.UseCases.Sales.GetCashReportUseCase GetCashReport
+@inject Wizz.Application.UseCases.Store.GetStoreSettingsUseCase GetStoreSettings
+@inject Services.CurrentUser CurrentUser
+@inject Services.SafeAudit Audit
+
+<h2 class="d-flex align-items-center gap-2">
+    <WizzIcon Icon="wallet" Size="24" />
+    <span>الصندوق وعدّ النقدية</span>
+</h2>
+
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="alert alert-danger" role="alert">@errorMessage</div>
+}
+@if (!string.IsNullOrWhiteSpace(successMessage))
+{
+    <div class="alert alert-success" role="alert">@successMessage</div>
+}
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <label class="form-label">من تاريخ</label>
+        <input type="date" class="form-control" @bind="fromDate" @bind:after="LoadAsync" />
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">إلى تاريخ</label>
+        <input type="date" class="form-control" @bind="toDate" @bind:after="LoadAsync" />
+    </div>
+    <div class="col-md-4 d-flex align-items-end">
+        <button class="btn btn-outline-primary w-100" @onclick="LoadAsync">
+            <WizzIcon Icon="refresh" Size="16" /> تحديث
+        </button>
+    </div>
+</div>
+
+@if (!cashDrawerEnabled)
+{
+    <div class="alert alert-info">وحدة الصندوق معطّلة من الإعدادات. إغلاق الوردية يعود إلى سلوكه السابق بلا عدّ نقدي.</div>
+}
+
+@if (activeShift is null)
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">لا توجد وردية مفتوحة</h5>
+            @if (cashDrawerEnabled)
+            {
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label">الفكة الافتتاحية</label>
+                        <input type="number" class="form-control" min="0" step="0.01" @bind="openingFloat" />
+                    </div>
+                    <div class="col-md-4">
+                        <button class="btn btn-primary" @onclick="OpenShiftAsync">فتح وردية</button>
+                    </div>
+                </div>
+                <div class="form-text">الفكة اختيارية؛ تركها صفرًا يجعلها صفرًا. الفتح التلقائي مع أول بيع يبقى دون فكة.</div>
+            }
+            else
+            {
+                <div class="form-text">ستُفتح الوردية تلقائيًا مع أول عملية بيع.</div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">الوردية الحالية</h5>
+            <span class="badge bg-success">مفتوحة</span>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4"><strong>وقت الفتح:</strong> @activeShift.OpenedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                <div class="col-md-4"><strong>الفكة الافتتاحية:</strong> @activeShift.OpeningFloat.ToString("N2") د.ج</div>
+                <div class="col-md-4"><strong>المبيعات النقدية:</strong> @summary.CashSalesTotal.ToString("N2") د.ج</div>
+                <div class="col-md-4"><strong>الإيداعات:</strong> @summary.DepositsTotal.ToString("N2") د.ج</div>
+                <div class="col-md-4"><strong>السحوبات:</strong> @summary.WithdrawalsTotal.ToString("N2") د.ج</div>
+                <div class="col-md-4"><strong>النقد المتوقع (مباشر):</strong> <span class="fw-bold text-primary">@summary.ExpectedCash.ToString("N2") د.ج</span></div>
+            </div>
+
+            @if (summary.MixedPaymentsCount > 0)
+            {
+                <div class="alert alert-warning mt-3 mb-0">
+                    توجد @summary.MixedPaymentsCount عملية دفع مختلط؛ لا تُحتسب في الصندوق النقدي لأن تفصيل مبالغها غير مخزّن. راجع العدّ يدويًا.
+                </div>
+            }
+
+            <hr />
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <h6>إيداع أو سحب نقدي</h6>
+                    <div class="mb-2">
+                        <select class="form-select" @bind="movementType">
+                            <option value="0">إيداع</option>
+                            <option value="1">سحب</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <input type="number" class="form-control" min="0.01" step="0.01" placeholder="المبلغ" @bind="movementAmount" />
+                    </div>
+                    <div class="mb-2">
+                        <input class="form-control" placeholder="السبب (إلزامي)" @bind="movementReason" />
+                    </div>
+                    <button class="btn btn-outline-primary" @onclick="RecordMovementAsync">تسجيل الحركة</button>
+                </div>
+                <div class="col-md-6">
+                    <h6>إغلاق الوردية</h6>
+                    <div class="mb-2">
+                        <input type="number" class="form-control" min="0" step="0.01" placeholder="النقد المعدود" @bind="countedCash" />
+                    </div>
+                    <div class="mb-2">
+                        <input class="form-control" placeholder="ملاحظة الإغلاق" @bind="closeNote" />
+                    </div>
+                    <div class="mb-2">
+                        معاينة الفرق:
+                        <span class="fw-bold @(CloseDifference > 0 ? "text-success" : CloseDifference < 0 ? "text-danger" : "")">
+                            @(CloseDifference.ToString("N2")) د.ج
+                        </span>
+                        <span class="text-muted">(@(CloseDifference > 0 ? "فائض" : CloseDifference < 0 ? "عجز" : "مطابق"))</span>
+                    </div>
+                    <button class="btn btn-danger" @onclick="CloseShiftAsync">إغلاق الوردية</button>
+                </div>
+            </div>
+
+            @if (summary.Movements.Count > 0)
+            {
+                <hr />
+                <h6>الحركات النقدية المسجّلة</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead class="table-dark">
+                            <tr><th>الوقت</th><th>النوع</th><th class="text-end">المبلغ</th><th>السبب</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var movement in summary.Movements)
+                            {
+                                <tr>
+                                    <td>@movement.OccurredAt.ToLocalTime().ToString("HH:mm")</td>
+                                    <td>@movement.Type</td>
+                                    <td class="text-end">@movement.Amount.ToString("N2") د.ج</td>
+                                    <td>@movement.Reason</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<h4>سجل الورديات</h4>
+<div class="table-responsive">
+    <table class="table table-sm table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>الفتح</th><th>الإغلاق</th><th>الكاشير</th><th class="text-end">المتوقع</th>
+                <th class="text-end">المعدود</th><th class="text-end">الفرق</th><th>الحالة</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in historyRows)
+            {
+                <tr>
+                    <td>@row.OpenedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@(row.ClosedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
+                    <td>@row.CashierName</td>
+                    <td class="text-end">@row.ExpectedCash.ToString("N2") د.ج</td>
+                    <td class="text-end">@(row.CountedCash?.ToString("N2") ?? "—")</td>
+                    <td class="text-end @(row.CashDifference > 0 ? "text-success" : row.CashDifference < 0 ? "text-danger" : "")">
+                        @(row.CashDifference?.ToString("N2") ?? "—")
+                    </td>
+                    <td>
+                        <span class="badge @(row.IsOpen ? "bg-success" : row.HasCashCount ? "bg-secondary" : "bg-dark")">@row.StatusLabel</span>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (historyRows.Count == 0)
+    {
+        <div class="text-muted small">لا توجد ورديات في الفترة المحددة.</div>
+    }
+</div>
+
+@code {
+    private DateTime fromDate = DateTime.Today.AddDays(-30);
+    private DateTime toDate = DateTime.Today;
+    private bool cashDrawerEnabled = true;
+    private Guid? currentUserId;
+    private bool canManageAll;
+
+    private Wizz.Application.DTOs.CashReportRowDto? activeShift;
+    private Wizz.Application.DTOs.ShiftCashSummaryDto summary = new(Guid.Empty, 0, 0, 0, 0, 0, 0, Array.Empty<Wizz.Application.DTOs.CashMovementDto>());
+    private List<Wizz.Application.DTOs.CashReportRowDto> historyRows = new();
+
+    private decimal openingFloat;
+    private decimal movementAmount;
+    private string movementReason = string.Empty;
+    private int movementType = 0;
+    private decimal countedCash;
+    private string closeNote = string.Empty;
+    private string? errorMessage;
+    private string? successMessage;
+
+    private decimal CloseDifference => activeShift is null ? 0 : decimal.Round(countedCash - summary.ExpectedCash, 2, MidpointRounding.AwayFromZero);
+
+    // الصفحة محمية بـ[Authorize]؛ القيمة البديلة لا تُصل إلى حالات الاستخدام في التشغيل الطبيعي.
+    private Guid ActorId => currentUserId ?? Guid.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUserId = await CurrentUser.IdAsync();
+        canManageAll = await CurrentUser.HasPermissionAsync(Wizz.Domain.Permission.ManageCashDrawer);
+
+        var settings = await GetStoreSettings.ExecuteAsync();
+        if (settings.IsSuccess)
+            cashDrawerEnabled = settings.Value.CashDrawerEnabled;
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        errorMessage = null;
+        if (fromDate.Date > toDate.Date)
+        {
+            errorMessage = "تاريخ نهاية الفترة يجب ألا يسبق تاريخ بدايتها";
+            return;
+        }
+
+        var report = await GetCashReport.ExecuteAsync(
+            DateOnly.FromDateTime(fromDate.Date), DateOnly.FromDateTime(toDate.Date));
+
+        if (!report.IsSuccess)
+        {
+            errorMessage = report.Errors.FirstOrDefault();
+            return;
+        }
+
+        var visible = canManageAll
+            ? report.Value.Rows
+            : report.Value.Rows.Where(r => r.CashierId == currentUserId).ToList();
+
+        historyRows = visible.OrderByDescending(r => r.OpenedAt).ToList();
+        activeShift = visible.FirstOrDefault(r => r.IsOpen);
+
+        if (activeShift is not null)
+        {
+            var cash = await GetSummary.ExecuteAsync(activeShift.ShiftId);
+            if (cash.IsSuccess)
+                summary = cash.Value;
+        }
+    }
+
+    private async Task OpenShiftAsync()
+    {
+        errorMessage = null;
+        successMessage = null;
+        var result = await OpenShift.ExecuteAsync(ActorId, ActorId, openingFloat);
+        if (!result.IsSuccess)
+        {
+            errorMessage = result.Errors.FirstOrDefault();
+            return;
+        }
+
+        await Audit.LogAsync(new Wizz.Application.Abstractions.AuditEntry(
+            Wizz.Domain.AuditAction.ShiftOpened,
+            Wizz.Domain.AuditOutcome.Success,
+            currentUserId,
+            await CurrentUser.UsernameAsync(),
+            "CashierShift",
+            result.Value.Id.ToString(),
+            $"فتح وردية بفكة افتتاحية {result.Value.OpeningFloat.ToString("N2")}"));
+
+        openingFloat = 0;
+        successMessage = "فُتحت الوردية بنجاح.";
+        await LoadAsync();
+    }
+
+    private async Task RecordMovementAsync()
+    {
+        errorMessage = null;
+        successMessage = null;
+        if (activeShift is null) return;
+
+        var type = movementType == 0
+            ? Wizz.Domain.CashMovementType.Deposit
+            : Wizz.Domain.CashMovementType.Withdrawal;
+
+        var result = await RecordMovement.ExecuteAsync(
+            activeShift.ShiftId, type, movementAmount, movementReason, ActorId);
+
+        if (!result.IsSuccess)
+        {
+            errorMessage = result.Errors.FirstOrDefault();
+            return;
+        }
+
+        await Audit.LogAsync(new Wizz.Application.Abstractions.AuditEntry(
+            Wizz.Domain.AuditAction.CashMovementRecorded,
+            Wizz.Domain.AuditOutcome.Success,
+            currentUserId,
+            await CurrentUser.UsernameAsync(),
+            "CashMovement",
+            result.Value.Id.ToString(),
+            $"{result.Value.Type} بمبلغ {result.Value.Amount.ToString("N2")} — {result.Value.Reason}"));
+
+        movementAmount = 0;
+        movementReason = string.Empty;
+        successMessage = "سُجِّلت الحركة النقدية.";
+        await LoadAsync();
+    }
+
+    private async Task CloseShiftAsync()
+    {
+        errorMessage = null;
+        successMessage = null;
+        if (activeShift is null) return;
+
+        var result = await CloseShift.ExecuteAsync(
+            activeShift.ShiftId, ActorId, countedCash, closeNote);
+
+        if (!result.IsSuccess)
+        {
+            errorMessage = result.Errors.FirstOrDefault();
+            return;
+        }
+
+        await Audit.LogAsync(new Wizz.Application.Abstractions.AuditEntry(
+            Wizz.Domain.AuditAction.ShiftClosed,
+            Wizz.Domain.AuditOutcome.Success,
+            currentUserId,
+            await CurrentUser.UsernameAsync(),
+            "CashierShift",
+            result.Value.Id.ToString(),
+            $"إغلاق بفارق {(result.Value.CashDifference ?? 0).ToString("N2")}"));
+
+        if (result.Value.CashDifference is decimal difference && difference != 0)
+        {
+            await Audit.LogAsync(new Wizz.Application.Abstractions.AuditEntry(
+                Wizz.Domain.AuditAction.CashDifferenceRecorded,
+                Wizz.Domain.AuditOutcome.Success,
+                currentUserId,
+                await CurrentUser.UsernameAsync(),
+                "CashierShift",
+                result.Value.Id.ToString(),
+                $"فرق الإغلاق {difference.ToString("N2")}" +
+                (string.IsNullOrWhiteSpace(closeNote) ? string.Empty : $" — {closeNote}")));
+        }
+
+        countedCash = 0;
+        closeNote = string.Empty;
+        successMessage = "أُغلقت الوردية وجُمّدت اللقطة.";
+        await LoadAsync();
+    }
+}

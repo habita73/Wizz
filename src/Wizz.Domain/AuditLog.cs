@@ -78,6 +78,12 @@ public enum AuditAction
     ProductDeleted = 20,
     DefaultCredentialDisabled = 21,
     PermissionDenied = 22,
+    ShiftOpened = 23,
+    ShiftClosed = 24,
+    CashMovementRecorded = 25,
+    PurchaseCreated = 26,
+    PurchaseVoided = 27,
+    CashDifferenceRecorded = 28,
 }
 
 /// <summary>نتيجة الإجراء المسجل.</summary>

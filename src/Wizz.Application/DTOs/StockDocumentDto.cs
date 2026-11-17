@@ -11,7 +11,9 @@ public sealed record StockDocumentLineDto(
     decimal BaseQuantityDelta,
     decimal QuantityBefore,
     decimal QuantityAfter,
-    string? Reason
+    string? Reason,
+    decimal? UnitCost,
+    decimal? LineCost
 );
 
 /// <summary>مستند مخزون للعرض.</summary>
@@ -27,9 +29,14 @@ public sealed record StockDocumentDto(
     string? Reason,
     string? Source,
     bool IsVoided,
+    string? SupplierName,
+    string? SupplierInvoiceNumber,
     IReadOnlyList<StockDocumentLineDto> Lines
 )
 {
+    /// <summary>إجمالي تكلفة المستند = مجموع تكاليف الأسطر. محسوب في العرض ولا يُخزَّن.</summary>
+    public decimal TotalCost => Lines.Sum(l => l.LineCost ?? 0m);
+
     public static StockDocumentDto FromDomain(StockDocument d) => new(
         d.Id,
         d.StoreId,
@@ -42,9 +49,11 @@ public sealed record StockDocumentDto(
         d.Reason,
         d.Source,
         d.IsVoided,
+        d.SupplierName,
+        d.SupplierInvoiceNumber,
         d.Lines.Select(l => new StockDocumentLineDto(
             l.Id, l.ProductId, l.UnitId, l.Quantity, l.BaseQuantityDelta,
-            l.QuantityBefore, l.QuantityAfter, l.Reason)).ToList());
+            l.QuantityBefore, l.QuantityAfter, l.Reason, l.UnitCost, l.LineCost)).ToList());
 
     public static string TypeTextOf(StockDocumentType type) => type switch
     {

@@ -67,4 +67,32 @@ public sealed class StockDocumentRepository : IStockDocumentRepository
             .Take(Math.Clamp(limit, 1, 500))
             .ToListAsync(ct);
     }
+
+    public async Task<IReadOnlyList<StockDocument>> GetByTypeAsync(
+        StockDocumentType type,
+        Guid? storeId = null,
+        DateOnly? from = null,
+        DateOnly? to = null,
+        bool includeVoided = false,
+        CancellationToken ct = default)
+    {
+        var query = _db.StockDocuments
+            .AsNoTracking()
+            .Include(d => d.Lines)
+            .Where(d => d.Type == type);
+
+        if (storeId.HasValue)
+            query = query.Where(d => d.StoreId == storeId.Value);
+        if (from.HasValue)
+            query = query.Where(d => d.DocumentDate >= from.Value);
+        if (to.HasValue)
+            query = query.Where(d => d.DocumentDate <= to.Value);
+        if (!includeVoided)
+            query = query.Where(d => !d.IsVoided);
+
+        return await query
+            .OrderByDescending(d => d.DocumentDate)
+            .ThenByDescending(d => d.CreatedAt)
+            .ToListAsync(ct);
+    }
 }

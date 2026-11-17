@@ -66,16 +66,68 @@ namespace Wizz.Infrastructure.Data.Migrations
                     b.ToTable("AuditLogs");
                 });
 
+            modelBuilder.Entity("Wizz.Domain.CashMovement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("ReferencePurchaseId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ShiftId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAt");
+
+                    b.HasIndex("ReferencePurchaseId");
+
+                    b.HasIndex("ShiftId");
+
+                    b.HasIndex("StoreId");
+
+                    b.ToTable("CashMovements");
+                });
+
             modelBuilder.Entity("Wizz.Domain.CashierShift", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<decimal?>("CashDifference")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<decimal>("CashTotal")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<Guid>("CashierId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CloseNote")
+                        .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("ClosedAt")
@@ -84,7 +136,16 @@ namespace Wizz.Infrastructure.Data.Migrations
                     b.Property<Guid?>("ClosedByUserId")
                         .HasColumnType("TEXT");
 
+                    b.Property<decimal?>("CountedCash")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<decimal>("CreditTotal")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("DepositsTotal")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("ExpectedCash")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("OpenedAt")
@@ -93,11 +154,17 @@ namespace Wizz.Infrastructure.Data.Migrations
                     b.Property<Guid>("OpenedByUserId")
                         .HasColumnType("TEXT");
 
+                    b.Property<decimal>("OpeningFloat")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<decimal>("SalesTotal")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<Guid>("StoreId")
                         .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("WithdrawalsTotal")
+                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 
@@ -388,6 +455,14 @@ namespace Wizz.Infrastructure.Data.Migrations
                     b.Property<Guid>("StoreId")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("SupplierInvoiceNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SupplierName")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Type")
                         .HasColumnType("INTEGER");
 
@@ -426,6 +501,9 @@ namespace Wizz.Infrastructure.Data.Migrations
                     b.Property<decimal>("BaseQuantityDelta")
                         .HasColumnType("decimal(18,4)");
 
+                    b.Property<decimal?>("LineCost")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<Guid>("ProductId")
                         .HasColumnType("TEXT");
 
@@ -444,6 +522,9 @@ namespace Wizz.Infrastructure.Data.Migrations
 
                     b.Property<Guid>("StockDocumentId")
                         .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("UnitCost")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<Guid>("UnitId")
                         .HasColumnType("TEXT");
@@ -516,6 +597,16 @@ namespace Wizz.Infrastructure.Data.Migrations
 
                     b.Property<bool>("AllowCreditSales")
                         .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("CashDifferenceTolerance")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<bool>("CashDrawerEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
 
                     b.Property<string>("CommercialRegister")
                         .HasMaxLength(50)
@@ -692,6 +783,21 @@ namespace Wizz.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("Wizz.Domain.CashMovement", b =>
+                {
+                    b.HasOne("Wizz.Domain.CashierShift", null)
+                        .WithMany()
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Wizz.Domain.Store", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Wizz.Domain.CashierShift", b =>

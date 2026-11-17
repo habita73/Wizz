@@ -67,6 +67,13 @@ public sealed class StockDocument
     public string? Reason { get; private set; }
     public Guid? ReferenceSaleId { get; private set; }
     public string? Source { get; private set; }
+
+    /// <summary>اسم المورد نصًا حرًا — يخص مستندات الشراء SHR.</summary>
+    public string? SupplierName { get; private set; }
+
+    /// <summary>رقم فاتورة المورد الاختياري — يخص مستندات الشراء SHR.</summary>
+    public string? SupplierInvoiceNumber { get; private set; }
+
     public bool IsVoided { get; private set; }
     public DateTime? VoidedAt { get; private set; }
     public Guid? VoidedByUserId { get; private set; }
@@ -91,7 +98,9 @@ public sealed class StockDocument
         Guid? referenceSaleId = null,
         string? source = null,
         DateTime? createdAt = null,
-        Guid? legacyStockMovementId = null)
+        Guid? legacyStockMovementId = null,
+        string? supplierName = null,
+        string? supplierInvoiceNumber = null)
     {
         if (storeId == Guid.Empty)
             throw new ArgumentException("معرّف المتجر مطلوب", nameof(storeId));
@@ -115,6 +124,8 @@ public sealed class StockDocument
         ReferenceSaleId = referenceSaleId;
         Source = Normalize(source);
         LegacyStockMovementId = legacyStockMovementId;
+        SupplierName = Normalize(supplierName);
+        SupplierInvoiceNumber = Normalize(supplierInvoiceNumber);
 
         foreach (var line in lineList)
         {
@@ -156,6 +167,12 @@ public sealed class StockDocumentLine
     public decimal QuantityAfter { get; private set; }
     public string? Reason { get; private set; }
 
+    /// <summary>سعر شراء الوحدة المختارة — يخص مستندات الشراء SHR.</summary>
+    public decimal? UnitCost { get; private set; }
+
+    /// <summary>إجمالي السطر = الكمية × سعر الوحدة، مقربًا لمنزلتين — يخص SHR.</summary>
+    public decimal? LineCost { get; private set; }
+
     public StockDocument? StockDocument { get; private set; }
 
     private StockDocumentLine() { } // EF Core
@@ -167,7 +184,8 @@ public sealed class StockDocumentLine
         decimal baseQuantityDelta,
         decimal quantityBefore,
         decimal quantityAfter,
-        string? reason = null)
+        string? reason = null,
+        decimal? unitCost = null)
     {
         if (productId == Guid.Empty)
             throw new ArgumentException("معرّف المنتج مطلوب", nameof(productId));
@@ -177,6 +195,12 @@ public sealed class StockDocumentLine
             throw new ArgumentOutOfRangeException(nameof(quantity), "كمية السطر يجب أن تكون أكبر من صفر");
         if (baseQuantityDelta == 0)
             throw new ArgumentOutOfRangeException(nameof(baseQuantityDelta), "تغير الكمية لا يمكن أن يكون صفرًا");
+        if (unitCost.HasValue)
+        {
+            if (unitCost.Value < 0)
+                throw new ArgumentOutOfRangeException(nameof(unitCost), "سعر الشراء لا يمكن أن يكون سالبًا");
+            Money.RequireAtMostTwoDecimalPlaces(unitCost.Value, nameof(unitCost));
+        }
 
         Id = Guid.NewGuid();
         ProductId = productId;
@@ -186,6 +210,8 @@ public sealed class StockDocumentLine
         QuantityBefore = quantityBefore;
         QuantityAfter = quantityAfter;
         Reason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
+        UnitCost = unitCost;
+        LineCost = unitCost.HasValue ? Money.Round(quantity * unitCost.Value) : null;
     }
 
     internal void AttachToDocument(Guid stockDocumentId) => StockDocumentId = stockDocumentId;

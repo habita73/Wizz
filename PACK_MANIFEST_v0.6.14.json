@@ -1,0 +1,62 @@
+{
+  "package": "Vent au comptoir Documentation Pack",
+  "version": "0.6.14",
+  "date": "2026-11-17",
+  "status": "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_AUTHORIZED",
+  "execution_authorized": false,
+  "limited_execution_authorizations": [
+    "D-21 H-05 consistent backup and restore service",
+    "D-22 H-02 sale edit inside a single EF transaction",
+    "D-30 Phase 1 stock documents (StockDocument/DocumentSequence, numbering, opening/count/waste, migration, stock card)",
+    "D-31 Phase 2 cashier shift (CashierShift, shift gate over the current business day, sale cancel/modify audit fields, MRB sales return)",
+    "D-32 H-04 security package (cookie authentication, PBKDF2 hashing, SecurityStamp session invalidation, audit log, permission policies, first-run setup, login lockout)",
+    "D-33 quick settings panel opened from the conventional help button (F1 or ?), presentation and personal-device preferences only, plus in-progress sale draft kept in the cashier's browser",
+    "v0.6.7 owner-ordered fix inside the D-33 presentation scope: themed page-not-found screen for unknown URLs and removal of the dead stock-movements button",
+    "v0.6.8 owner-ordered polish inside the D-33 presentation scope: contrast, reduced motion, large touch targets, draft-save toggle, keyboard shortcuts moved into the quick panel, and an evenly distributed collapsible settings grid",
+    "v0.6.9 owner-ordered behavior inside the D-33 presentation scope: the quick settings panel now also closes on an outside click or lost focus, while its own close button and Escape keep working",
+    "v0.6.10 owner-ordered presentation fixes inside the D-33 presentation scope: the free-key card inside the AI assistant settings card keeps its natural height, the AI route badges and test buttons wrap instead of overflowing the card, and the detailed-assistant-settings link jumps to the assistant card on the settings page",
+    "v0.6.11 owner-ordered presentation fixes inside the D-33 presentation scope: the chosen theme stays applied after page navigation, and the sidebar no longer fills the first screen of a narrow window",
+    "v0.6.12 owner-ordered presentation fixes inside the D-33 presentation scope: consistent stock-page action icons, a visible hamburger icon in narrow layout, and a side-sliding navigation drawer that no longer pushes content down",
+    "v0.6.13 owner-ordered presentation fix inside the D-33 presentation scope: condense the overlapping top-bar text labels (local mode, username and role) into icon indicators with hover/long-press titles on narrow screens only",
+    "D-34 full Phase 3: cash drawer and cash counting, SHR purchases, cash/purchases UI and reports, four permissions and audit, additive migration, and tests T-15 to T-25; excludes sync, cloud, phone/multi-device, supplier ledger, debt collection, cash refund for MRB, inventory valuation/profit, and post-creation document editing"
+  ],
+  "active_files": [
+    "README.md",
+    "PROJECT_RULES.md",
+    "AGENTS.md",
+    "docs/PRODUCT_MASTER.md",
+    "docs/MVP_AND_ACCEPTANCE.md",
+    "docs/TECHNICAL_AND_SAFETY_RULES.md",
+    "docs/DECISIONS_AND_OPEN_GATES.md",
+    "docs/STOCK_AND_DOCUMENTS_MODEL_AR.md",
+    "docs/ARCHIVE_INDEX.md",
+    "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md"
+  ],
+  "archive_file_count": 57,
+  "archive_policy": "Archive files are historical, non-active references; do not load all archive files for routine tasks.",
+  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB); v0.6.3 records the H-04 security implementation; v0.6.4 records the routing correction applied on top of H-04; v0.6.5 records the standing communication-style rule requested by the owner; v0.6.6 records the owner-authorized quick settings panel and the sale draft; v0.6.7 records the owner-ordered page-not-found screen and the removal of the dead stock-movements button; v0.6.8 records the owner-ordered expansion of the quick settings and the evenly distributed, collapsible settings groups; v0.6.9 records the owner-ordered close-on-outside-click and close-on-lost-focus behavior of the quick settings panel; v0.6.10 records the owner-ordered removal of the large blank gap inside the AI assistant settings card, the wrapping of the AI route badges, and the direct link to the assistant card; v0.6.11 records the owner-ordered theme persistence across page navigation and the removal of the wide sidebar band in a narrow window; v0.6.12 records the owner-ordered consistent stock action icons and the narrow-layout hamburger icon with a side drawer that does not move the content; v0.6.13 records the owner-ordered condensation of the overlapping narrow-layout top-bar labels into icon indicators with titles; v0.6.14 records the owner-authorized full Phase 3 (cash drawer and cash counting, SHR purchases, cash/purchases UI and reports, permissions, audit, migration and tests)",
+  "mvp_status": "APPROVED",
+  "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21, D-22, D-30, D-31, D-32 and D-34 (full Phase 3), plus the D-33 presentation-only UI scope.",
+  "change_summary": [
+    "Phase 3 full implementation authorized by the owner (D-34): cash drawer and cash counting with opening float, cash movements, and shift close with a counted-cash difference.",
+    "Added the SHR purchase document with purchase cost stored per line, a purchases page with item lists and a purchases table.",
+    "Added the cash dashboard at /cash and cash/purchases report tabs at /reports; purchase costs are hidden from users without ViewPurchaseCosts.",
+    "Added four permissions (OperateCashDrawer, ManageCashDrawer, ManagePurchases, ViewPurchaseCosts) with audit entries; cashier navigation and page access are gated accordingly.",
+    "Cash drawer is optional: when disabled, shift close falls back to the Phase 2 behaviour; the /cash UI always passes counted cash.",
+    "Added four new UI labels/fields in /settings for enabling the drawer and setting the cash-difference tolerance; quick settings stays presentation/preferences only.",
+    "Added an additive migration (AddCashDrawerAndPurchases) and 12 integration tests (T-15 to T-25).",
+    "Pre-Phase-3 backups lack the CashMovements table and are rejected on restore, as required by BackupService.RequiredTables.",
+    "Excluded from scope: sync, cloud, phone/multi-device, supplier ledger, debt collection, cash refund for MRB, inventory valuation/profit, and editing documents after creation."
+  ],
+  "review_findings": [
+    "Build: dotnet build Wizz.sln -c Release --no-restore -v minimal = 0 errors (pre-existing StyleCop warnings only).",
+    "Tests: Domain 24/24; Integration 274/274 (298 total), up from a 262-test baseline; includes migration and backup/restore checks.",
+    "Browser verification on a synthetic-only SQLite database at localhost:5183: /cash, /purchases, /reports (cash and purchases tabs) and /settings render with no console errors.",
+    "Permission check: a cashier sees only the home, sales, debts, cash, stock and AI navigation links; /purchases, /reports and /settings redirect to /access-denied, while /cash stays accessible.",
+    "Cost hiding verified in code through CurrentUser.HasPermissionAsync(ViewPurchaseCosts) in the purchases page and the purchases report tab.",
+    "Close behaviour verified in code: counting runs only when store.CashDrawerEnabled and a counted cash value is supplied; otherwise the legacy shift.Close() path is used.",
+    "Backup limitation: backups taken before Phase 3 have no CashMovements table and are rejected after upgrade; no claim of restorability is made.",
+    "CI remains unavailable for the GitHub account (billing issue; owner declined support contact); verification is local and manual.",
+    "A real restore in a separate environment (MVP-AT-09) has not been performed."
+  ]
+}

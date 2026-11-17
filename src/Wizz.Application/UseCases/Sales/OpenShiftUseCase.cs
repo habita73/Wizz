@@ -16,12 +16,17 @@ public sealed class OpenShiftUseCase
     public async Task<Result<CashierShiftDto>> ExecuteAsync(
         Guid cashierId,
         Guid openedByUserId,
+        decimal openingFloat = 0,
         CancellationToken ct = default)
     {
         if (cashierId == Guid.Empty)
             return Result<CashierShiftDto>.Failure("معرّف الكاشير مطلوب");
         if (openedByUserId == Guid.Empty)
             return Result<CashierShiftDto>.Failure("معرّف المستخدم الذي يفتح الوردية مطلوب");
+        if (openingFloat < 0)
+            return Result<CashierShiftDto>.Failure("الفكة الافتتاحية لا يمكن أن تكون سالبة");
+        if (decimal.Round(openingFloat, 2, MidpointRounding.ToZero) != openingFloat)
+            return Result<CashierShiftDto>.Failure("الفكة الافتتاحية تقبل منزلتين عشريتين على الأكثر");
 
         var store = await _unitOfWork.Store.GetAsync(ct);
         if (store == null)
@@ -31,7 +36,7 @@ public sealed class OpenShiftUseCase
         if (existing is not null)
             return Result<CashierShiftDto>.Failure("لدى الكاشير وردية مفتوحة بالفعل");
 
-        var shift = new CashierShift(store.Id, cashierId, openedByUserId);
+        var shift = new CashierShift(store.Id, cashierId, openedByUserId, openingFloat: openingFloat);
 
         try
         {

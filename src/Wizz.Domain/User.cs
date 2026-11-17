@@ -90,13 +90,23 @@ public enum Permission
     AccessAI = 8,
     CancelSale = 9,
     ModifySale = 10,
+    OperateCashDrawer = 11,
+    ManageCashDrawer = 12,
+    ManagePurchases = 13,
+    ViewPurchaseCosts = 14,
 }
 
 public static class RolePermissions
 {
     private static readonly Dictionary<UserRole, Permission[]> PermissionsByRole = new()
     {
-        [UserRole.Cashier] = new[] { Permission.CreateSale, Permission.ViewProducts, Permission.AccessAI },
+        [UserRole.Cashier] = new[]
+        {
+            Permission.CreateSale,
+            Permission.ViewProducts,
+            Permission.AccessAI,
+            Permission.OperateCashDrawer,
+        },
         [UserRole.Manager] = new[]
         {
             Permission.CreateSale,
@@ -107,6 +117,10 @@ public static class RolePermissions
             Permission.AccessAI,
             Permission.CancelSale,
             Permission.ModifySale,
+            Permission.OperateCashDrawer,
+            Permission.ManageCashDrawer,
+            Permission.ManagePurchases,
+            Permission.ViewPurchaseCosts,
         },
         [UserRole.Admin] = Enum.GetValues<Permission>(),
     };

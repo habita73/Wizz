@@ -12,6 +12,12 @@ public sealed class Store
     public bool AllowCreditSales { get; private set; }
     public bool InventoryEnabled { get; private set; } = true;
 
+    /// <summary>تفعيل وحدة الصندوق وعدّ النقدية. تعطيلها يعيد إغلاق الوردية إلى سلوكه السابق.</summary>
+    public bool CashDrawerEnabled { get; private set; } = true;
+
+    /// <summary>حدّ فرق الإغلاق الذي لا يتطلب ملاحظة (منزلتان عشريتان، افتراضي صفر).</summary>
+    public decimal CashDifferenceTolerance { get; private set; }
+
     /// <summary>عدد أرقام السنة في رقم المستند: 2 أو 4 (الافتراضي 4).</summary>
     public int DocumentYearDigits { get; private set; } = 4;
 
@@ -31,10 +37,15 @@ public sealed class Store
         bool allowCreditSales = false,
         string currency = "DZD",
         bool inventoryEnabled = true,
-        int documentYearDigits = 4)
+        int documentYearDigits = 4,
+        bool cashDrawerEnabled = true,
+        decimal cashDifferenceTolerance = 0)
     {
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("اسم المتجر مطلوب", nameof(name));
         if (string.IsNullOrWhiteSpace(currency)) throw new ArgumentException("العملة مطلوبة", nameof(currency));
+        if (cashDifferenceTolerance < 0)
+            throw new ArgumentOutOfRangeException(nameof(cashDifferenceTolerance), "حدّ فرق الصندوق لا يمكن أن يكون سالبًا");
+        Money.RequireAtMostTwoDecimalPlaces(cashDifferenceTolerance, nameof(cashDifferenceTolerance));
         RequireValidYearDigits(documentYearDigits, nameof(documentYearDigits));
 
         Id = Guid.NewGuid();
@@ -46,6 +57,8 @@ public sealed class Store
         AllowCreditSales = allowCreditSales;
         InventoryEnabled = inventoryEnabled;
         DocumentYearDigits = documentYearDigits;
+        CashDrawerEnabled = cashDrawerEnabled;
+        CashDifferenceTolerance = Money.Round(cashDifferenceTolerance);
         Currency = currency.Trim().ToUpperInvariant();
         CreatedAt = DateTime.UtcNow;
     }
@@ -61,11 +74,19 @@ public sealed class Store
         string? currency = null,
         string? timeZone = null,
         bool inventoryEnabled = true,
-        int? documentYearDigits = null)
+        int? documentYearDigits = null,
+        bool? cashDrawerEnabled = null,
+        decimal? cashDifferenceTolerance = null)
     {
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("اسم المتجر مطلوب", nameof(name));
         if (documentYearDigits.HasValue)
             RequireValidYearDigits(documentYearDigits.Value, nameof(documentYearDigits));
+        if (cashDifferenceTolerance.HasValue)
+        {
+            if (cashDifferenceTolerance.Value < 0)
+                throw new ArgumentOutOfRangeException(nameof(cashDifferenceTolerance), "حدّ فرق الصندوق لا يمكن أن يكون سالبًا");
+            Money.RequireAtMostTwoDecimalPlaces(cashDifferenceTolerance.Value, nameof(cashDifferenceTolerance));
+        }
 
         Name = name.Trim();
         Address = Normalize(address);
@@ -76,6 +97,10 @@ public sealed class Store
         InventoryEnabled = inventoryEnabled;
         if (documentYearDigits.HasValue)
             DocumentYearDigits = documentYearDigits.Value;
+        if (cashDrawerEnabled.HasValue)
+            CashDrawerEnabled = cashDrawerEnabled.Value;
+        if (cashDifferenceTolerance.HasValue)
+            CashDifferenceTolerance = Money.Round(cashDifferenceTolerance.Value);
 
         if (!string.IsNullOrWhiteSpace(currency))
         {

@@ -14,7 +14,15 @@ public sealed record CashierShiftDto(
     decimal SalesTotal,
     decimal CashTotal,
     decimal CreditTotal,
-    bool IsOpen
+    bool IsOpen,
+    decimal OpeningFloat,
+    decimal? DepositsTotal,
+    decimal? WithdrawalsTotal,
+    decimal? ExpectedCash,
+    decimal? CountedCash,
+    decimal? CashDifference,
+    string? CloseNote,
+    bool HasCashCount
 )
 {
     public static CashierShiftDto FromDomain(CashierShift shift) => new(
@@ -28,7 +36,15 @@ public sealed record CashierShiftDto(
         shift.SalesTotal,
         shift.CashTotal,
         shift.CreditTotal,
-        shift.IsOpen);
+        shift.IsOpen,
+        shift.OpeningFloat,
+        shift.DepositsTotal,
+        shift.WithdrawalsTotal,
+        shift.ExpectedCash,
+        shift.CountedCash,
+        shift.CashDifference,
+        shift.CloseNote,
+        shift.HasCashCount);
 }
 
 /// <summary>سطر مرتجع بيع — الكمية بالوحدة المختارة ويرفض تجاوز المتبقي من البيع الأصلي.</summary>

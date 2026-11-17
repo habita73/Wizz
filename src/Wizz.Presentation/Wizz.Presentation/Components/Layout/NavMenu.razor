@@ -51,6 +51,17 @@
                         الديون
                     </NavLink>
                 </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="cash">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="6" width="20" height="12" rx="2"/>
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M6 12h.01M18 12h.01"/>
+                        </svg>
+                        الصندوق
+                    </NavLink>
+                </div>
             </Authorized>
         </AuthorizeView>
 
@@ -63,6 +74,21 @@
                             <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                         </svg>
                         المخزون
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Policy="@PermissionPolicy.ManagePurchases">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="purchases">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+                            <path d="M3 6h18"/>
+                            <path d="M16 10a4 4 0 0 1-8 0"/>
+                        </svg>
+                        المشتريات
                     </NavLink>
                 </div>
             </Authorized>

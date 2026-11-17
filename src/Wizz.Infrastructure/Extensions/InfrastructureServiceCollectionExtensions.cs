@@ -34,6 +34,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ISaleRepository, SaleRepository>();
         services.AddScoped<IStockMovementRepository, StockMovementRepository>();
         services.AddScoped<IStockDocumentRepository, StockDocumentRepository>();
+        services.AddScoped<ICashMovementRepository, CashMovementRepository>();
         services.AddScoped<IStoreRepository, StoreRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IAuditLogger, AuditLogger>();

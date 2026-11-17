@@ -20,4 +20,13 @@ public interface IStockDocumentRepository
         CancellationToken ct = default);
 
     Task<IReadOnlyList<StockDocument>> GetRecentAsync(Guid? storeId = null, int limit = 100, CancellationToken ct = default);
+
+    /// <summary>مستندات نوع واحد في فترة، اختياريًا مع الملغاة.</summary>
+    Task<IReadOnlyList<StockDocument>> GetByTypeAsync(
+        StockDocumentType type,
+        Guid? storeId = null,
+        DateOnly? from = null,
+        DateOnly? to = null,
+        bool includeVoided = false,
+        CancellationToken ct = default);
 }

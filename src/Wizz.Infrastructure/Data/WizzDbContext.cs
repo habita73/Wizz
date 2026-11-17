@@ -14,6 +14,7 @@ public sealed class WizzDbContext : DbContext
     public DbSet<StockDocumentLine> StockDocumentLines => Set<StockDocumentLine>();
     public DbSet<DocumentSequence> DocumentSequences => Set<DocumentSequence>();
     public DbSet<CashierShift> CashierShifts => Set<CashierShift>();
+    public DbSet<CashMovement> CashMovements => Set<CashMovement>();
     public DbSet<Store> Stores => Set<Store>();
     public DbSet<User> Users => Set<User>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
@@ -91,6 +92,8 @@ public sealed class WizzDbContext : DbContext
             b.Property(s => s.TimeZone).HasMaxLength(50).HasDefaultValue("Africa/Algiers");
             b.Property(s => s.InventoryEnabled).HasDefaultValue(true);
             b.Property(s => s.DocumentYearDigits).HasDefaultValue(4);
+            b.Property(s => s.CashDrawerEnabled).HasDefaultValue(true);
+            b.Property(s => s.CashDifferenceTolerance).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
         });
 
         modelBuilder.Entity<StockMovement>(b =>
@@ -116,6 +119,8 @@ public sealed class WizzDbContext : DbContext
             b.Property(d => d.Reason).HasMaxLength(500);
             b.Property(d => d.Source).HasMaxLength(30);
             b.Property(d => d.VoidReason).HasMaxLength(500);
+            b.Property(d => d.SupplierName).HasMaxLength(200);
+            b.Property(d => d.SupplierInvoiceNumber).HasMaxLength(100);
             b.HasIndex(d => new { d.StoreId, d.Number }).IsUnique();
             b.HasIndex(d => new { d.StoreId, d.DocumentDate });
             b.HasIndex(d => d.ReferenceSaleId);
@@ -140,6 +145,8 @@ public sealed class WizzDbContext : DbContext
             b.Property(l => l.QuantityBefore).HasColumnType("decimal(18,4)");
             b.Property(l => l.QuantityAfter).HasColumnType("decimal(18,4)");
             b.Property(l => l.Reason).HasMaxLength(500);
+            b.Property(l => l.UnitCost).HasColumnType("decimal(18,2)");
+            b.Property(l => l.LineCost).HasColumnType("decimal(18,2)");
             b.HasIndex(l => l.ProductId);
             b.HasOne<Product>()
                 .WithMany()
@@ -157,6 +164,13 @@ public sealed class WizzDbContext : DbContext
             b.Property(s => s.SalesTotal).HasColumnType("decimal(18,2)");
             b.Property(s => s.CashTotal).HasColumnType("decimal(18,2)");
             b.Property(s => s.CreditTotal).HasColumnType("decimal(18,2)");
+            b.Property(s => s.OpeningFloat).HasColumnType("decimal(18,2)");
+            b.Property(s => s.DepositsTotal).HasColumnType("decimal(18,2)");
+            b.Property(s => s.WithdrawalsTotal).HasColumnType("decimal(18,2)");
+            b.Property(s => s.ExpectedCash).HasColumnType("decimal(18,2)");
+            b.Property(s => s.CountedCash).HasColumnType("decimal(18,2)");
+            b.Property(s => s.CashDifference).HasColumnType("decimal(18,2)");
+            b.Property(s => s.CloseNote).HasMaxLength(500);
             b.HasIndex(s => s.OpenedAt);
             b.HasIndex(s => new { s.StoreId, s.CashierId })
                 .IsUnique()
@@ -164,6 +178,25 @@ public sealed class WizzDbContext : DbContext
             b.HasOne<Store>()
                 .WithMany()
                 .HasForeignKey(s => s.StoreId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CashMovement>(b =>
+        {
+            b.HasKey(m => m.Id);
+            b.Property(m => m.Type).HasConversion<int>();
+            b.Property(m => m.Amount).HasColumnType("decimal(18,2)");
+            b.Property(m => m.Reason).IsRequired().HasMaxLength(500);
+            b.HasIndex(m => m.ShiftId);
+            b.HasIndex(m => m.OccurredAt);
+            b.HasIndex(m => m.ReferencePurchaseId);
+            b.HasOne<CashierShift>()
+                .WithMany()
+                .HasForeignKey(m => m.ShiftId)
+                .OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Store>()
+                .WithMany()
+                .HasForeignKey(m => m.StoreId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

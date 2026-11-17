@@ -19,6 +19,7 @@ public sealed class GetStoreSettingsUseCase
 
         return Result<StoreDto>.Success(new StoreDto(
             store.Id, store.Name, store.Address, store.Phone, store.TaxNumber, store.CommercialRegister,
-            store.AllowCreditSales, store.Currency, store.TimeZone, store.InventoryEnabled));
+            store.AllowCreditSales, store.Currency, store.TimeZone, store.InventoryEnabled,
+            store.CashDrawerEnabled, store.CashDifferenceTolerance));
     }
 }

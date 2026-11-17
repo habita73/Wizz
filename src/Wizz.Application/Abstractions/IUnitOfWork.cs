@@ -10,6 +10,7 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
     IStockMovementRepository StockMovements { get; }
     IStockDocumentRepository StockDocuments { get; }
     ICashierShiftRepository CashierShifts { get; }
+    ICashMovementRepository CashMovements { get; }
     IStoreRepository Store { get; }
     IUserRepository Users { get; }
 
