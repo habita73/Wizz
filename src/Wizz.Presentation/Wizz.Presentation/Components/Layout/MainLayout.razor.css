@@ -78,6 +78,14 @@ main {
         padding-inline-start: 3.75rem !important;
     }
 
+    /* في العرض الضيق تُختصر نصوص الشريط العلوي إلى مؤشرات أيقونية حتى لا تتزاحم
+       وتلتف على بعضها؛ النص الكامل يبقى ظاهرًا في التلميح (title) وعلى الشاشة الواسعة. */
+    .top-row .app-status-text,
+    .top-row .app-user-name,
+    .top-row .app-user-role {
+        display: none;
+    }
+
     /* القائمة درج جانبي منزلق، لا يدفع المحتوى إلى الأسفل عند فتحه. */
     .sidebar {
         position: fixed;

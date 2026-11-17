@@ -18,9 +18,9 @@
 
     <main>
         <div class="top-row px-4">
-            <span class="app-status">
+            <span class="app-status" title="وضع محلي">
                 <span class="status-dot"></span>
-                وضع محلي
+                <span class="app-status-text">وضع محلي</span>
             </span>
             <AuthorizeView>
                 <Authorized Context="auth">
@@ -39,10 +39,10 @@
                                 <WizzIcon Icon="settings" Size="10" />
                             </span>
                         </button>
-                        <span class="app-user">
+                        <span class="app-user" title="@(auth.User.FindFirst(ClaimTypes.GivenName)?.Value ?? auth.User.Identity?.Name) — @(RoleText(auth.User.FindFirst(ClaimTypes.Role)?.Value))">
                             <WizzIcon Icon="user" Size="16" />
-                            <span>@(auth.User.FindFirst(ClaimTypes.GivenName)?.Value ?? auth.User.Identity?.Name)</span>
-                            <small class="text-muted">(@RoleText(auth.User.FindFirst(ClaimTypes.Role)?.Value))</small>
+                            <span class="app-user-name">@(auth.User.FindFirst(ClaimTypes.GivenName)?.Value ?? auth.User.Identity?.Name)</span>
+                            <small class="text-muted app-user-role">(@RoleText(auth.User.FindFirst(ClaimTypes.Role)?.Value))</small>
                         </span>
                         <form method="post" action="/auth/logout" class="m-0">
                             <button type="submit" class="btn btn-sm btn-outline-secondary">خروج</button>

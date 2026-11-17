@@ -1,6 +1,6 @@
 {
   "package": "Vent au comptoir Documentation Pack",
-  "version": "0.6.12",
+  "version": "0.6.13",
   "date": "2026-11-17",
   "status": "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_AUTHORIZED",
   "execution_authorized": false,
@@ -26,7 +26,10 @@
     "The navigation menu in narrow layout is now an off-canvas drawer that slides in from the side over a dimming backdrop instead of sitting in the document flow and pushing all content down.",
     "The quick settings panel and its backdrop keep higher stacking layers (1040/1035) than the drawer and its backdrop (1030/1025), so opening quick settings is unchanged in both narrow and wide layouts.",
     "Wide layout is unchanged: the sidebar remains 250 px wide and sticky, and the menu button stays hidden.",
-    "Only presentation changed; no money, data, permission or database semantics were touched."
+    "Only presentation changed; no money, data, permission or database semantics were touched.",
+    "In narrow layout the top-bar text labels (the local-mode status, the cashier/admin name and the role) are now hidden so they no longer wrap and overlap inside the 56 px bar; the green status dot and the user icon remain as the visible indicators, and the full text is available in a title tooltip on hover or long press.",
+    "The wide layout is unchanged: the same labels remain visible in the top bar on screens wider than 640.98 px.",
+    "The navigation drawer and the quick settings panel keep their behavior and stacking; no money, data, permission or database semantics were touched."
   ],
   "review_findings": [
     "Build after the change: dotnet build Wizz.Presentation -c Release = 0 errors (pre-existing StyleCop warnings only).",
@@ -40,7 +43,15 @@
     "Boundary note: the changes are presentation-only; money, stock and permission settings stay in the full settings page and were not altered.",
     "Execution remains unauthorized outside the recorded limited scopes (D-21, D-22, D-30, D-31, D-32, D-33).",
     "Phase 3 (cash drawer, purchases, UI, sync) is not implemented and not authorized.",
-    "MVP-AT-09 still requires a real restore test in a separate environment."
+    "MVP-AT-09 still requires a real restore test in a separate environment.",
+    "Build after the change: dotnet build Wizz.Presentation -c Release = 0 errors, 0 warnings (incremental).",
+    "Solution tests after the change: Domain 24/24; Integration 262/262 (286 total).",
+    "Browser measurement in a 430 px frame before the change: the user block was 132.7 px wide and 43.2 px high, with the role text wrapped to 37.8 px inside a 56 px bar.",
+    "Browser measurement in the same 430 px frame after the change: the three text labels have display:none; the green dot is 8.8x8.8 px, the user icon is 16x16 px, the quick settings trigger is 34.4x34.4 px and the logout button is 55.2x35 px, with no wrapping and content still starting at y = 56.",
+    "Title tooltips checked: the status dot reports \"وضع محلي\" and the user icon reports the name and role.",
+    "Wide-layout check at 1000 px: the three labels are visible again, the sidebar is sticky at 250 px and the hamburger stays hidden.",
+    "Regression check: the drawer still opens to x = 126 without moving the article, and quick settings still stacks above it at 1040/1035.",
+    "Limitation: no automated test covers this layout; verification is manual and CI remains unavailable for the account (billing issue, owner declined support contact)."
   ],
   "files": [
     {
@@ -87,6 +98,11 @@
       "path": "PACK_MANIFEST_v0.6.12.json",
       "size_bytes": 7659,
       "sha256": "3529249372baf68d6ae65275e9423fb7e66734941d91d40dd525deb58cf80cb9"
+    },
+    {
+      "path": "PACK_MANIFEST_v0.6.13.json",
+      "size_bytes": 9862,
+      "sha256": "76188bb70d802ee2eb48df988f8ac841ab6c081f1610b3aff4f1d758eefb5057"
     },
     {
       "path": "PACK_MANIFEST_v0.6.2.json",
@@ -430,8 +446,8 @@
     },
     {
       "path": "docs/DECISIONS_AND_OPEN_GATES.md",
-      "size_bytes": 63038,
-      "sha256": "b4e2439aa49854ad4d44041d5db51acd3dff919b83ea8c16f9b9004e7b28feee"
+      "size_bytes": 66465,
+      "sha256": "571ccc77db183d015c0d5a8794fe3b8fb479ec6257da070e8764031817f80741"
     },
     {
       "path": "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md",
@@ -486,7 +502,8 @@
     "v0.6.9 owner-ordered behavior inside the D-33 presentation scope: the quick settings panel now also closes on an outside click or lost focus, while its own close button and Escape keep working",
     "v0.6.10 owner-ordered presentation fixes inside the D-33 presentation scope: the free-key card inside the AI assistant settings card keeps its natural height, the AI route badges and test buttons wrap instead of overflowing the card, and the detailed-assistant-settings link jumps to the assistant card on the settings page",
     "v0.6.11 owner-ordered presentation fixes inside the D-33 presentation scope: the chosen theme stays applied after page navigation, and the sidebar no longer fills the first screen of a narrow window",
-    "v0.6.12 owner-ordered presentation fixes inside the D-33 presentation scope: consistent stock-page action icons, a visible hamburger icon in narrow layout, and a side-sliding navigation drawer that no longer pushes content down"
+    "v0.6.12 owner-ordered presentation fixes inside the D-33 presentation scope: consistent stock-page action icons, a visible hamburger icon in narrow layout, and a side-sliding navigation drawer that no longer pushes content down",
+    "v0.6.13 owner-ordered presentation fix inside the D-33 presentation scope: condense the overlapping top-bar text labels (local mode, username and role) into icon indicators with hover/long-press titles on narrow screens only"
   ],
-  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB); v0.6.3 records the H-04 security implementation; v0.6.4 records the routing correction applied on top of H-04; v0.6.5 records the standing communication-style rule requested by the owner; v0.6.6 records the owner-authorized quick settings panel and the sale draft; v0.6.7 records the owner-ordered page-not-found screen and the removal of the dead stock-movements button; v0.6.8 records the owner-ordered expansion of the quick settings and the evenly distributed, collapsible settings groups; v0.6.9 records the owner-ordered close-on-outside-click and close-on-lost-focus behavior of the quick settings panel; v0.6.10 records the owner-ordered removal of the large blank gap inside the AI assistant settings card, the wrapping of the AI route badges, and the direct link to the assistant card; v0.6.11 records the owner-ordered theme persistence across page navigation and the removal of the wide sidebar band in a narrow window; v0.6.12 records the owner-ordered consistent stock action icons and the narrow-layout hamburger icon with a side drawer that does not move the content."
+  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB); v0.6.3 records the H-04 security implementation; v0.6.4 records the routing correction applied on top of H-04; v0.6.5 records the standing communication-style rule requested by the owner; v0.6.6 records the owner-authorized quick settings panel and the sale draft; v0.6.7 records the owner-ordered page-not-found screen and the removal of the dead stock-movements button; v0.6.8 records the owner-ordered expansion of the quick settings and the evenly distributed, collapsible settings groups; v0.6.9 records the owner-ordered close-on-outside-click and close-on-lost-focus behavior of the quick settings panel; v0.6.10 records the owner-ordered removal of the large blank gap inside the AI assistant settings card, the wrapping of the AI route badges, and the direct link to the assistant card; v0.6.11 records the owner-ordered theme persistence across page navigation and the removal of the wide sidebar band in a narrow window; v0.6.12 records the owner-ordered consistent stock action icons and the narrow-layout hamburger icon with a side drawer that does not move the content; v0.6.13 records the owner-ordered condensation of the overlapping narrow-layout top-bar labels into icon indicators with titles."
 }
