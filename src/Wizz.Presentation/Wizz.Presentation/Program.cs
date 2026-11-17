@@ -88,6 +88,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddSingleton<LoginAttemptTracker>();
 builder.Services.AddScoped<CurrentUser>();
 builder.Services.AddScoped<SafeAudit>();
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddWizzInfrastructure(
     connectionString: builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=wizz.db",

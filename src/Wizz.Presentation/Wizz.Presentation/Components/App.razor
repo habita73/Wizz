@@ -1,34 +1,22 @@
 ﻿<!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme="@ThemeAttribute">
 
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
     <ResourcePreloader />
-    <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.rtl.min.css"]" />
-    <link rel="stylesheet" href="@Assets["app.css"]" />
-    <link rel="stylesheet" href="@Assets["css/site.css"]" />
-    <link rel="stylesheet" href="@Assets["Wizz.Presentation.styles.css"]" />
-    <ImportMap />
-    <link rel="icon" type="image/png" href="favicon.png" />
-    <HeadOutlet />
-</head>
 
-<body>
+    @* يُطبَّق قبل ملفات التنسيق كي لا تظهر الصفحة بالفاتح ثم تتحول إلى الداكن. *@
     <script>
-        // تطبيق التفضيلات المحفوظة (المظهر، حجم الخط، الكثافة، التباين، الحركة،
-        // أهداف اللمس) قبل تحميل واجهة Blazor لمنع وميض الشاشة عند فتح الصفحة.
         (function () {
             try {
                 var root = document.documentElement;
                 var theme = localStorage.getItem('wizz.theme');
-                if (!theme) {
-                    theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
-                        ? 'system'
-                        : 'light';
+                // القيم المسموح بها فقط؛ أي غياب أو قيمة غير معروفة يعني ترك ما أرسله الخادم.
+                if (theme === 'light' || theme === 'dark' || theme === 'system') {
+                    root.setAttribute('data-theme', theme);
                 }
-                root.setAttribute('data-theme', theme);
 
                 var font = localStorage.getItem('wizz.fontsize');
                 if (font) root.setAttribute('data-fontsize', font);
@@ -45,10 +33,21 @@
                 var targets = localStorage.getItem('wizz.targets');
                 if (targets) root.setAttribute('data-targets', targets);
             } catch (e) {
-                // تجاهل الأخطاء
+                // تجاهل الأخطاء: الافتراضي الذي أرسله الخادم يبقى ساريا.
             }
         })();
     </script>
+
+    <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.rtl.min.css"]" />
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <link rel="stylesheet" href="@Assets["css/site.css"]" />
+    <link rel="stylesheet" href="@Assets["Wizz.Presentation.styles.css"]" />
+    <ImportMap />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <HeadOutlet />
+</head>
+
+<body>
     <Routes />
     <ReconnectModal />
     <script src="@Assets["_framework/blazor.web.js"]"></script>
@@ -56,10 +55,42 @@
     <script src="@Assets["js/ai-history.js"]"></script>
     <script src="@Assets["js/ai-memory.js"]"></script>
     <script src="@Assets["js/ai-route-priority.js"]"></script>
-<script src="@Assets["js/quick-actions.js"]"></script>
-<script src="@Assets["js/quick-settings.js"]"></script>
-<script src="@Assets["js/anchors.js"]"></script>
-<script src="@Assets["js/keyboard.js"]"></script>
+    <script src="@Assets["js/quick-actions.js"]"></script>
+    <script src="@Assets["js/quick-settings.js"]"></script>
+    <script src="@Assets["js/anchors.js"]"></script>
+    <script src="@Assets["js/keyboard.js"]"></script>
 </body>
 
 </html>
+
+@using Microsoft.AspNetCore.Http
+@inject IHttpContextAccessor HttpContextAccessor
+
+@code {
+    // المظهر يُقرأ من كوكي محلي كتبه السكربت؛ الخادم يرسله مع أول قطرة HTML قبل أي تنسيق،
+    // فيمنع وميض الوضع الداكن عند فتح الصفحة وعند التنقل داخل Blazor.
+    private string? ThemeAttribute
+    {
+        get
+        {
+            var context = HttpContextAccessor.HttpContext;
+            if (context is null)
+            {
+                return null;
+            }
+
+            if (!context.Request.Cookies.TryGetValue("wizz.theme", out var value))
+            {
+                return "system";
+            }
+
+            return value switch
+            {
+                "light" => "light",
+                "dark" => "dark",
+                "system" => "system",
+                _ => "system"
+            };
+        }
+    }
+}

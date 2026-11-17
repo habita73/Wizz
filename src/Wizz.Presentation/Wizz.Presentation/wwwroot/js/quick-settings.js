@@ -38,6 +38,31 @@ window.wizzQuickSettings = {
         }
     },
 
+    // كوكي يقرأه الخادم مع كل صفحة ليُرسل المظهر الصحيح في أول قطرة HTML.
+    // ليس مصدر حفظ؛ localStorage هو المصدر الوحيد للتفضيل.
+    _writeCookie: function (name, value, maxAgeSeconds) {
+        try {
+            document.cookie = name + '=' + encodeURIComponent(value)
+                + '; path=/; SameSite=Lax; Max-Age=' + maxAgeSeconds;
+        } catch (e) {
+            // تجاهل: الافتراضي الذي يرسله الخادم يبقى ساريا.
+        }
+    },
+
+    _removeCookie: function (name) {
+        this._writeCookie(name, '', -1);
+    },
+
+    // يوافق بين المظهر المحفوظ محليا والكوكي الذي يقرأه الخادم.
+    _syncThemeCookie: function () {
+        var api = window.wizzQuickSettings;
+        var theme = api._read(api.themeKey, 'system');
+        if (theme !== 'light' && theme !== 'dark' && theme !== 'system') {
+            theme = 'system';
+        }
+        api._writeCookie('wizz.theme', theme, 31536000);
+    },
+
     // تطبيق التفضيلات على عنصر html (المصدر الوحيد للتنسيق).
     applyPreferences: function () {
         var api = window.wizzQuickSettings;
@@ -125,8 +150,10 @@ window.wizzQuickSettings = {
     },
 
     setTheme: function (value) {
-        window.wizzQuickSettings._write(window.wizzQuickSettings.themeKey, value);
-        window.wizzQuickSettings.applyPreferences();
+        var api = window.wizzQuickSettings;
+        api._write(api.themeKey, value);
+        api._syncThemeCookie();
+        api.applyPreferences();
     },
 
     setFont: function (value) {
@@ -186,6 +213,7 @@ window.wizzQuickSettings = {
                 // تجاهل: الوضع الافتراضي يُطبَّق في كل الأحوال أدناه.
             }
         }
+        api._removeCookie('wizz.theme');
         api.applyPreferences();
     },
 
@@ -203,6 +231,8 @@ window.wizzQuickSettings = {
         api._ready = true;
 
         api.applyPreferences();
+        // أول زيارة قد تجد مظهرا محفوظا بلا كوكي؛ نرسله الآن ليصل صحيحا مع كل تنقل لاحق.
+        api._syncThemeCookie();
 
         api._panel.addEventListener('click', function (event) {
             var target = event.target;
@@ -308,10 +338,9 @@ window.wizzQuickSettings = {
             }
         }, true);
 
-        // التنقل بين الصفحات داخل Blazor يعيد رسم <html> من استجابة الخادم، فيُفقد المظهر
-        // المختار بعد كل انتقال. نعيد تطبيق التفضيلات بعد أي نقرة على رابط، وبعد الرجوع
-        // والتقدم في المتصفح: دفعة فورية ثم متابعة على إطارات الرسم القليلة التالية
-        // لتغطية لحظة استبدال الصفحة دون وميض طويل.
+        // الخادم يرسل الآن سمة المظهر الصحيحة مع كل صفحة عبر الكوكي، فلا وميض عند التنقل.
+        // نبقي إعادة التطبيق هذه شبكة أمان للحالات التي لا يصل فيها الكوكي (صفحة مخزنة
+        // مؤقتا مثلا). وهي بلا أثر عندما تكون السمة التي أرسلها الخادم صحيحة بالفعل.
         var reapplyPreferences = function () {
             api.applyPreferences();
             var frames = 0;
