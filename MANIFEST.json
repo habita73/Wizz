@@ -440,8 +440,8 @@
     },
     {
       "path": "docs/DECISIONS_AND_OPEN_GATES.md",
-      "size_bytes": 73973,
-      "sha256": "0863a897e7b8ee993898fa4175a2f531e962d0982a54ad8d8156198eed351bd1"
+      "size_bytes": 75199,
+      "sha256": "1d7e592f1d29b713e30debdb1f639ac3e9e3604c87a6e89694e6749bc49eef53"
     },
     {
       "path": "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md",
@@ -450,8 +450,8 @@
     },
     {
       "path": "docs/MVP_AND_ACCEPTANCE.md",
-      "size_bytes": 15265,
-      "sha256": "8a985797a0f39161fc495c1350b3e2ab7d5050bc0882c49edd7d5eec8e7ac330"
+      "size_bytes": 15854,
+      "sha256": "a6d6afaf09c4ea4e27e1244d8a8f39df817d08eda182a77dbc051e3ec254b0df"
     },
     {
       "path": "docs/PRODUCT_MASTER.md",
