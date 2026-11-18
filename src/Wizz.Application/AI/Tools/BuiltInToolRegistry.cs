@@ -23,7 +23,9 @@ public sealed class BuiltInToolRegistry
             new GetTimeTool(now, timeZone),
             new GetDriveInfoTool(drives),
             new GetPrintTemplatesTool(printerInfo),
-            new GetSystemInfoTool(systemInfo)
+            new GetSystemInfoTool(systemInfo),
+            new EmbeddedAnalyticsTool(),
+            new ProductLookupTool()
         };
 
         if (webSearch is not null)

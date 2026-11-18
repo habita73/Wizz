@@ -202,7 +202,7 @@ public sealed class BuiltInToolsTests
     {
         var registry = BuiltInToolRegistry.CreateDefault();
 
-        Assert.Equal(4, registry.Tools.Count);
+        Assert.Equal(6, registry.Tools.Count);
         var orders = registry.Tools.Select(t => t.Order).ToList();
         Assert.Equal(orders.OrderBy(o => o), orders);
     }

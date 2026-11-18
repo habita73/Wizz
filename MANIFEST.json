@@ -1,8 +1,8 @@
 {
   "package": "Vent au comptoir Documentation Pack",
-  "version": "0.6.15",
+  "version": "0.6.16",
   "date": "2026-11-18",
-  "status": "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_AUTHORIZED",
+  "status": "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_PHASE1_DONE",
   "execution_authorized": false,
   "active_files": [
     "README.md",
@@ -20,8 +20,13 @@
   "archive_file_count": 57,
   "archive_policy": "Archive files are historical, non-active references; do not load all archive files for routine tasks.",
   "mvp_status": "APPROVED",
-  "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21, D-22, D-30, D-31, D-32 and D-34 (full Phase 3), plus the D-33 presentation-only UI scope.",
+  "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21, D-22, D-30, D-31, D-32 and D-34 (full Phase 3), plus the D-33 presentation-only UI scope. D-36 roadmap Phase 1 (embedded strengthening) was additionally authorized and executed on 2026-11-18 within its literal scope only; roadmap phases 2 to 6 remain unauthorized and phase 6 is deferred.",
   "change_summary": [
+    "Owner authorized and executed roadmap Phase 1 of the AI assistant (D-36 literal scope): deterministic analytics, two read-only built-in tools, shared-core Algerian dialect synonyms, and synthetic-data tests.",
+    "Added deterministic analytics in BuiltInAssistant (average sale, day/week comparison, overdue debts, period totals) from the existing store snapshot with no free-form SQL and no numbers generated from text; added previous-week fields to the snapshot.",
+    "Added two read-only tools to BuiltInToolRegistry (EmbeddedAnalyticsTool, ProductLookupTool) with no database writes; tool answers keep the 'أدوات' intent so number questions remain protected from model replacement.",
+    "Added DialectSynonyms.cs for shared-core Algerian Arabic conversation synonyms in normalized form; no regional dictionaries added.",
+    "Verification: build 0 errors; tests 313/313 (24 domain + 289 integration) with synthetic data only; nothing sent to the cloud and no cloud keys enabled; roadmap phases 2 to 6 remain unauthorized.",
     "Owner approved and integrated the next-generation AI assistant architecture (D-36): cooperation between the built-in, local and cloud paths, with the built-in as the permanent guard for all final numbers.",
     "Ten binding constants recorded in PROJECT_RULES.md section 9.1 (version 0.3.1): three paths retained, protected number questions, mandatory question redaction before cloud sharing, separate cloud-model and cloud-sharing toggles, three work modes with built-in adjudication, and the approved privacy wording.",
     "Language priority approved: Arabic first, Algerian dialect as a separate conversation-only support layer (shared core now, regional dictionaries later), French as passive support now with professional parity deferred to a later version.",
@@ -37,9 +42,13 @@
     "Excluded from scope: sync, cloud, phone/multi-device, supplier ledger, debt collection, cash refund for MRB, inventory valuation/profit, and editing documents after creation."
   ],
   "review_findings": [
-    "v0.6.15 is a documentation-only integration: no build, tests, deployment or runtime verification was performed in this change; the AI architecture remains unimplemented and execution authorization stays NOT AUTHORIZED.",
+    "v0.6.16 records the executed roadmap Phase 1 embedded-assistant strengthening. v0.6.15 was a documentation-only integration; no version claims code built, tested, deployed or verified unless stated here.",
     "Build: dotnet build Wizz.sln -c Release --no-restore -v minimal = 0 errors (pre-existing StyleCop warnings only).",
-    "Tests: Domain 24/24; Integration 274/274 (298 total), up from a 262-test baseline; includes migration and backup/restore checks.",
+    "Tests: dotnet test Wizz.sln -c Release --no-restore = Domain 24/24; Integration 289/289 (313 total), up from a 274-integration baseline; includes migration, backup/restore and the new synthetic-data Phase 1 tests.",
+    "Phase 1 verification used synthetic data only; no real merchant database was queried for these tests and no real-device restore is claimed.",
+    "Number guard preserved: tool answers carry the 'أدوات' intent so IsPrecisionAnswer stays true and analytical/local/cloud routing cannot replace embedded numbers.",
+    "No external transmission: nothing was sent to any cloud service and no cloud-model or cloud-sharing toggle was enabled.",
+    "Roadmap phases 2 to 6 remain unauthorized; professional French (phase 6) is deferred. General execution authorization stays NOT AUTHORIZED except the documented limited scopes.",
     "Browser verification on a synthetic-only SQLite database at localhost:5183: /cash, /purchases, /reports (cash and purchases tabs) and /settings render with no console errors.",
     "Permission check: a cashier sees only the home, sales, debts, cash, stock and AI navigation links; /purchases, /reports and /settings redirect to /access-denied, while /cash stays accessible.",
     "Cost hiding verified in code through CurrentUser.HasPermissionAsync(ViewPurchaseCosts) in the purchases page and the purchases report tab.",
@@ -148,6 +157,11 @@
       "path": "PACK_MANIFEST_v0.6.15.json",
       "size_bytes": 9892,
       "sha256": "8e40c8c8780b02c83e8de0cd5a4eec7b42a64e7a17a90fb6a08df31eefa05ee1"
+    },
+    {
+      "path": "PACK_MANIFEST_v0.6.16.json",
+      "size_bytes": 12499,
+      "sha256": "242a85fdb1b01c769b1088effb6c66fed4effe246d032fbd8b288a9181c152d3"
     },
     {
       "path": "PROJECT_RULES.md",
@@ -451,8 +465,8 @@
     },
     {
       "path": "docs/DECISIONS_AND_OPEN_GATES.md",
-      "size_bytes": 80505,
-      "sha256": "57db41830862b8bd61555e714a1637af4c2dd731af09026461ed22d7e767751c"
+      "size_bytes": 82780,
+      "sha256": "b78f469190b0e7086fcbc27a50c6d3fbf7fc995ec484ec64f612750fd6e89799"
     },
     {
       "path": "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md",

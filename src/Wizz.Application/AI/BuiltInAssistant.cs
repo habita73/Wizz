@@ -91,11 +91,13 @@ public sealed class BuiltInAssistant
         var tomorrow = today.AddDays(1).ToUniversalTime();
         var yesterdayStart = today.AddDays(-1).ToUniversalTime();
         var weekStart = today.AddDays(-6).ToUniversalTime();
+        var previousWeekStart = weekStart.AddDays(-7);
         var monthStart = new DateTime(today.Year, today.Month, 1).ToUniversalTime();
 
         var todaySales = active.Where(s => s.SaleDate >= todayStart && s.SaleDate < tomorrow).ToList();
         var yesterdaySales = active.Where(s => s.SaleDate >= yesterdayStart && s.SaleDate < todayStart).ToList();
         var weekSales = active.Where(s => s.SaleDate >= weekStart).ToList();
+        var previousWeekSales = active.Where(s => s.SaleDate >= previousWeekStart && s.SaleDate < weekStart).ToList();
         var monthSales = active.Where(s => s.SaleDate >= monthStart).ToList();
 
         var products = await _products.GetAllAsync(ct);
@@ -140,6 +142,8 @@ public sealed class BuiltInAssistant
             YesterdayRemaining: yesterdaySales.Sum(s => s.Remaining),
             WeekSales: weekSales.Sum(s => s.Total),
             WeekCount: weekSales.Count,
+            PreviousWeekSales: previousWeekSales.Sum(s => s.Total),
+            PreviousWeekCount: previousWeekSales.Count,
             MonthSales: monthSales.Sum(s => s.Total),
             MonthCount: monthSales.Count,
             LifetimeSales: active.Sum(s => s.Total),
@@ -238,6 +242,8 @@ public sealed class BuiltInAssistant
                 "• المبيعات: اليوم / أمس / هذا الأسبوع / هذا الشهر / الإجمالي.\n" +
                 "• الديون: قائمة الديون / مجموع الديون / أكبر دين / أقدم دين / عدد الديون.\n" +
                 "• المنتجات: عدد المنتجات / قائمة المنتجات / سعر منتج / المنتجات المعطلة.\n" +
+                "• تحليلات محسوبة: متوسط قيمة البيع / فرق المبيعات عن أمس أو الأسبوع السابق / الديون المتأخرة.\n" +
+                "• اللهجة الجزائرية: «شحال سعر تفاح»، «دلني على …»، «البضاعة».\n" +
                 "• النظام: الوقت والتاريخ / مساحة القرص / مواصفات الجهاز / قوالب الطباعة.\n" +
                 "• مساعدة: إضافة منتج، تصحيح أو إلغاء بيع، طباعة إيصال، نسخة احتياطية، معلومات المتجر.",
                 null, "مساعدة");
@@ -368,12 +374,12 @@ public sealed class BuiltInAssistant
         }
 
         // ---- المنتجات ----
-        if (HasAny(q, "سعر", "بكم", "ثمن", "كم سعر"))
+        if (HasAny(q, "سعر", "بكم", "ثمن", "كم سعر") || HasAny(q, DialectSynonyms.Price))
         {
             return FormatPrice(s, q);
         }
 
-        if (q.Contains("منتج") || HasAny(q, "المنتجات"))
+        if (q.Contains("منتج") || HasAny(q, "المنتجات") || HasAny(q, DialectSynonyms.Goods))
         {
             if (HasAny(q, "غير نشط", "معطل", "موقوف", "متوقف"))
             {
@@ -383,7 +389,7 @@ public sealed class BuiltInAssistant
                     : $"المنتجات المعطلة ({inactive.Count}):\n" + string.Join("\n", inactive.Select(n => $"• {n}")), null, "منتجات");
             }
 
-            if (HasAny(q, "قائمه", "قايمه", "اعرض", "ارني", "اسرد", "كل المنتجات"))
+            if (HasAny(q, "قائمه", "قايمه", "اعرض", "ارني", "اسرد", "كل المنتجات") || HasAny(q, DialectSynonyms.Show))
             {
                 var ordered = OrderByPreferredUnit(s.Products);
                 var list = ordered.Take(15).ToList();
@@ -677,7 +683,9 @@ public sealed record StoreSnapshot(
     string? StoreAddress,
     string? StorePhone,
     IReadOnlyList<TopProduct> TopProducts,
-    IReadOnlyList<ProductInfo> Products);
+    IReadOnlyList<ProductInfo> Products,
+    decimal PreviousWeekSales = 0,
+    int PreviousWeekCount = 0);
 
 public sealed record TopProduct(string Name, decimal Quantity, decimal Revenue);
 
