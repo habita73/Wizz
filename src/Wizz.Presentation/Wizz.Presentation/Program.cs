@@ -142,6 +142,8 @@ builder.Services.AddScoped<BuiltInAssistant>(sp => new BuiltInAssistant(
     sp.GetRequiredService<IConversationMemory>(),
     sp.GetRequiredService<UserPreferenceStore>()));
 builder.Services.AddScoped<QueryAiUseCase>();
+// طبقة إدخال ناتج التعرّف — محلية بالكامل، للعرض فقط، ولا تمرّ عبر موجه النماذج
+builder.Services.AddScoped<Wizz.Application.AI.Perception.DocumentCaptureService>();
 builder.Services.AddScoped<Wizz.Presentation.Pages.AI.AiHistoryStore>();
 
 // ذاكرة المحادثة والتفضيلات (لكل جلسة Blazor) — تُحفظ في localStorage عبر AiMemoryStore

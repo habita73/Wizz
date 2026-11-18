@@ -1,554 +1,570 @@
 {
-  "package": "Vent au comptoir Documentation Pack",
-  "version": "0.6.17",
-  "date": "2026-11-18",
-  "status": "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_PHASES2_5_DONE",
-  "execution_authorized": false,
-  "active_files": [
-    "README.md",
-    "PROJECT_RULES.md",
-    "AGENTS.md",
-    "docs/PRODUCT_MASTER.md",
-    "docs/MVP_AND_ACCEPTANCE.md",
-    "docs/TECHNICAL_AND_SAFETY_RULES.md",
-    "docs/DECISIONS_AND_OPEN_GATES.md",
-    "docs/STOCK_AND_DOCUMENTS_MODEL_AR.md",
-    "docs/ARCHIVE_INDEX.md",
-    "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md",
-    "docs/proposals/AI_ORCHESTRATION_ARCHITECTURE_PROPOSED_AR.md"
-  ],
-  "archive_file_count": 57,
-  "archive_policy": "Archive files are historical, non-active references; do not load all archive files for routine tasks.",
-  "mvp_status": "APPROVED",
-  "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21, D-22, D-30, D-31, D-32 and D-34 (full Phase 3), plus the D-33 presentation-only UI scope. D-36 roadmap Phase 1 (embedded strengthening) was authorized and executed on 2026-11-18; roadmap phases 2 to 5 were additionally authorized and executed on 2026-11-18 with a single consolidated authorization and the recommended choices, with cloud sharing built but both toggles disabled and no transmission. Phase 6 remains deferred. General execution authorization stays NOT AUTHORIZED beyond these documented limited scopes.",
-  "change_summary": [
-    "Owner authorized and executed roadmap phases 2 to 5 of the AI assistant with a single consolidated authorization ('وافقت على التفويض الموحّد بالخيارات الموصى بها', choices [1:A][2:A][3:A][4:A]): consolidated execution; build cloud sharing with both toggles disabled and no transmission; no external libraries; NEEDS-VALIDATION gates left open.",
-    "Phase 2 work modes: added AI/Orchestration (WorkMode, WorkModeResolver, FactPackage, NumberAdjudicator) over the existing router without changing RouteScorer decisions; the built-in permanently adjudicates every final number against a fact package; work-mode and adjudication transparency added to route results and the chat UI; manual route choice retained; no database writes.",
-    "Phase 3 safe cloud sharing: added AI/Privacy (ApprovedPrivacyWording, RedactionValidator, QuestionRedactor, CloudShareGuard, CloudPromptGuard). CloudSharingEnabled is a separate toggle from the cloud model, both default false; no request is prepared or sent unless both are on and mandatory redaction has run; only a redacted anonymous summary is used, with no store context; the exact approved privacy wording is shown in settings; a final independent pre-HTTP guard was added in CloudLlmProvider. Nothing was actually sent.",
-    "Phase 4 perception: added AI/Perception (PerceptionCandidate, PerceptionCandidateExtractor, PerceptionAdjudicator) using only standard .NET; perception results remain candidates until the built-in adjudicates them against known products; WrittenToDatabase stays false.",
-    "Phase 5 semantic: added AI/Semantic (SemanticIntent, SemanticIntentResolver, SemanticMemory) for local intent understanding and follow-up reference resolution, with a short local conversation memory; no stored business data touched and nothing sent externally; shared-core dialect quality remains NEEDS-VALIDATION.",
-    "Verification: build 0 errors; tests 346/346 (24 domain + 322 integration, including 33 new synthetic-data phases 2-5 tests); three paths and manual choice retained; no cloud key enabled; no real merchant database queried and no real-device restore claimed.",
-    "Owner authorized and executed roadmap Phase 1 of the AI assistant (D-36 literal scope): deterministic analytics, two read-only built-in tools, shared-core Algerian dialect synonyms, and synthetic-data tests.",
-    "Added deterministic analytics in BuiltInAssistant (average sale, day/week comparison, overdue debts, period totals) from the existing store snapshot with no free-form SQL and no numbers generated from text; added previous-week fields to the snapshot.",
-    "Added two read-only tools to BuiltInToolRegistry (EmbeddedAnalyticsTool, ProductLookupTool) with no database writes; tool answers keep the 'أدوات' intent so number questions remain protected from model replacement.",
-    "Added DialectSynonyms.cs for shared-core Algerian Arabic conversation synonyms in normalized form; no regional dictionaries added.",
-    "Verification: build 0 errors; tests 313/313 (24 domain + 289 integration) with synthetic data only; nothing sent to the cloud and no cloud keys enabled; roadmap phases 2 to 6 remain unauthorized.",
-    "Owner approved and integrated the next-generation AI assistant architecture (D-36): cooperation between the built-in, local and cloud paths, with the built-in as the permanent guard for all final numbers.",
-    "Ten binding constants recorded in PROJECT_RULES.md section 9.1 (version 0.3.1): three paths retained, protected number questions, mandatory question redaction before cloud sharing, separate cloud-model and cloud-sharing toggles, three work modes with built-in adjudication, and the approved privacy wording.",
-    "Language priority approved: Arabic first, Algerian dialect as a separate conversation-only support layer (shared core now, regional dictionaries later), French as passive support now with professional parity deferred to a later version.",
-    "Added docs/proposals/AI_ORCHESTRATION_ARCHITECTURE_PROPOSED_AR.md as an approved active reference; this is a documentation and architecture decision only and grants no implementation authorization for roadmap phases 1 to 6.",
-    "Phase 3 full implementation authorized by the owner (D-34): cash drawer and cash counting with opening float, cash movements, and shift close with a counted-cash difference.",
-    "Added the SHR purchase document with purchase cost stored per line, a purchases page with item lists and a purchases table.",
-    "Added the cash dashboard at /cash and cash/purchases report tabs at /reports; purchase costs are hidden from users without ViewPurchaseCosts.",
-    "Added four permissions (OperateCashDrawer, ManageCashDrawer, ManagePurchases, ViewPurchaseCosts) with audit entries; cashier navigation and page access are gated accordingly.",
-    "Cash drawer is optional: when disabled, shift close falls back to the Phase 2 behaviour; the /cash UI always passes counted cash.",
-    "Added four new UI labels/fields in /settings for enabling the drawer and setting the cash-difference tolerance; quick settings stays presentation/preferences only.",
-    "Added an additive migration (AddCashDrawerAndPurchases) and 12 integration tests (T-15 to T-25).",
-    "Pre-Phase-3 backups lack the CashMovements table and are rejected on restore, as required by BackupService.RequiredTables.",
-    "Excluded from scope: sync, cloud, phone/multi-device, supplier ledger, debt collection, cash refund for MRB, inventory valuation/profit, and editing documents after creation."
-  ],
-  "review_findings": [
-    "v0.6.17 records the executed roadmap phases 2 to 5 of the assistant architecture. Earlier versions did not claim code built, tested, deployed or verified unless stated here.",
-    "Build: dotnet build Wizz.sln -c Release --no-restore -v minimal = 0 errors (pre-existing StyleCop warnings only).",
-    "Tests: dotnet test Wizz.sln -c Release --no-restore = Domain 24/24; Integration 322/322 (346 total), up from a 313 baseline; includes 33 new synthetic-data tests for phases 2 to 5. No test used a real merchant database or claimed a real-device restore.",
-    "Number adjudication verified: a drafted answer containing a number absent from the built-in fact package is rejected and the built-in text is restored; a draft using only built-in numbers is accepted.",
-    "Cloud path verified closed by default: CloudShareGuard.TryPrepare returns null unless CloudSharingEnabled is on; the router gates cloud on both toggles; CloudPromptGuard blocks forbidden data before any HTTP; nothing was sent and no cloud key was configured.",
-    "Perception verified read-only and adjudicated: known product with matching price accepted, unknown product or price mismatch rejected, cloud-sourced candidate gains no extra trust, and WrittenToDatabase stays false.",
-    "Semantic understanding and local memory verified with synthetic questions; follow-up reference resolved from remembered subject; disabled memory stores nothing. Shared-core dialect quality remains NEEDS-VALIDATION.",
-    "RouteScorer decisions and the three paths (embedded/local/cloud) were not altered; manual route choice and the 'أدوات' precision protection remain intact.",
-    "Roadmap phase 6 (professional French) is DEFERRED and was not touched; NEEDS-VALIDATION gates remain open.",
-    "Build: dotnet build Wizz.sln -c Release --no-restore -v minimal = 0 errors (pre-existing StyleCop warnings only).",
-    "Tests: dotnet test Wizz.sln -c Release --no-restore = Domain 24/24; Integration 289/289 (313 total), up from a 274-integration baseline; includes migration, backup/restore and the new synthetic-data Phase 1 tests.",
-    "Phase 1 verification used synthetic data only; no real merchant database was queried for these tests and no real-device restore is claimed.",
-    "Number guard preserved: tool answers carry the 'أدوات' intent so IsPrecisionAnswer stays true and analytical/local/cloud routing cannot replace embedded numbers.",
-    "No external transmission: nothing was sent to any cloud service and no cloud-model or cloud-sharing toggle was enabled.",
-    "Roadmap phases 2 to 6 remain unauthorized; professional French (phase 6) is deferred. General execution authorization stays NOT AUTHORIZED except the documented limited scopes.",
-    "Browser verification on a synthetic-only SQLite database at localhost:5183: /cash, /purchases, /reports (cash and purchases tabs) and /settings render with no console errors.",
-    "Permission check: a cashier sees only the home, sales, debts, cash, stock and AI navigation links; /purchases, /reports and /settings redirect to /access-denied, while /cash stays accessible.",
-    "Cost hiding verified in code through CurrentUser.HasPermissionAsync(ViewPurchaseCosts) in the purchases page and the purchases report tab.",
-    "Close behaviour verified in code: counting runs only when store.CashDrawerEnabled and a counted cash value is supplied; otherwise the legacy shift.Close() path is used.",
-    "Backup limitation: backups taken before Phase 3 have no CashMovements table and are rejected after upgrade; no claim of restorability is made.",
-    "CI remains unavailable for the GitHub account (billing issue; owner declined support contact); verification is local and manual.",
-    "A real restore in a separate environment (MVP-AT-09) has not been performed."
-  ],
-  "files": [
-    {
-      "path": "AGENTS.md",
-      "size_bytes": 24490,
-      "sha256": "3f0005b03a560a33f746aa900e47ad269f4db2b6e97d46673ff588ce676dddec"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.5.2.json",
-      "size_bytes": 1189,
-      "sha256": "0622434afed632f3dfe4b7b3a9cab71a69bd9339752d41ea2de9b3ece94771b4"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.5.3.json",
-      "size_bytes": 1576,
-      "sha256": "a81af4cb7c7832d801e5a8952b1d3b82c8902fe34c15fa7703c3095b5f6bb683"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.5.4.json",
-      "size_bytes": 1820,
-      "sha256": "d38a4c24d905a35dd41faa50946e8e4b1a1d756a4a84cb7af6404f80cc98c13f"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.6.0.json",
-      "size_bytes": 2307,
-      "sha256": "f8ccf3f270ae409dcb8654d0d6288cc27c75fde9d7ccd3ecb4080343ba1fe0da"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.6.1.json",
-      "size_bytes": 2589,
-      "sha256": "2bffe7c42d48ce10e2471747f04462c0f1a26e88526fc80787c2e3ec81cd46aa"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.6.10.json",
-      "size_bytes": 6864,
-      "sha256": "0698e04440c8b809c1ca144fc21b08fe777eb936066ba8751645364586472b5a"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.6.11.json",
-      "size_bytes": 7139,
-      "sha256": "7ac764f406770135ce7f7c4541e5ee0707f78e0f0c7096910aa6c71c058d4900"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.6.12.json",
-      "size_bytes": 7659,
-      "sha256": "3529249372baf68d6ae65275e9423fb7e66734941d91d40dd525deb58cf80cb9"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.6.13.json",
-      "size_bytes": 9862,
-      "sha256": "76188bb70d802ee2eb48df988f8ac841ab6c081f1610b3aff4f1d758eefb5057"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.6.14.json",
-      "size_bytes": 8091,
-      "sha256": "06203c9be27f358f51be90e3b23233a7cc89286a8186e4d14be4f5f37eb6177c"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.6.2.json",
-      "size_bytes": 3094,
-      "sha256": "a394c1cba2dd451d2e22ac2c292e4f4f3c9dcf21064f91b1fa6a8f5dccb2df8c"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.6.3.json",
-      "size_bytes": 3627,
-      "sha256": "6e7b85385bbcdcda7df3f22beb1346aa58eb2bba8844beaa08f8684e2a207baa"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.6.4.json",
-      "size_bytes": 3767,
-      "sha256": "3f70fb4cd1bad48c4c4596d7e29482db97c70ee46e45c9edd20faa6b7e0a0da9"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.6.5.json",
-      "size_bytes": 3113,
-      "sha256": "455dc91a84ea412fd4a1ccbc58b3e8be2d0653c6f31c2c1be8a19da9078a603b"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.6.6.json",
-      "size_bytes": 4844,
-      "sha256": "fc7535eb6ba3eb414dff348e40d1729c593b8e785d75f6482c17cf464fd5af2d"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.6.7.json",
-      "size_bytes": 5353,
-      "sha256": "deb7087f783b33b3c573b44df61c8f5a88e5617da0c9122a4e1453b242a15391"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.6.8.json",
-      "size_bytes": 6670,
-      "sha256": "af2956db9be5e6be769583648f5cc404f407433960f7111b49f05d95677cd564"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.6.9.json",
-      "size_bytes": 5919,
-      "sha256": "2995adefc205636153adb8b480388a3cb5d674e8cdbf55b61c1df8b22802ed45"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.6.15.json",
-      "size_bytes": 9892,
-      "sha256": "8e40c8c8780b02c83e8de0cd5a4eec7b42a64e7a17a90fb6a08df31eefa05ee1"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.6.16.json",
-      "size_bytes": 12499,
-      "sha256": "242a85fdb1b01c769b1088effb6c66fed4effe246d032fbd8b288a9181c152d3"
-    },
-    {
-      "path": "PACK_MANIFEST_v0.6.17.json",
-      "size_bytes": 16630,
-      "sha256": "5203467294cb55fa09a5171440cb914cd91bda085163c86910cc0f161c737fc8"
-    },
-    {
-      "path": "PROJECT_RULES.md",
-      "size_bytes": 27044,
-      "sha256": "28eeaf519e2698520c598c7dc2212f272d660d404c58e3b31d35a84bd9d631d7"
-    },
-    {
-      "path": "README.md",
-      "size_bytes": 11100,
-      "sha256": "dcd7d959c791c657bc14495b1bc23639e27b8a11edd45a25c659dd14668656c0"
-    },
-    {
-      "path": "archive/PACK_MANIFEST_v0.3.9.json",
-      "size_bytes": 9430,
-      "sha256": "18eb08f1888f7330e8b6e81fb16cb561f402ce7ada96a4ee8cdaef531fe9c586"
-    },
-    {
-      "path": "archive/PACK_MANIFEST_v0.4.0.json",
-      "size_bytes": 9585,
-      "sha256": "672b69c75573a044f778fdb2e991b55e507b42ce2d4f75857f4b55ac461c2018"
-    },
-    {
-      "path": "archive/PACK_MANIFEST_v0.4.1.json",
-      "size_bytes": 9852,
-      "sha256": "72957fea5743df27361b7c1b599776833f8f5f637bc99f628ddb687f3f0d301c"
-    },
-    {
-      "path": "archive/PACK_MANIFEST_v0.5.0.json",
-      "size_bytes": 473,
-      "sha256": "8f16c7404d1677be6be78a1fb3e280a0195262a8e373f6775ae6e32e71f92254"
-    },
-    {
-      "path": "archive/README_ARCHIVE.md",
-      "size_bytes": 1408,
-      "sha256": "84090185eb9b28bc3e083aa06fefb092625fc2c5f0466c2f2f1727b5543384ce"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/DECISION_REGISTER.md",
-      "size_bytes": 3417,
-      "sha256": "f53a1197f59b5c6982c92a1d45c1d2fbe46255dc43800e5d7c55fc09397f8bc1"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/DECISION_TRACEABILITY_Q1-Q247.md",
-      "size_bytes": 38218,
-      "sha256": "97294883eb7cd2a948214b00e33c08eb5e3bcd84acb718b9b032316d4c94b529"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/DOCUMENTATION_WORKFLOW_AUDIT_v0.5.1.md",
-      "size_bytes": 1847,
-      "sha256": "145502ae8eed1e8f131b4b60aad25c76ccc6bbcce7c2c1f76fcdf335779247a8"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/FINAL_DOCUMENTATION_READINESS_AUDIT_v0.4.0.md",
-      "size_bytes": 8507,
-      "sha256": "63000b18136e39fe262abe8059775dde42b9184514f4ae543310779135f05df8"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/LEGAL_MARKET_RESEARCH_AUDIT_v0.2.4.md",
-      "size_bytes": 3033,
-      "sha256": "00c51e56c034404290abb959fe5f237d0eeaaec515934e04e5492b95962c7eea"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/LOCALIZATION_AND_RTL.md",
-      "size_bytes": 1365,
-      "sha256": "46637b628460728f793c3c8f305118b0f5df132ad86b9fac35d74be09c1fd2ad"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/MVP_ACCEPTANCE_TESTS_v0.3.1.md",
-      "size_bytes": 9995,
-      "sha256": "8d031016d01ce0c21e6179865639012e6bd7e9f2d3a7c120cba7ca89e2dfd361"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/MVP_ACCEPTANCE_TEST_AUDIT_v0.3.1.md",
-      "size_bytes": 1268,
-      "sha256": "67545fbb9c22c2e456b2b036fa5c5dd28c9f18f1cf824ebd3536335fa9713163"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/MVP_SCOPE_AUDIT_v0.2.8.md",
-      "size_bytes": 1023,
-      "sha256": "88007929bbbf9417147be4e5401a1fc36846ea4e7273382228180d5932ad79e7"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/MVP_SCOPE_AUDIT_v0.2.9.md",
-      "size_bytes": 927,
-      "sha256": "dc66e4ae924e9151d153e34139d544926cca51cb64f1e4c2ebdfb410e2232110"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/MVP_SCOPE_PROPOSAL.md",
-      "size_bytes": 11696,
-      "sha256": "a02c839f667c97bf229aa050c02104bfb33164521a36944152208a9f4dd6ac8a"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/OPEN_QUESTIONS.md",
-      "size_bytes": 2988,
-      "sha256": "cbc52b71627bb93f2f7d1c455abe9f7c9ac08f3ff5773da639600f7e9e9714de"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/PILOT_RECRUITMENT_AND_TEST_PLAN_v0.3.0.md",
-      "size_bytes": 4064,
-      "sha256": "b1dc245e6533393c67cfe9107797f803fdba93996e42311bd4a3573fe0c1c395"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/PRE_EXECUTION_DECISIONS_v0.2.9.md",
-      "size_bytes": 3675,
-      "sha256": "ab13dce590199a883fb2a86b4fe2cb54dc0f53a955d18159437d15eacd6bd5e6"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/PROJECT_BLUEPRINT.md",
-      "size_bytes": 63412,
-      "sha256": "9f78dec86fe559042395df6f93eb5ce2b1a0ecacc32d03429ee1067f13bf6d3a"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/QA_TRACEABILITY_AUDIT_v0.3.8.md",
-      "size_bytes": 2149,
-      "sha256": "122b502cc1258b4ab827ef226835316307ef3fb6f9ebfab7031b1b198b4f1c34"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/REQUIREMENTS_COVERAGE_AUDIT.md",
-      "size_bytes": 5884,
-      "sha256": "8c81c4fae0020c6a5fa3915aec891f6ab63f9ebfa00438d40a7dc8b2082cf578"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/REQUIREMENT_TRACEABILITY_MATRIX_v0.3.9.md",
-      "size_bytes": 17616,
-      "sha256": "43a6c2c4e6641228bd1cc5ac4699cef53bfc3426118da69bc6f6853fa6ce80e4"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/REQUIREMENT_TRACEABILITY_MATRIX_v0.4.1.md",
-      "size_bytes": 29876,
-      "sha256": "af0e9ecfc88f8c1caf938dcbdbf21fe25f190ceb0d7791158d2d0851b6088e3f"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/RESTORATION_AND_COMPLETENESS_AUDIT.md",
-      "size_bytes": 7004,
-      "sha256": "4917490bdbaf7ab619a5b8d86f4365251915d0153581fed58aaa6f2bcb22c81d"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/RISK_REGISTER.md",
-      "size_bytes": 1482,
-      "sha256": "52acdb7dee82cc6d56403e26b4476493b98104f45e5401abb94165dc9e0aa964"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/SECURITY_PRIVACY_AUDIT_v0.3.4.md",
-      "size_bytes": 1466,
-      "sha256": "5a478b2eb50b97610eb6b1366a70d01cb65e672259cab777f966bbe7116a59a4"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/SECURITY_PRIVACY_OPERATIONAL_CONTROLS_v0.3.4.md",
-      "size_bytes": 15605,
-      "sha256": "78f7a0b4fb7e4c3041333e6b6289e2a250cc8714a55f945e0ba5a3471bbb2638"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/TECHNICAL_VALIDATION_PLAN_v0.3.3.md",
-      "size_bytes": 7852,
-      "sha256": "3d4ce5b3432a724684770f6d2bbf64703dbeb837225729979e5d1efefa7e1021"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/TEST_STRATEGY.md",
-      "size_bytes": 1120,
-      "sha256": "f0815f4827c6349404e52724128d6bc4912a596a24f8131a7fc279621cb6b54a"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/TEST_STRATEGY_v0.3.8.md",
-      "size_bytes": 9857,
-      "sha256": "021889093d055984616fc35d5649f42c8a51f57666e7245c3ff2d7b25856b66f"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/WORKSPACE_AND_GIT_WORKFLOW.md",
-      "size_bytes": 1138,
-      "sha256": "0758d74e13a8dd7b49c650dc526eeaf69fa53bd0d42beba655f6971252e21a83"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/architecture/AI_ARCHITECTURE.md",
-      "size_bytes": 1990,
-      "sha256": "058ef26fe2494426310e0362ffcfb8b0d581816d70a04dca596fa02229ebf9c6"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/architecture/COMMANDS_EVENTS_AUTOMATION.md",
-      "size_bytes": 1484,
-      "sha256": "0bcc9b58ee25cacb2d457f672632175b2472557ba363db78d0755013bf709e4f"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/architecture/DATA_MODEL.md",
-      "size_bytes": 3086,
-      "sha256": "a9aedbfd4f5e6b12a9e180f2ddddbdb38d3f5f199c1f88f8bd9a250f4679d2ff"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/architecture/SOLUTION_STRUCTURE.md",
-      "size_bytes": 2004,
-      "sha256": "08879f158c40cd1ad2e546c515e58d0578b99cac5be05acb0e26b7a9c76f5fcb"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/architecture/SYNC_AND_CONFLICT_POLICY.md",
-      "size_bytes": 2681,
-      "sha256": "7efd09201dc090b3d3a5e8a8ba02c0f492ad687e891e420f48ee153d4045e9ff"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/architecture/TECHNICAL_OPEN_DECISIONS_v0.3.2.md",
-      "size_bytes": 8427,
-      "sha256": "27a0530dca8841b1cb9c5049f50f5cc08ae9648c3f50f2ffbebf70a65d9a0f2c"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/business/BUSINESS_MODEL.md",
-      "size_bytes": 2351,
-      "sha256": "03dae5d50de1b42423f09e948cc59005b2a25789424d40d801fbcde1407c3297"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/business/BUSINESS_MODEL_AND_RISK_AUDIT_v0.2.5.md",
-      "size_bytes": 8106,
-      "sha256": "c6e7490a72ddfff0407fdedf6556438057d072445a0189a39c3a54d4bcbcd3cf"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/business/LICENSING_AND_SUBSCRIPTIONS.md",
-      "size_bytes": 2259,
-      "sha256": "b1e65d60b9209bfdde91915b328ef7b6385495ad54b3967688bb853a2be4d69b"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/compliance/ALGERIA_COMPLIANCE.md",
-      "size_bytes": 12504,
-      "sha256": "8940191a981678ff0109b1d3577f673f6362f01b456374041f5d3298e2497789"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/operations/DATA_MIGRATION_AND_PORTABILITY_v0.3.7.md",
-      "size_bytes": 11818,
-      "sha256": "b71abb655df7c401e3b17f91475c51cae1e945319e850c46e323f5537eb2880b"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/operations/RELEASE_DISTRIBUTION_AND_SAFE_UPDATE_v0.3.6.md",
-      "size_bytes": 9357,
-      "sha256": "9c4b4a962c6eacc98bdcd298f11deca910efb04f7d116cafb89e43c3921647a7"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/operations/SUPPORT_MAINTENANCE_AND_POST_RELEASE_v0.3.5.md",
-      "size_bytes": 9755,
-      "sha256": "b041166aa400600d9e3df87a3ae56b0d1409a75090de678dfdbbfa92b5750487"
-    },
-    {
-      "path": "archive/original-detailed-docs/docs/operations/VPS_AND_DEPLOYMENT.md",
-      "size_bytes": 1020,
-      "sha256": "b4598629a7560b37a9592694620f349de16e8cf34af1f64763e8bbd8bb38b873"
-    },
-    {
-      "path": "archive/prompts/00_MASTER_PROJECT_PROMPT_AR.md",
-      "size_bytes": 1556,
-      "sha256": "365bff4c3d91591ac58fc5717891115b75cb7b36e39bbfdfc8424e165774b9cc"
-    },
-    {
-      "path": "archive/prompts/01_DOCUMENTATION_SESSION_PROMPT_AR.md",
-      "size_bytes": 587,
-      "sha256": "fb699c474800c6993cd33d55204c47c1aff859b0a6283a5748a314feb9498d05"
-    },
-    {
-      "path": "archive/prompts/02_ARCHITECTURE_REVIEW_PROMPT_AR.md",
-      "size_bytes": 502,
-      "sha256": "c153b7f78664219e1f58049b31be8ad96b99c0528410c36eae2ee5365b5c8659"
-    },
-    {
-      "path": "archive/prompts/03_MULTI_AGENT_TASK_PROMPT_AR.md",
-      "size_bytes": 446,
-      "sha256": "bc7f2806ce197a867335d91c0f211b32f712e78334b03c46057aac5b966330f7"
-    },
-    {
-      "path": "archive/prompts/04_IMPLEMENTATION_GATE.md",
-      "size_bytes": 426,
-      "sha256": "c0aea166a82835edaac10eb971fa3ffbc187df5f342ec3218a166b364f952906"
-    },
-    {
-      "path": "archive/prompts/05_LEGAL_MARKET_RESEARCH_PROMPT_AR.md",
-      "size_bytes": 589,
-      "sha256": "de50a5516da65a5318d36cf4a8da8e63cf9a5d00810f868fb775f5e1691cb60d"
-    },
-    {
-      "path": "archive/prompts/06_DOCUMENT_APPROVAL_REVIEW_AR.md",
-      "size_bytes": 499,
-      "sha256": "76173952a449af1f2454bd1e6caf38eaadb653170e42a509cc949a364440a435"
-    },
-    {
-      "path": "archive/source-project/README.md",
-      "size_bytes": 317,
-      "sha256": "b0fa3f18baeb3537a59b531939b31145ac12005f5406496a7acedc850b9dc207"
-    },
-    {
-      "path": "archive/templates/ADR_TEMPLATE.md",
-      "size_bytes": 278,
-      "sha256": "d92b910fc9edbd729ad7d2c396594a61a64b56910d4766759079cf4e29cfd9b3"
-    },
-    {
-      "path": "archive/templates/CHANGE_PROPOSAL_TEMPLATE.md",
-      "size_bytes": 396,
-      "sha256": "b481796c8538b5e7d0f1e6ab63c1102874fa61ce4a4d238de007b09af7c088e4"
-    },
-    {
-      "path": "archive/templates/REQUIREMENT_TEMPLATE.md",
-      "size_bytes": 349,
-      "sha256": "38f07e626789417ab231e0dbc6948a7babedee7ffe69164870a8c39ba7ef9a4e"
-    },
-    {
-      "path": "docs/ARCHIVE_INDEX.md",
-      "size_bytes": 2378,
-      "sha256": "a088ee6bfe535a22aa3c4b32184c4619bd32e317c5d072d456b9a3d0b6323b94"
-    },
-    {
-      "path": "docs/DECISIONS_AND_OPEN_GATES.md",
-      "size_bytes": 87157,
-      "sha256": "adf0854efdd5d0ec5ef6fab58fb128c1f60bc1cfbebfc43a4e81492d36d1f1c1"
-    },
-    {
-      "path": "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md",
-      "size_bytes": 14761,
-      "sha256": "9a6753f3018d8800210eb81c5bdcdb6bdea3ad5b6b7bececacd596fc02402962"
-    },
-    {
-      "path": "docs/MVP_AND_ACCEPTANCE.md",
-      "size_bytes": 15854,
-      "sha256": "a6d6afaf09c4ea4e27e1244d8a8f39df817d08eda182a77dbc051e3ec254b0df"
-    },
-    {
-      "path": "docs/PRODUCT_MASTER.md",
-      "size_bytes": 7999,
-      "sha256": "ebd50d42d813fefc99cbfe8b543cba4e0ef8dd6eeaf959b693d6e5ff56e1cc80"
-    },
-    {
-      "path": "docs/STOCK_AND_DOCUMENTS_MODEL_AR.md",
-      "size_bytes": 18040,
-      "sha256": "450638e1ce1e8492a64724a1a03e8d397a49a82452ed6d05bed41ddccfdc2192"
-    },
-    {
-      "path": "docs/TECHNICAL_AND_SAFETY_RULES.md",
-      "size_bytes": 10088,
-      "sha256": "72f90a4a0e869289ded7fa867c139fb3be5ba08b7e84c90e4fa1b11bcb9b4cf6"
-    },
-    {
-      "path": "docs/operations/HANDOFF_2026-11-14_PHASE2_SHIFT_AR.md",
-      "size_bytes": 6398,
-      "sha256": "6332c8e37e48e2d3f9fe882ba562b41ca7c6673b943b5ae22d9955664d146550"
-    },
-    {
-      "path": "docs/operations/HANDOFF_2026-11-14_SECURITY_H04_AR.md",
-      "size_bytes": 8086,
-      "sha256": "c72e582af1eb7ad92215ed5edb8744bda8dacbc0c3c8e28f7df434f8c26a3646"
-    },
-    {
-      "path": "docs/operations/HANDOFF_2026-11-14_STOCK_DOCS_AR.md",
-      "size_bytes": 6120,
-      "sha256": "6c4ce7d2d1bb34e4c30786b3f15d553fa3af788ab84026dacc9479713f43964a"
-    },
-    {
-      "path": "docs/proposals/AI_ORCHESTRATION_ARCHITECTURE_PROPOSED_AR.md",
-      "size_bytes": 21738,
-      "sha256": "e1f2288e760a5f795d0bd1ba97c6c27bb6c3ab4f1bf0370549d3c3d64751ed8d"
-    }
-  ],
-  "limited_execution_authorizations": [
-    "D-21 H-05 consistent backup and restore service",
-    "D-22 H-02 sale edit inside a single EF transaction",
-    "D-30 Phase 1 stock documents (StockDocument/DocumentSequence, numbering, opening/count/waste, migration, stock card)",
-    "D-31 Phase 2 cashier shift (CashierShift, shift gate over the current business day, sale cancel/modify audit fields, MRB sales return)",
-    "D-32 H-04 security package (cookie authentication, PBKDF2 hashing, SecurityStamp session invalidation, audit log, permission policies, first-run setup, login lockout)",
-    "D-33 quick settings panel opened from the conventional help button (F1 or ?), presentation and personal-device preferences only, plus in-progress sale draft kept in the cashier's browser",
-    "v0.6.7 owner-ordered fix inside the D-33 presentation scope: themed page-not-found screen for unknown URLs and removal of the dead stock-movements button",
-    "v0.6.8 owner-ordered polish inside the D-33 presentation scope: contrast, reduced motion, large touch targets, draft-save toggle, keyboard shortcuts moved into the quick panel, and an evenly distributed collapsible settings grid",
-    "v0.6.9 owner-ordered behavior inside the D-33 presentation scope: the quick settings panel now also closes on an outside click or lost focus, while its own close button and Escape keep working",
-    "v0.6.10 owner-ordered presentation fixes inside the D-33 presentation scope: the free-key card inside the AI assistant settings card keeps its natural height, the AI route badges and test buttons wrap instead of overflowing the card, and the detailed-assistant-settings link jumps to the assistant card on the settings page",
-    "v0.6.11 owner-ordered presentation fixes inside the D-33 presentation scope: the chosen theme stays applied after page navigation, and the sidebar no longer fills the first screen of a narrow window",
-    "v0.6.12 owner-ordered presentation fixes inside the D-33 presentation scope: consistent stock-page action icons, a visible hamburger icon in narrow layout, and a side-sliding navigation drawer that no longer pushes content down",
-    "v0.6.13 owner-ordered presentation fix inside the D-33 presentation scope: condense the overlapping top-bar text labels (local mode, username and role) into icon indicators with hover/long-press titles on narrow screens only",
-    "D-34 full Phase 3: cash drawer and cash counting, SHR purchases, cash/purchases UI and reports, four permissions and audit, additive migration, and tests T-15 to T-25; excludes sync, cloud, phone/multi-device, supplier ledger, debt collection, cash refund for MRB, inventory valuation/profit, and post-creation document editing",
-    "D-36 roadmap phases 2 to 5, authorized by the owner on 2026-11-18 with the phrase 'وافقت على التفويض الموحّد بالخيارات الموصى بها' and choices [1:A][2:A][3:A][4:A]: consolidated execution of explicit work modes with permanent built-in number adjudication, safe cloud sharing with separate cloud-model and cloud-sharing toggles both disabled and no transmission, standard-.NET perception adjudicated by the built-in with no database writes, and local semantic understanding/memory. No external libraries; NEEDS-VALIDATION gates left open; phase 6 deferred."
-  ],
-  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB); v0.6.3 records the H-04 security implementation; v0.6.4 records the routing correction applied on top of H-04; v0.6.5 records the standing communication-style rule requested by the owner; v0.6.6 records the owner-authorized quick settings panel and the sale draft; v0.6.7 records the owner-ordered page-not-found screen and the removal of the dead stock-movements button; v0.6.8 records the owner-ordered expansion of the quick settings and the evenly distributed, collapsible settings groups; v0.6.9 records the owner-ordered close-on-outside-click and close-on-lost-focus behavior of the quick settings panel; v0.6.10 records the owner-ordered removal of the large blank gap inside the AI assistant settings card, the wrapping of the AI route badges, and the direct link to the assistant card; v0.6.11 records the owner-ordered theme persistence across page navigation and the removal of the wide sidebar band in a narrow window; v0.6.12 records the owner-ordered consistent stock action icons and the narrow-layout hamburger icon with a side drawer that does not move the content; v0.6.13 records the owner-ordered condensation of the overlapping narrow-layout top-bar labels into icon indicators with titles; v0.6.14 records the owner-authorized full Phase 3 (cash drawer and cash counting, SHR purchases, cash/purchases UI and reports, permissions, audit, migration and tests); v0.6.15 records the owner-approved next-generation AI assistant architecture (D-36) and its integration into PROJECT_RULES.md 0.3.1, with language priority and the approved privacy wording, as a documentation-only change with no implementation authorization; v0.6.16 records the owner-authorized execution of roadmap Phase 1 (embedded-assistant strengthening); v0.6.17 records the owner-authorized execution of roadmap phases 2 to 5 (work modes and number adjudication, safe cloud sharing with both toggles off and no transmission, adjudicated perception with no DB writes, and local semantic memory), with 346/346 tests passing and phase 6 deferred."
+    "package":  "Vent au comptoir Documentation Pack",
+    "version":  "0.6.18",
+    "date":  "2026-11-18",
+    "status":  "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_DOCUMENT_CAPTURE_DONE",
+    "execution_authorized":  false,
+    "active_files":  [
+                         "README.md",
+                         "PROJECT_RULES.md",
+                         "AGENTS.md",
+                         "docs/PRODUCT_MASTER.md",
+                         "docs/MVP_AND_ACCEPTANCE.md",
+                         "docs/TECHNICAL_AND_SAFETY_RULES.md",
+                         "docs/DECISIONS_AND_OPEN_GATES.md",
+                         "docs/STOCK_AND_DOCUMENTS_MODEL_AR.md",
+                         "docs/ARCHIVE_INDEX.md",
+                         "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md",
+                         "docs/proposals/AI_ORCHESTRATION_ARCHITECTURE_PROPOSED_AR.md"
+                     ],
+    "archive_file_count":  57,
+    "archive_policy":  "Archive files are historical, non-active references; do not load all archive files for routine tasks.",
+    "mvp_status":  "APPROVED",
+    "mvp_baseline":  "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21, D-22, D-30, D-31, D-32 and D-34 (full Phase 3), plus the D-33 presentation-only UI scope. D-36 roadmap Phase 1 (embedded strengthening) was authorized and executed on 2026-11-18; roadmap phases 2 to 5 were additionally authorized and executed on 2026-11-18 with a single consolidated authorization and the recommended choices, with cloud sharing built but both toggles disabled and no transmission. Phase 6 remains deferred. General execution authorization stays NOT AUTHORIZED beyond these documented limited scopes. Document-capture text-input layer (option A) was authorized and executed on 2026-11-18 under a scoped grant; no library, no framework change, no database write, and no gate elevated.",
+    "change_summary":  [
+                           "Owner granted full authority for upcoming steps on 2026-11-18; execution was deliberately scoped to option A (local text-input layer) of DOCUMENT_CAPTURE_ENABLEMENT_AUTHORIZATION_REQUEST_AR.md because the other options require an external library, a verification source, or a target-framework change that are reserved decisions. Phase 6 and all NEEDS-VALIDATION gates were left unchanged.",
+                           "Added DocumentCaptureService (AI/Perception) with DocumentCaptureRequest/Result: local recognized text is extracted into candidates by PerceptionCandidateExtractor and adjudicated by PerceptionAdjudicator against active store product prices read through IProductRepository; it never writes, never transmits, and does not pass through ModelRouter, so RouteScorer decisions and number adjudication are unaffected.",
+                           "Added a separate document-text adjudication card to the AI chat page showing accepted/rejected candidates with reasons and the fixed no-automatic-write notice; its state is independent of chat routing. Registered the service as scoped and added six synthetic-data integration tests.",
+                           "Verification: build 0 errors; tests 352/352 (24 domain + 328 integration, including 6 new synthetic tests). No external library, no target-framework change, no cloud keys enabled, no real merchant database, no stored business data touched.",
+                           "Owner authorized and executed roadmap phases 2 to 5 of the AI assistant with a single consolidated authorization (\u0027وافقت على التفويض الموحّد بالخيارات الموصى بها\u0027, choices [1:A][2:A][3:A][4:A]): consolidated execution; build cloud sharing with both toggles disabled and no transmission; no external libraries; NEEDS-VALIDATION gates left open.",
+                           "Phase 2 work modes: added AI/Orchestration (WorkMode, WorkModeResolver, FactPackage, NumberAdjudicator) over the existing router without changing RouteScorer decisions; the built-in permanently adjudicates every final number against a fact package; work-mode and adjudication transparency added to route results and the chat UI; manual route choice retained; no database writes.",
+                           "Phase 3 safe cloud sharing: added AI/Privacy (ApprovedPrivacyWording, RedactionValidator, QuestionRedactor, CloudShareGuard, CloudPromptGuard). CloudSharingEnabled is a separate toggle from the cloud model, both default false; no request is prepared or sent unless both are on and mandatory redaction has run; only a redacted anonymous summary is used, with no store context; the exact approved privacy wording is shown in settings; a final independent pre-HTTP guard was added in CloudLlmProvider. Nothing was actually sent.",
+                           "Phase 4 perception: added AI/Perception (PerceptionCandidate, PerceptionCandidateExtractor, PerceptionAdjudicator) using only standard .NET; perception results remain candidates until the built-in adjudicates them against known products; WrittenToDatabase stays false.",
+                           "Phase 5 semantic: added AI/Semantic (SemanticIntent, SemanticIntentResolver, SemanticMemory) for local intent understanding and follow-up reference resolution, with a short local conversation memory; no stored business data touched and nothing sent externally; shared-core dialect quality remains NEEDS-VALIDATION.",
+                           "Verification: build 0 errors; tests 346/346 (24 domain + 322 integration, including 33 new synthetic-data phases 2-5 tests); three paths and manual choice retained; no cloud key enabled; no real merchant database queried and no real-device restore claimed.",
+                           "Owner authorized and executed roadmap Phase 1 of the AI assistant (D-36 literal scope): deterministic analytics, two read-only built-in tools, shared-core Algerian dialect synonyms, and synthetic-data tests.",
+                           "Added deterministic analytics in BuiltInAssistant (average sale, day/week comparison, overdue debts, period totals) from the existing store snapshot with no free-form SQL and no numbers generated from text; added previous-week fields to the snapshot.",
+                           "Added two read-only tools to BuiltInToolRegistry (EmbeddedAnalyticsTool, ProductLookupTool) with no database writes; tool answers keep the \u0027أدوات\u0027 intent so number questions remain protected from model replacement.",
+                           "Added DialectSynonyms.cs for shared-core Algerian Arabic conversation synonyms in normalized form; no regional dictionaries added.",
+                           "Verification: build 0 errors; tests 313/313 (24 domain + 289 integration) with synthetic data only; nothing sent to the cloud and no cloud keys enabled; roadmap phases 2 to 6 remain unauthorized.",
+                           "Owner approved and integrated the next-generation AI assistant architecture (D-36): cooperation between the built-in, local and cloud paths, with the built-in as the permanent guard for all final numbers.",
+                           "Ten binding constants recorded in PROJECT_RULES.md section 9.1 (version 0.3.1): three paths retained, protected number questions, mandatory question redaction before cloud sharing, separate cloud-model and cloud-sharing toggles, three work modes with built-in adjudication, and the approved privacy wording.",
+                           "Language priority approved: Arabic first, Algerian dialect as a separate conversation-only support layer (shared core now, regional dictionaries later), French as passive support now with professional parity deferred to a later version.",
+                           "Added docs/proposals/AI_ORCHESTRATION_ARCHITECTURE_PROPOSED_AR.md as an approved active reference; this is a documentation and architecture decision only and grants no implementation authorization for roadmap phases 1 to 6.",
+                           "Phase 3 full implementation authorized by the owner (D-34): cash drawer and cash counting with opening float, cash movements, and shift close with a counted-cash difference.",
+                           "Added the SHR purchase document with purchase cost stored per line, a purchases page with item lists and a purchases table.",
+                           "Added the cash dashboard at /cash and cash/purchases report tabs at /reports; purchase costs are hidden from users without ViewPurchaseCosts.",
+                           "Added four permissions (OperateCashDrawer, ManageCashDrawer, ManagePurchases, ViewPurchaseCosts) with audit entries; cashier navigation and page access are gated accordingly.",
+                           "Cash drawer is optional: when disabled, shift close falls back to the Phase 2 behaviour; the /cash UI always passes counted cash.",
+                           "Added four new UI labels/fields in /settings for enabling the drawer and setting the cash-difference tolerance; quick settings stays presentation/preferences only.",
+                           "Added an additive migration (AddCashDrawerAndPurchases) and 12 integration tests (T-15 to T-25).",
+                           "Pre-Phase-3 backups lack the CashMovements table and are rejected on restore, as required by BackupService.RequiredTables.",
+                           "Excluded from scope: sync, cloud, phone/multi-device, supplier ledger, debt collection, cash refund for MRB, inventory valuation/profit, and editing documents after creation."
+                       ],
+    "review_findings":  [
+                            "v0.6.18 records the enabled local text-input layer over the perception core. Camera/OCR capture itself remains unimplemented and gated behind a separate authorization, library choice and verification source.",
+                            "Build: dotnet build Wizz.sln -c Release --no-restore -v minimal = 0 errors (pre-existing StyleCop warnings only).",
+                            "Tests: dotnet test Wizz.sln -c Release --no-restore --no-build = Domain 24/24; Integration 328/328 (352 total), up from 346; includes 6 new synthetic-data document-capture tests.",
+                            "Document capture verified read-only and adjudicated: known products with retail or wholesale price match accepted; unknown products, price mismatches, inactive products and empty text rejected or empty; cloud-sourced candidates gain no extra trust; WrittenToDatabase stays false in every case.",
+                            "No external library was added and TargetFramework remains net10.0; the chat capture panel does not route through ModelRouter, so RouteScorer decisions, manual route choice and the embedded number guard are unchanged.",
+                            "Roadmap phase 6 (professional French) is DEFERRED and was not touched; NEEDS-VALIDATION gates remain open.",
+                            "v0.6.17 records the executed roadmap phases 2 to 5 of the assistant architecture. Earlier versions did not claim code built, tested, deployed or verified unless stated here.",
+                            "Build: dotnet build Wizz.sln -c Release --no-restore -v minimal = 0 errors (pre-existing StyleCop warnings only).",
+                            "Tests: dotnet test Wizz.sln -c Release --no-restore = Domain 24/24; Integration 322/322 (346 total), up from a 313 baseline; includes 33 new synthetic-data tests for phases 2 to 5. No test used a real merchant database or claimed a real-device restore.",
+                            "Number adjudication verified: a drafted answer containing a number absent from the built-in fact package is rejected and the built-in text is restored; a draft using only built-in numbers is accepted.",
+                            "Cloud path verified closed by default: CloudShareGuard.TryPrepare returns null unless CloudSharingEnabled is on; the router gates cloud on both toggles; CloudPromptGuard blocks forbidden data before any HTTP; nothing was sent and no cloud key was configured.",
+                            "Perception verified read-only and adjudicated: known product with matching price accepted, unknown product or price mismatch rejected, cloud-sourced candidate gains no extra trust, and WrittenToDatabase stays false.",
+                            "Semantic understanding and local memory verified with synthetic questions; follow-up reference resolved from remembered subject; disabled memory stores nothing. Shared-core dialect quality remains NEEDS-VALIDATION.",
+                            "RouteScorer decisions and the three paths (embedded/local/cloud) were not altered; manual route choice and the \u0027أدوات\u0027 precision protection remain intact.",
+                            "Roadmap phase 6 (professional French) is DEFERRED and was not touched; NEEDS-VALIDATION gates remain open.",
+                            "Build: dotnet build Wizz.sln -c Release --no-restore -v minimal = 0 errors (pre-existing StyleCop warnings only).",
+                            "Tests: dotnet test Wizz.sln -c Release --no-restore = Domain 24/24; Integration 289/289 (313 total), up from a 274-integration baseline; includes migration, backup/restore and the new synthetic-data Phase 1 tests.",
+                            "Phase 1 verification used synthetic data only; no real merchant database was queried for these tests and no real-device restore is claimed.",
+                            "Number guard preserved: tool answers carry the \u0027أدوات\u0027 intent so IsPrecisionAnswer stays true and analytical/local/cloud routing cannot replace embedded numbers.",
+                            "No external transmission: nothing was sent to any cloud service and no cloud-model or cloud-sharing toggle was enabled.",
+                            "Roadmap phases 2 to 6 remain unauthorized; professional French (phase 6) is deferred. General execution authorization stays NOT AUTHORIZED except the documented limited scopes.",
+                            "Browser verification on a synthetic-only SQLite database at localhost:5183: /cash, /purchases, /reports (cash and purchases tabs) and /settings render with no console errors.",
+                            "Permission check: a cashier sees only the home, sales, debts, cash, stock and AI navigation links; /purchases, /reports and /settings redirect to /access-denied, while /cash stays accessible.",
+                            "Cost hiding verified in code through CurrentUser.HasPermissionAsync(ViewPurchaseCosts) in the purchases page and the purchases report tab.",
+                            "Close behaviour verified in code: counting runs only when store.CashDrawerEnabled and a counted cash value is supplied; otherwise the legacy shift.Close() path is used.",
+                            "Backup limitation: backups taken before Phase 3 have no CashMovements table and are rejected after upgrade; no claim of restorability is made.",
+                            "CI remains unavailable for the GitHub account (billing issue; owner declined support contact); verification is local and manual.",
+                            "A real restore in a separate environment (MVP-AT-09) has not been performed."
+                        ],
+    "files":  [
+                  {
+                      "path":  "AGENTS.md",
+                      "size_bytes":  24490,
+                      "sha256":  "3f0005b03a560a33f746aa900e47ad269f4db2b6e97d46673ff588ce676dddec"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.5.2.json",
+                      "size_bytes":  1189,
+                      "sha256":  "0622434afed632f3dfe4b7b3a9cab71a69bd9339752d41ea2de9b3ece94771b4"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.5.3.json",
+                      "size_bytes":  1576,
+                      "sha256":  "a81af4cb7c7832d801e5a8952b1d3b82c8902fe34c15fa7703c3095b5f6bb683"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.5.4.json",
+                      "size_bytes":  1820,
+                      "sha256":  "d38a4c24d905a35dd41faa50946e8e4b1a1d756a4a84cb7af6404f80cc98c13f"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.6.0.json",
+                      "size_bytes":  2307,
+                      "sha256":  "f8ccf3f270ae409dcb8654d0d6288cc27c75fde9d7ccd3ecb4080343ba1fe0da"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.6.1.json",
+                      "size_bytes":  2589,
+                      "sha256":  "2bffe7c42d48ce10e2471747f04462c0f1a26e88526fc80787c2e3ec81cd46aa"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.6.10.json",
+                      "size_bytes":  6864,
+                      "sha256":  "0698e04440c8b809c1ca144fc21b08fe777eb936066ba8751645364586472b5a"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.6.11.json",
+                      "size_bytes":  7139,
+                      "sha256":  "7ac764f406770135ce7f7c4541e5ee0707f78e0f0c7096910aa6c71c058d4900"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.6.12.json",
+                      "size_bytes":  7659,
+                      "sha256":  "3529249372baf68d6ae65275e9423fb7e66734941d91d40dd525deb58cf80cb9"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.6.13.json",
+                      "size_bytes":  9862,
+                      "sha256":  "76188bb70d802ee2eb48df988f8ac841ab6c081f1610b3aff4f1d758eefb5057"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.6.14.json",
+                      "size_bytes":  8091,
+                      "sha256":  "06203c9be27f358f51be90e3b23233a7cc89286a8186e4d14be4f5f37eb6177c"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.6.2.json",
+                      "size_bytes":  3094,
+                      "sha256":  "a394c1cba2dd451d2e22ac2c292e4f4f3c9dcf21064f91b1fa6a8f5dccb2df8c"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.6.3.json",
+                      "size_bytes":  3627,
+                      "sha256":  "6e7b85385bbcdcda7df3f22beb1346aa58eb2bba8844beaa08f8684e2a207baa"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.6.4.json",
+                      "size_bytes":  3767,
+                      "sha256":  "3f70fb4cd1bad48c4c4596d7e29482db97c70ee46e45c9edd20faa6b7e0a0da9"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.6.5.json",
+                      "size_bytes":  3113,
+                      "sha256":  "455dc91a84ea412fd4a1ccbc58b3e8be2d0653c6f31c2c1be8a19da9078a603b"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.6.6.json",
+                      "size_bytes":  4844,
+                      "sha256":  "fc7535eb6ba3eb414dff348e40d1729c593b8e785d75f6482c17cf464fd5af2d"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.6.7.json",
+                      "size_bytes":  5353,
+                      "sha256":  "deb7087f783b33b3c573b44df61c8f5a88e5617da0c9122a4e1453b242a15391"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.6.8.json",
+                      "size_bytes":  6670,
+                      "sha256":  "af2956db9be5e6be769583648f5cc404f407433960f7111b49f05d95677cd564"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.6.9.json",
+                      "size_bytes":  5919,
+                      "sha256":  "2995adefc205636153adb8b480388a3cb5d674e8cdbf55b61c1df8b22802ed45"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.6.15.json",
+                      "size_bytes":  9892,
+                      "sha256":  "8e40c8c8780b02c83e8de0cd5a4eec7b42a64e7a17a90fb6a08df31eefa05ee1"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.6.16.json",
+                      "size_bytes":  12499,
+                      "sha256":  "242a85fdb1b01c769b1088effb6c66fed4effe246d032fbd8b288a9181c152d3"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.6.17.json",
+                      "size_bytes":  16630,
+                      "sha256":  "5203467294cb55fa09a5171440cb914cd91bda085163c86910cc0f161c737fc8"
+                  },
+                  {
+                      "path":  "PACK_MANIFEST_v0.6.18.json",
+                      "size_bytes":  22304,
+                      "sha256":  "9bd978bb6e5f148e9c97ebab74d98d7e69b531189cd1f614ee05dfb2cbcd8e56"
+                  },
+                  {
+                      "path":  "PROJECT_RULES.md",
+                      "size_bytes":  27044,
+                      "sha256":  "28eeaf519e2698520c598c7dc2212f272d660d404c58e3b31d35a84bd9d631d7"
+                  },
+                  {
+                      "path":  "README.md",
+                      "size_bytes":  11100,
+                      "sha256":  "dcd7d959c791c657bc14495b1bc23639e27b8a11edd45a25c659dd14668656c0"
+                  },
+                  {
+                      "path":  "archive/PACK_MANIFEST_v0.3.9.json",
+                      "size_bytes":  9430,
+                      "sha256":  "18eb08f1888f7330e8b6e81fb16cb561f402ce7ada96a4ee8cdaef531fe9c586"
+                  },
+                  {
+                      "path":  "archive/PACK_MANIFEST_v0.4.0.json",
+                      "size_bytes":  9585,
+                      "sha256":  "672b69c75573a044f778fdb2e991b55e507b42ce2d4f75857f4b55ac461c2018"
+                  },
+                  {
+                      "path":  "archive/PACK_MANIFEST_v0.4.1.json",
+                      "size_bytes":  9852,
+                      "sha256":  "72957fea5743df27361b7c1b599776833f8f5f637bc99f628ddb687f3f0d301c"
+                  },
+                  {
+                      "path":  "archive/PACK_MANIFEST_v0.5.0.json",
+                      "size_bytes":  473,
+                      "sha256":  "8f16c7404d1677be6be78a1fb3e280a0195262a8e373f6775ae6e32e71f92254"
+                  },
+                  {
+                      "path":  "archive/README_ARCHIVE.md",
+                      "size_bytes":  1408,
+                      "sha256":  "84090185eb9b28bc3e083aa06fefb092625fc2c5f0466c2f2f1727b5543384ce"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/DECISION_REGISTER.md",
+                      "size_bytes":  3417,
+                      "sha256":  "f53a1197f59b5c6982c92a1d45c1d2fbe46255dc43800e5d7c55fc09397f8bc1"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/DECISION_TRACEABILITY_Q1-Q247.md",
+                      "size_bytes":  38218,
+                      "sha256":  "97294883eb7cd2a948214b00e33c08eb5e3bcd84acb718b9b032316d4c94b529"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/DOCUMENTATION_WORKFLOW_AUDIT_v0.5.1.md",
+                      "size_bytes":  1847,
+                      "sha256":  "145502ae8eed1e8f131b4b60aad25c76ccc6bbcce7c2c1f76fcdf335779247a8"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/FINAL_DOCUMENTATION_READINESS_AUDIT_v0.4.0.md",
+                      "size_bytes":  8507,
+                      "sha256":  "63000b18136e39fe262abe8059775dde42b9184514f4ae543310779135f05df8"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/LEGAL_MARKET_RESEARCH_AUDIT_v0.2.4.md",
+                      "size_bytes":  3033,
+                      "sha256":  "00c51e56c034404290abb959fe5f237d0eeaaec515934e04e5492b95962c7eea"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/LOCALIZATION_AND_RTL.md",
+                      "size_bytes":  1365,
+                      "sha256":  "46637b628460728f793c3c8f305118b0f5df132ad86b9fac35d74be09c1fd2ad"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/MVP_ACCEPTANCE_TESTS_v0.3.1.md",
+                      "size_bytes":  9995,
+                      "sha256":  "8d031016d01ce0c21e6179865639012e6bd7e9f2d3a7c120cba7ca89e2dfd361"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/MVP_ACCEPTANCE_TEST_AUDIT_v0.3.1.md",
+                      "size_bytes":  1268,
+                      "sha256":  "67545fbb9c22c2e456b2b036fa5c5dd28c9f18f1cf824ebd3536335fa9713163"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/MVP_SCOPE_AUDIT_v0.2.8.md",
+                      "size_bytes":  1023,
+                      "sha256":  "88007929bbbf9417147be4e5401a1fc36846ea4e7273382228180d5932ad79e7"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/MVP_SCOPE_AUDIT_v0.2.9.md",
+                      "size_bytes":  927,
+                      "sha256":  "dc66e4ae924e9151d153e34139d544926cca51cb64f1e4c2ebdfb410e2232110"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/MVP_SCOPE_PROPOSAL.md",
+                      "size_bytes":  11696,
+                      "sha256":  "a02c839f667c97bf229aa050c02104bfb33164521a36944152208a9f4dd6ac8a"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/OPEN_QUESTIONS.md",
+                      "size_bytes":  2988,
+                      "sha256":  "cbc52b71627bb93f2f7d1c455abe9f7c9ac08f3ff5773da639600f7e9e9714de"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/PILOT_RECRUITMENT_AND_TEST_PLAN_v0.3.0.md",
+                      "size_bytes":  4064,
+                      "sha256":  "b1dc245e6533393c67cfe9107797f803fdba93996e42311bd4a3573fe0c1c395"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/PRE_EXECUTION_DECISIONS_v0.2.9.md",
+                      "size_bytes":  3675,
+                      "sha256":  "ab13dce590199a883fb2a86b4fe2cb54dc0f53a955d18159437d15eacd6bd5e6"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/PROJECT_BLUEPRINT.md",
+                      "size_bytes":  63412,
+                      "sha256":  "9f78dec86fe559042395df6f93eb5ce2b1a0ecacc32d03429ee1067f13bf6d3a"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/QA_TRACEABILITY_AUDIT_v0.3.8.md",
+                      "size_bytes":  2149,
+                      "sha256":  "122b502cc1258b4ab827ef226835316307ef3fb6f9ebfab7031b1b198b4f1c34"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/REQUIREMENTS_COVERAGE_AUDIT.md",
+                      "size_bytes":  5884,
+                      "sha256":  "8c81c4fae0020c6a5fa3915aec891f6ab63f9ebfa00438d40a7dc8b2082cf578"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/REQUIREMENT_TRACEABILITY_MATRIX_v0.3.9.md",
+                      "size_bytes":  17616,
+                      "sha256":  "43a6c2c4e6641228bd1cc5ac4699cef53bfc3426118da69bc6f6853fa6ce80e4"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/REQUIREMENT_TRACEABILITY_MATRIX_v0.4.1.md",
+                      "size_bytes":  29876,
+                      "sha256":  "af0e9ecfc88f8c1caf938dcbdbf21fe25f190ceb0d7791158d2d0851b6088e3f"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/RESTORATION_AND_COMPLETENESS_AUDIT.md",
+                      "size_bytes":  7004,
+                      "sha256":  "4917490bdbaf7ab619a5b8d86f4365251915d0153581fed58aaa6f2bcb22c81d"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/RISK_REGISTER.md",
+                      "size_bytes":  1482,
+                      "sha256":  "52acdb7dee82cc6d56403e26b4476493b98104f45e5401abb94165dc9e0aa964"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/SECURITY_PRIVACY_AUDIT_v0.3.4.md",
+                      "size_bytes":  1466,
+                      "sha256":  "5a478b2eb50b97610eb6b1366a70d01cb65e672259cab777f966bbe7116a59a4"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/SECURITY_PRIVACY_OPERATIONAL_CONTROLS_v0.3.4.md",
+                      "size_bytes":  15605,
+                      "sha256":  "78f7a0b4fb7e4c3041333e6b6289e2a250cc8714a55f945e0ba5a3471bbb2638"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/TECHNICAL_VALIDATION_PLAN_v0.3.3.md",
+                      "size_bytes":  7852,
+                      "sha256":  "3d4ce5b3432a724684770f6d2bbf64703dbeb837225729979e5d1efefa7e1021"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/TEST_STRATEGY.md",
+                      "size_bytes":  1120,
+                      "sha256":  "f0815f4827c6349404e52724128d6bc4912a596a24f8131a7fc279621cb6b54a"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/TEST_STRATEGY_v0.3.8.md",
+                      "size_bytes":  9857,
+                      "sha256":  "021889093d055984616fc35d5649f42c8a51f57666e7245c3ff2d7b25856b66f"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/WORKSPACE_AND_GIT_WORKFLOW.md",
+                      "size_bytes":  1138,
+                      "sha256":  "0758d74e13a8dd7b49c650dc526eeaf69fa53bd0d42beba655f6971252e21a83"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/architecture/AI_ARCHITECTURE.md",
+                      "size_bytes":  1990,
+                      "sha256":  "058ef26fe2494426310e0362ffcfb8b0d581816d70a04dca596fa02229ebf9c6"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/architecture/COMMANDS_EVENTS_AUTOMATION.md",
+                      "size_bytes":  1484,
+                      "sha256":  "0bcc9b58ee25cacb2d457f672632175b2472557ba363db78d0755013bf709e4f"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/architecture/DATA_MODEL.md",
+                      "size_bytes":  3086,
+                      "sha256":  "a9aedbfd4f5e6b12a9e180f2ddddbdb38d3f5f199c1f88f8bd9a250f4679d2ff"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/architecture/SOLUTION_STRUCTURE.md",
+                      "size_bytes":  2004,
+                      "sha256":  "08879f158c40cd1ad2e546c515e58d0578b99cac5be05acb0e26b7a9c76f5fcb"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/architecture/SYNC_AND_CONFLICT_POLICY.md",
+                      "size_bytes":  2681,
+                      "sha256":  "7efd09201dc090b3d3a5e8a8ba02c0f492ad687e891e420f48ee153d4045e9ff"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/architecture/TECHNICAL_OPEN_DECISIONS_v0.3.2.md",
+                      "size_bytes":  8427,
+                      "sha256":  "27a0530dca8841b1cb9c5049f50f5cc08ae9648c3f50f2ffbebf70a65d9a0f2c"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/business/BUSINESS_MODEL.md",
+                      "size_bytes":  2351,
+                      "sha256":  "03dae5d50de1b42423f09e948cc59005b2a25789424d40d801fbcde1407c3297"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/business/BUSINESS_MODEL_AND_RISK_AUDIT_v0.2.5.md",
+                      "size_bytes":  8106,
+                      "sha256":  "c6e7490a72ddfff0407fdedf6556438057d072445a0189a39c3a54d4bcbcd3cf"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/business/LICENSING_AND_SUBSCRIPTIONS.md",
+                      "size_bytes":  2259,
+                      "sha256":  "b1e65d60b9209bfdde91915b328ef7b6385495ad54b3967688bb853a2be4d69b"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/compliance/ALGERIA_COMPLIANCE.md",
+                      "size_bytes":  12504,
+                      "sha256":  "8940191a981678ff0109b1d3577f673f6362f01b456374041f5d3298e2497789"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/operations/DATA_MIGRATION_AND_PORTABILITY_v0.3.7.md",
+                      "size_bytes":  11818,
+                      "sha256":  "b71abb655df7c401e3b17f91475c51cae1e945319e850c46e323f5537eb2880b"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/operations/RELEASE_DISTRIBUTION_AND_SAFE_UPDATE_v0.3.6.md",
+                      "size_bytes":  9357,
+                      "sha256":  "9c4b4a962c6eacc98bdcd298f11deca910efb04f7d116cafb89e43c3921647a7"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/operations/SUPPORT_MAINTENANCE_AND_POST_RELEASE_v0.3.5.md",
+                      "size_bytes":  9755,
+                      "sha256":  "b041166aa400600d9e3df87a3ae56b0d1409a75090de678dfdbbfa92b5750487"
+                  },
+                  {
+                      "path":  "archive/original-detailed-docs/docs/operations/VPS_AND_DEPLOYMENT.md",
+                      "size_bytes":  1020,
+                      "sha256":  "b4598629a7560b37a9592694620f349de16e8cf34af1f64763e8bbd8bb38b873"
+                  },
+                  {
+                      "path":  "archive/prompts/00_MASTER_PROJECT_PROMPT_AR.md",
+                      "size_bytes":  1556,
+                      "sha256":  "365bff4c3d91591ac58fc5717891115b75cb7b36e39bbfdfc8424e165774b9cc"
+                  },
+                  {
+                      "path":  "archive/prompts/01_DOCUMENTATION_SESSION_PROMPT_AR.md",
+                      "size_bytes":  587,
+                      "sha256":  "fb699c474800c6993cd33d55204c47c1aff859b0a6283a5748a314feb9498d05"
+                  },
+                  {
+                      "path":  "archive/prompts/02_ARCHITECTURE_REVIEW_PROMPT_AR.md",
+                      "size_bytes":  502,
+                      "sha256":  "c153b7f78664219e1f58049b31be8ad96b99c0528410c36eae2ee5365b5c8659"
+                  },
+                  {
+                      "path":  "archive/prompts/03_MULTI_AGENT_TASK_PROMPT_AR.md",
+                      "size_bytes":  446,
+                      "sha256":  "bc7f2806ce197a867335d91c0f211b32f712e78334b03c46057aac5b966330f7"
+                  },
+                  {
+                      "path":  "archive/prompts/04_IMPLEMENTATION_GATE.md",
+                      "size_bytes":  426,
+                      "sha256":  "c0aea166a82835edaac10eb971fa3ffbc187df5f342ec3218a166b364f952906"
+                  },
+                  {
+                      "path":  "archive/prompts/05_LEGAL_MARKET_RESEARCH_PROMPT_AR.md",
+                      "size_bytes":  589,
+                      "sha256":  "de50a5516da65a5318d36cf4a8da8e63cf9a5d00810f868fb775f5e1691cb60d"
+                  },
+                  {
+                      "path":  "archive/prompts/06_DOCUMENT_APPROVAL_REVIEW_AR.md",
+                      "size_bytes":  499,
+                      "sha256":  "76173952a449af1f2454bd1e6caf38eaadb653170e42a509cc949a364440a435"
+                  },
+                  {
+                      "path":  "archive/source-project/README.md",
+                      "size_bytes":  317,
+                      "sha256":  "b0fa3f18baeb3537a59b531939b31145ac12005f5406496a7acedc850b9dc207"
+                  },
+                  {
+                      "path":  "archive/templates/ADR_TEMPLATE.md",
+                      "size_bytes":  278,
+                      "sha256":  "d92b910fc9edbd729ad7d2c396594a61a64b56910d4766759079cf4e29cfd9b3"
+                  },
+                  {
+                      "path":  "archive/templates/CHANGE_PROPOSAL_TEMPLATE.md",
+                      "size_bytes":  396,
+                      "sha256":  "b481796c8538b5e7d0f1e6ab63c1102874fa61ce4a4d238de007b09af7c088e4"
+                  },
+                  {
+                      "path":  "archive/templates/REQUIREMENT_TEMPLATE.md",
+                      "size_bytes":  349,
+                      "sha256":  "38f07e626789417ab231e0dbc6948a7babedee7ffe69164870a8c39ba7ef9a4e"
+                  },
+                  {
+                      "path":  "docs/ARCHIVE_INDEX.md",
+                      "size_bytes":  2378,
+                      "sha256":  "a088ee6bfe535a22aa3c4b32184c4619bd32e317c5d072d456b9a3d0b6323b94"
+                  },
+                  {
+                      "path":  "docs/DECISIONS_AND_OPEN_GATES.md",
+                      "size_bytes":  90796,
+                      "sha256":  "a1bd78adbed092fcf584a9d91d8a6235dc51a462e710d15315486983b64e3464"
+                  },
+                  {
+                      "path":  "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md",
+                      "size_bytes":  14761,
+                      "sha256":  "9a6753f3018d8800210eb81c5bdcdb6bdea3ad5b6b7bececacd596fc02402962"
+                  },
+                  {
+                      "path":  "docs/MVP_AND_ACCEPTANCE.md",
+                      "size_bytes":  15854,
+                      "sha256":  "a6d6afaf09c4ea4e27e1244d8a8f39df817d08eda182a77dbc051e3ec254b0df"
+                  },
+                  {
+                      "path":  "docs/PRODUCT_MASTER.md",
+                      "size_bytes":  7999,
+                      "sha256":  "ebd50d42d813fefc99cbfe8b543cba4e0ef8dd6eeaf959b693d6e5ff56e1cc80"
+                  },
+                  {
+                      "path":  "docs/STOCK_AND_DOCUMENTS_MODEL_AR.md",
+                      "size_bytes":  18040,
+                      "sha256":  "450638e1ce1e8492a64724a1a03e8d397a49a82452ed6d05bed41ddccfdc2192"
+                  },
+                  {
+                      "path":  "docs/TECHNICAL_AND_SAFETY_RULES.md",
+                      "size_bytes":  10088,
+                      "sha256":  "72f90a4a0e869289ded7fa867c139fb3be5ba08b7e84c90e4fa1b11bcb9b4cf6"
+                  },
+                  {
+                      "path":  "docs/operations/HANDOFF_2026-11-14_PHASE2_SHIFT_AR.md",
+                      "size_bytes":  6398,
+                      "sha256":  "6332c8e37e48e2d3f9fe882ba562b41ca7c6673b943b5ae22d9955664d146550"
+                  },
+                  {
+                      "path":  "docs/operations/HANDOFF_2026-11-14_SECURITY_H04_AR.md",
+                      "size_bytes":  8086,
+                      "sha256":  "c72e582af1eb7ad92215ed5edb8744bda8dacbc0c3c8e28f7df434f8c26a3646"
+                  },
+                  {
+                      "path":  "docs/operations/HANDOFF_2026-11-14_STOCK_DOCS_AR.md",
+                      "size_bytes":  6120,
+                      "sha256":  "6c4ce7d2d1bb34e4c30786b3f15d553fa3af788ab84026dacc9479713f43964a"
+                  },
+                  {
+                      "path":  "docs/proposals/AI_ORCHESTRATION_ARCHITECTURE_PROPOSED_AR.md",
+                      "size_bytes":  21738,
+                      "sha256":  "e1f2288e760a5f795d0bd1ba97c6c27bb6c3ab4f1bf0370549d3c3d64751ed8d"
+                  }
+              ],
+    "limited_execution_authorizations":  [
+                                             "D-21 H-05 consistent backup and restore service",
+                                             "D-22 H-02 sale edit inside a single EF transaction",
+                                             "D-30 Phase 1 stock documents (StockDocument/DocumentSequence, numbering, opening/count/waste, migration, stock card)",
+                                             "D-31 Phase 2 cashier shift (CashierShift, shift gate over the current business day, sale cancel/modify audit fields, MRB sales return)",
+                                             "D-32 H-04 security package (cookie authentication, PBKDF2 hashing, SecurityStamp session invalidation, audit log, permission policies, first-run setup, login lockout)",
+                                             "D-33 quick settings panel opened from the conventional help button (F1 or ?), presentation and personal-device preferences only, plus in-progress sale draft kept in the cashier\u0027s browser",
+                                             "v0.6.7 owner-ordered fix inside the D-33 presentation scope: themed page-not-found screen for unknown URLs and removal of the dead stock-movements button",
+                                             "v0.6.8 owner-ordered polish inside the D-33 presentation scope: contrast, reduced motion, large touch targets, draft-save toggle, keyboard shortcuts moved into the quick panel, and an evenly distributed collapsible settings grid",
+                                             "v0.6.9 owner-ordered behavior inside the D-33 presentation scope: the quick settings panel now also closes on an outside click or lost focus, while its own close button and Escape keep working",
+                                             "v0.6.10 owner-ordered presentation fixes inside the D-33 presentation scope: the free-key card inside the AI assistant settings card keeps its natural height, the AI route badges and test buttons wrap instead of overflowing the card, and the detailed-assistant-settings link jumps to the assistant card on the settings page",
+                                             "v0.6.11 owner-ordered presentation fixes inside the D-33 presentation scope: the chosen theme stays applied after page navigation, and the sidebar no longer fills the first screen of a narrow window",
+                                             "v0.6.12 owner-ordered presentation fixes inside the D-33 presentation scope: consistent stock-page action icons, a visible hamburger icon in narrow layout, and a side-sliding navigation drawer that no longer pushes content down",
+                                             "v0.6.13 owner-ordered presentation fix inside the D-33 presentation scope: condense the overlapping top-bar text labels (local mode, username and role) into icon indicators with hover/long-press titles on narrow screens only",
+                                             "D-34 full Phase 3: cash drawer and cash counting, SHR purchases, cash/purchases UI and reports, four permissions and audit, additive migration, and tests T-15 to T-25; excludes sync, cloud, phone/multi-device, supplier ledger, debt collection, cash refund for MRB, inventory valuation/profit, and post-creation document editing",
+                                             "D-36 roadmap phases 2 to 5, authorized by the owner on 2026-11-18 with the phrase \u0027وافقت على التفويض الموحّد بالخيارات الموصى بها\u0027 and choices [1:A][2:A][3:A][4:A]: consolidated execution of explicit work modes with permanent built-in number adjudication, safe cloud sharing with separate cloud-model and cloud-sharing toggles both disabled and no transmission, standard-.NET perception adjudicated by the built-in with no database writes, and local semantic understanding/memory. No external libraries; NEEDS-VALIDATION gates left open; phase 6 deferred.",
+                                             "v0.6.18 owner-authorized enablement of the local document-text input layer over the existing perception core (option A of DOCUMENT_CAPTURE_ENABLEMENT_AUTHORIZATION_REQUEST_AR.md): standard .NET only, no target-framework change, no database writes, no external transmission, and no elevation of any NEEDS-VALIDATION gate. Camera/OCR capture, external libraries and phase 6 remain out of scope."
+                                         ],
+    "preservation_note":  "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB); v0.6.3 records the H-04 security implementation; v0.6.4 records the routing correction applied on top of H-04; v0.6.5 records the standing communication-style rule requested by the owner; v0.6.6 records the owner-authorized quick settings panel and the sale draft; v0.6.7 records the owner-ordered page-not-found screen and the removal of the dead stock-movements button; v0.6.8 records the owner-ordered expansion of the quick settings and the evenly distributed, collapsible settings groups; v0.6.9 records the owner-ordered close-on-outside-click and close-on-lost-focus behavior of the quick settings panel; v0.6.10 records the owner-ordered removal of the large blank gap inside the AI assistant settings card, the wrapping of the AI route badges, and the direct link to the assistant card; v0.6.11 records the owner-ordered theme persistence across page navigation and the removal of the wide sidebar band in a narrow window; v0.6.12 records the owner-ordered consistent stock action icons and the narrow-layout hamburger icon with a side drawer that does not move the content; v0.6.13 records the owner-ordered condensation of the overlapping narrow-layout top-bar labels into icon indicators with titles; v0.6.14 records the owner-authorized full Phase 3 (cash drawer and cash counting, SHR purchases, cash/purchases UI and reports, permissions, audit, migration and tests); v0.6.15 records the owner-approved next-generation AI assistant architecture (D-36) and its integration into PROJECT_RULES.md 0.3.1, with language priority and the approved privacy wording, as a documentation-only change with no implementation authorization; v0.6.16 records the owner-authorized execution of roadmap Phase 1 (embedded-assistant strengthening); v0.6.17 records the owner-authorized execution of roadmap phases 2 to 5 (work modes and number adjudication, safe cloud sharing with both toggles off and no transmission, adjudicated perception with no DB writes, and local semantic memory), with 346/346 tests passing and phase 6 deferred. v0.6.18 records the owner-scoped enablement of the local document-text input layer over the perception core, with no external library and no framework change."
 }
