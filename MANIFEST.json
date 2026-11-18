@@ -1,7 +1,7 @@
 {
   "package": "Vent au comptoir Documentation Pack",
-  "version": "0.6.14",
-  "date": "2026-11-17",
+  "version": "0.6.15",
+  "date": "2026-11-18",
   "status": "DOCUMENTATION_CURRENT_LIMITED_EXECUTION_AUTHORIZED",
   "execution_authorized": false,
   "active_files": [
@@ -14,13 +14,18 @@
     "docs/DECISIONS_AND_OPEN_GATES.md",
     "docs/STOCK_AND_DOCUMENTS_MODEL_AR.md",
     "docs/ARCHIVE_INDEX.md",
-    "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md"
+    "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md",
+    "docs/proposals/AI_ORCHESTRATION_ARCHITECTURE_PROPOSED_AR.md"
   ],
   "archive_file_count": 57,
   "archive_policy": "Archive files are historical, non-active references; do not load all archive files for routine tasks.",
   "mvp_status": "APPROVED",
   "mvp_baseline": "Owner-approved local-first Windows sales core P0; P1 modules optional; execution authorization remains limited to D-21, D-22, D-30, D-31, D-32 and D-34 (full Phase 3), plus the D-33 presentation-only UI scope.",
   "change_summary": [
+    "Owner approved and integrated the next-generation AI assistant architecture (D-36): cooperation between the built-in, local and cloud paths, with the built-in as the permanent guard for all final numbers.",
+    "Ten binding constants recorded in PROJECT_RULES.md section 9.1 (version 0.3.1): three paths retained, protected number questions, mandatory question redaction before cloud sharing, separate cloud-model and cloud-sharing toggles, three work modes with built-in adjudication, and the approved privacy wording.",
+    "Language priority approved: Arabic first, Algerian dialect as a separate conversation-only support layer (shared core now, regional dictionaries later), French as passive support now with professional parity deferred to a later version.",
+    "Added docs/proposals/AI_ORCHESTRATION_ARCHITECTURE_PROPOSED_AR.md as an approved active reference; this is a documentation and architecture decision only and grants no implementation authorization for roadmap phases 1 to 6.",
     "Phase 3 full implementation authorized by the owner (D-34): cash drawer and cash counting with opening float, cash movements, and shift close with a counted-cash difference.",
     "Added the SHR purchase document with purchase cost stored per line, a purchases page with item lists and a purchases table.",
     "Added the cash dashboard at /cash and cash/purchases report tabs at /reports; purchase costs are hidden from users without ViewPurchaseCosts.",
@@ -32,6 +37,7 @@
     "Excluded from scope: sync, cloud, phone/multi-device, supplier ledger, debt collection, cash refund for MRB, inventory valuation/profit, and editing documents after creation."
   ],
   "review_findings": [
+    "v0.6.15 is a documentation-only integration: no build, tests, deployment or runtime verification was performed in this change; the AI architecture remains unimplemented and execution authorization stays NOT AUTHORIZED.",
     "Build: dotnet build Wizz.sln -c Release --no-restore -v minimal = 0 errors (pre-existing StyleCop warnings only).",
     "Tests: Domain 24/24; Integration 274/274 (298 total), up from a 262-test baseline; includes migration and backup/restore checks.",
     "Browser verification on a synthetic-only SQLite database at localhost:5183: /cash, /purchases, /reports (cash and purchases tabs) and /settings render with no console errors.",
@@ -46,7 +52,7 @@
     {
       "path": "AGENTS.md",
       "size_bytes": 24490,
-      "sha256": "ce27d43ed18ac88c02506c7e187d3d7aaee62ff278d8f619283beff85575284c"
+      "sha256": "3f0005b03a560a33f746aa900e47ad269f4db2b6e97d46673ff588ce676dddec"
     },
     {
       "path": "PACK_MANIFEST_v0.5.2.json",
@@ -139,9 +145,14 @@
       "sha256": "2995adefc205636153adb8b480388a3cb5d674e8cdbf55b61c1df8b22802ed45"
     },
     {
+      "path": "PACK_MANIFEST_v0.6.15.json",
+      "size_bytes": 9892,
+      "sha256": "8e40c8c8780b02c83e8de0cd5a4eec7b42a64e7a17a90fb6a08df31eefa05ee1"
+    },
+    {
       "path": "PROJECT_RULES.md",
-      "size_bytes": 24436,
-      "sha256": "2db38d738d7188ee352e2f4c5af5ecaddf807353968a846439a735ef162bd9b9"
+      "size_bytes": 27044,
+      "sha256": "28eeaf519e2698520c598c7dc2212f272d660d404c58e3b31d35a84bd9d631d7"
     },
     {
       "path": "README.md",
@@ -440,8 +451,8 @@
     },
     {
       "path": "docs/DECISIONS_AND_OPEN_GATES.md",
-      "size_bytes": 78049,
-      "sha256": "2839e5f128562e46663c2a1c56e44d08c2a6a8b69f8d4d6fe82353048dcc0f36"
+      "size_bytes": 80505,
+      "sha256": "57db41830862b8bd61555e714a1637af4c2dd731af09026461ed22d7e767751c"
     },
     {
       "path": "docs/FINAL_HANDOFF_AND_CLOSEOUT_v0.5.4.md",
@@ -482,6 +493,11 @@
       "path": "docs/operations/HANDOFF_2026-11-14_STOCK_DOCS_AR.md",
       "size_bytes": 6120,
       "sha256": "6c4ce7d2d1bb34e4c30786b3f15d553fa3af788ab84026dacc9479713f43964a"
+    },
+    {
+      "path": "docs/proposals/AI_ORCHESTRATION_ARCHITECTURE_PROPOSED_AR.md",
+      "size_bytes": 21738,
+      "sha256": "e1f2288e760a5f795d0bd1ba97c6c27bb6c3ab4f1bf0370549d3c3d64751ed8d"
     }
   ],
   "limited_execution_authorizations": [
@@ -500,5 +516,5 @@
     "v0.6.13 owner-ordered presentation fix inside the D-33 presentation scope: condense the overlapping top-bar text labels (local mode, username and role) into icon indicators with hover/long-press titles on narrow screens only",
     "D-34 full Phase 3: cash drawer and cash counting, SHR purchases, cash/purchases UI and reports, four permissions and audit, additive migration, and tests T-15 to T-25; excludes sync, cloud, phone/multi-device, supplier ledger, debt collection, cash refund for MRB, inventory valuation/profit, and post-creation document editing"
   ],
-  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB); v0.6.3 records the H-04 security implementation; v0.6.4 records the routing correction applied on top of H-04; v0.6.5 records the standing communication-style rule requested by the owner; v0.6.6 records the owner-authorized quick settings panel and the sale draft; v0.6.7 records the owner-ordered page-not-found screen and the removal of the dead stock-movements button; v0.6.8 records the owner-ordered expansion of the quick settings and the evenly distributed, collapsible settings groups; v0.6.9 records the owner-ordered close-on-outside-click and close-on-lost-focus behavior of the quick settings panel; v0.6.10 records the owner-ordered removal of the large blank gap inside the AI assistant settings card, the wrapping of the AI route badges, and the direct link to the assistant card; v0.6.11 records the owner-ordered theme persistence across page navigation and the removal of the wide sidebar band in a narrow window; v0.6.12 records the owner-ordered consistent stock action icons and the narrow-layout hamburger icon with a side drawer that does not move the content; v0.6.13 records the owner-ordered condensation of the overlapping narrow-layout top-bar labels into icon indicators with titles; v0.6.14 records the owner-authorized full Phase 3 (cash drawer and cash counting, SHR purchases, cash/purchases UI and reports, permissions, audit, migration and tests)"
+  "preservation_note": "v0.5.4 retained as prior baseline; v0.6.0 adds the documents-as-truth model and design; v0.6.1 records the Phase 1 implementation and corrects the README test claims; v0.6.2 records the Phase 2 implementation (cashier shift, close gate, MRB); v0.6.3 records the H-04 security implementation; v0.6.4 records the routing correction applied on top of H-04; v0.6.5 records the standing communication-style rule requested by the owner; v0.6.6 records the owner-authorized quick settings panel and the sale draft; v0.6.7 records the owner-ordered page-not-found screen and the removal of the dead stock-movements button; v0.6.8 records the owner-ordered expansion of the quick settings and the evenly distributed, collapsible settings groups; v0.6.9 records the owner-ordered close-on-outside-click and close-on-lost-focus behavior of the quick settings panel; v0.6.10 records the owner-ordered removal of the large blank gap inside the AI assistant settings card, the wrapping of the AI route badges, and the direct link to the assistant card; v0.6.11 records the owner-ordered theme persistence across page navigation and the removal of the wide sidebar band in a narrow window; v0.6.12 records the owner-ordered consistent stock action icons and the narrow-layout hamburger icon with a side drawer that does not move the content; v0.6.13 records the owner-ordered condensation of the overlapping narrow-layout top-bar labels into icon indicators with titles; v0.6.14 records the owner-authorized full Phase 3 (cash drawer and cash counting, SHR purchases, cash/purchases UI and reports, permissions, audit, migration and tests); v0.6.15 records the owner-approved next-generation AI assistant architecture (D-36) and its integration into PROJECT_RULES.md 0.3.1, with language priority and the approved privacy wording, as a documentation-only change with no implementation authorization."
 }
