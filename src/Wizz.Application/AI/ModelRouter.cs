@@ -3,6 +3,8 @@ namespace Wizz.Application.AI;
 using System.Diagnostics;
 using Wizz.Application.Abstractions;
 using Wizz.Application.AI.Memory;
+using Wizz.Application.AI.Orchestration;
+using Wizz.Application.AI.Privacy;
 using Wizz.Application.AI.Routing;
 using Wizz.Application.DTOs;
 
@@ -19,8 +21,10 @@ public sealed class ModelRouter : IModelRouter
     private readonly UserPreferenceStore? _preferences;
     private readonly AutoRoutePriority? _priority;
     private readonly RouteDecisionLog? _decisionLog;
+    private readonly CloudShareGuard _shareGuard;
 
     private string? _turnSubject;
+    private BuiltInAnswer? _lastBuiltInAnswer;
 
     private readonly object _cloudGate = new();
     private string _lastCloudConfigHash = "";
@@ -54,6 +58,7 @@ public sealed class ModelRouter : IModelRouter
         _preferences = preferences;
         _priority = priority;
         _decisionLog = decisionLog;
+        _shareGuard = new CloudShareGuard(settings);
     }
 
     public async Task<ModelRouteResult> RouteAsync(AiQueryInputDto input, CancellationToken ct = default)
@@ -62,14 +67,57 @@ public sealed class ModelRouter : IModelRouter
             return Fail("اكتب سؤالاً أولاً.", RouteType.None, false);
 
         _turnSubject = null;
+        _lastBuiltInAnswer = null;
         var result = await RouteCoreAsync(input, ct);
+        result = Decorate(input, result);
         RecordTurn(input.Question, result);
         return result;
+    }
+
+    /// <summary>
+    /// يُرفق نتيجة التوجيه بشفافية أنماط العمل وتحكيم المدمج للأرقام. لا يغيّر قرار التوجيه أو النص،
+    /// بل يضيف بيانات توضيحية فقط، مع بقاء حكم الأرقام كما هو في <see cref="RouteCoreAsync"/>.
+    /// </summary>
+    private ModelRouteResult Decorate(AiQueryInputDto input, ModelRouteResult result)
+    {
+        try
+        {
+            var isManual = input.ForceRoute is { } forced && forced != RouteType.None;
+            var workMode = WorkModeResolver.Resolve(
+                input.Question,
+                _lastBuiltInAnswer,
+                _localLlm is not null,
+                _settings.IsCloudEnabled && _shareGuard.SharingEnabled,
+                isManual,
+                input.ForceRoute ?? RouteType.None);
+
+            var transparency = WorkModeText.Transparency(workMode);
+            var adjudicated = result.RouteType == RouteType.BuiltIn || _lastBuiltInAnswer is not null;
+            transparency += adjudicated
+                ? " — تحكيم الأرقام: تم"
+                : " — تحكيم الأرقام: لا توجد أرقام متجر في هذا الرد";
+
+            return result with
+            {
+                WorkMode = WorkModeText.Label(workMode.Mode),
+                Transparency = transparency,
+                Adjudicated = adjudicated
+            };
+        }
+        catch
+        {
+            // الشفافية تحسين عرضي — لا تُفشل الإجابة أبداً.
+            return result;
+        }
     }
 
     private async Task<ModelRouteResult> RouteCoreAsync(AiQueryInputDto input, CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();
+
+        // حزمة الحقائق تُبنى دائماً من إجابة المدمج قبل أي تفويض أو صياغة (الثابت 2 و3).
+        var builtInAnswer = await TryBuiltInAsync(input, ct);
+        var facts = FactPackage.FromBuiltIn(builtInAnswer);
 
         // توجيه مُجبر (اختيار يدوي من المستخدم)
         if (input.ForceRoute is { } forced && forced != RouteType.None)
@@ -95,7 +143,7 @@ public sealed class ModelRouter : IModelRouter
                     sw.Stop();
                     return Fail("النموذج المحلي (Ollama) غير متاح. شغّل Ollama وثبّت نموذجاً.", RouteType.None, true) with { Decision = manual };
                 }
-                var localResult = await TryProviderAsync(_localLlm, input, RouteType.Local, ct);
+                var localResult = await TryProviderAsync(_localLlm, input, RouteType.Local, facts, ct);
                 sw.Stop();
                 if (localResult is not null)
                     return localResult with { ResponseTime = sw.Elapsed, Decision = manual };
@@ -107,10 +155,10 @@ public sealed class ModelRouter : IModelRouter
 
             if (forced == RouteType.Cloud)
             {
-                if (!_settings.IsCloudEnabled)
+                if (!_settings.IsCloudEnabled || !_shareGuard.SharingEnabled)
                 {
                     sw.Stop();
-                    return Fail("السحابة غير مفعّلة. فعّلها من «الإعدادات».", RouteType.None, true) with { Decision = manual };
+                    return Fail("السحابة غير مفعّلة. فعّل النموذج السحابي والتشارك السحابي من «الإعدادات».", RouteType.None, true) with { Decision = manual };
                 }
                 var providers = RefreshCloudProvidersIfNeeded();
                 if (!providers.Any())
@@ -120,7 +168,7 @@ public sealed class ModelRouter : IModelRouter
                 }
                 foreach (var provider in providers)
                 {
-                    var cloudResult = await TryProviderAsync(provider, input, RouteType.Cloud, ct);
+                    var cloudResult = await TryProviderAsync(provider, input, RouteType.Cloud, facts, ct);
                     if (cloudResult is not null)
                     {
                         var estimatedTokens = EstimateTokens(input.Question + cloudResult.Answer);
@@ -138,8 +186,6 @@ public sealed class ModelRouter : IModelRouter
         }
 
         // ===== التوجيه التلقائي: نقاط الأولوية (اختيار المستخدم) + درجة الجودة =====
-        var builtInAnswer = await TryBuiltInAsync(input, ct);
-
         // حماية أسئلة الأرقام: إجابة مدمجة دقيقة (مبيعات/ديون/أسعار/أعداد/أدوات) لا يستبدلها نموذج لغوي،
         // حتى لو رفع المستخدم النموذج في الترتيب — لأن الأرقام أهم من صياغة النموذج.
         var protectBuiltIn = builtInAnswer is not null
@@ -164,7 +210,9 @@ public sealed class ModelRouter : IModelRouter
 
         var device = await _deviceEvaluator.AssessAsync(ct);
 
-        var cloudProviders = _settings.IsCloudEnabled
+        // أي إرسال سحابي يشترط تفعيل مفتاحَي النموذج والتشارك معاً؛ بدون التشارك لا يُبنى طلب.
+        var cloudCanSend = _settings.IsCloudEnabled && _shareGuard.SharingEnabled;
+        var cloudProviders = cloudCanSend
             ? RefreshCloudProvidersIfNeeded()
             : new List<ILlmProvider>();
         var quotaExceeded = _quotaTracker.IsQuotaExceeded;
@@ -175,7 +223,7 @@ public sealed class ModelRouter : IModelRouter
             DeviceTier: device.Tier,
             InternetAvailable: device.InternetAvailable,
             CloudEnabled: _settings.IsCloudEnabled,
-            CloudAvailable: _settings.IsCloudEnabled && device.InternetAvailable && !quotaExceeded && cloudProviders.Count > 0,
+            CloudAvailable: cloudCanSend && device.InternetAvailable && !quotaExceeded && cloudProviders.Count > 0,
             QuotaExceeded: quotaExceeded,
             IsAnalytical: BuiltInAssistant.IsAnalytical(input.Question),
             ProtectBuiltIn: protectBuiltIn);
@@ -197,7 +245,7 @@ public sealed class ModelRouter : IModelRouter
 
             if (candidate.Route == RouteType.Local && device.OllamaAvailable && _localLlm is not null)
             {
-                var localResult = await TryProviderAsync(_localLlm, input, RouteType.Local, ct);
+                var localResult = await TryProviderAsync(_localLlm, input, RouteType.Local, facts, ct);
                 if (localResult is not null)
                 {
                     sw.Stop();
@@ -216,7 +264,7 @@ public sealed class ModelRouter : IModelRouter
                         break;
                     }
 
-                    var cloudResult = await TryProviderAsync(provider, input, RouteType.Cloud, ct);
+                    var cloudResult = await TryProviderAsync(provider, input, RouteType.Cloud, facts, ct);
                     if (cloudResult is null)
                     {
                         continue;
@@ -269,7 +317,7 @@ public sealed class ModelRouter : IModelRouter
         var device = await _deviceEvaluator.AssessAsync(ct);
         if (device.OllamaAvailable && _localLlm is not null) return true;
 
-        if (_settings.IsCloudEnabled && device.InternetAvailable)
+        if (_settings.IsCloudEnabled && _shareGuard.SharingEnabled && device.InternetAvailable)
         {
             var providers = RefreshCloudProvidersIfNeeded();
             if (providers.Any()) return true;
@@ -348,7 +396,7 @@ public sealed class ModelRouter : IModelRouter
         bool cloudAvailable = false;
         string? cloudProvider = null;
         bool cloudConfiguredButNoKey = false;
-        if (_settings.IsCloudEnabled)
+        if (_settings.IsCloudEnabled && _shareGuard.SharingEnabled)
         {
             var providers = RefreshCloudProvidersIfNeeded();
             var configured = _settings.GetCloudProvidersConfig()?.Any() == true;
@@ -391,6 +439,11 @@ public sealed class ModelRouter : IModelRouter
         try
         {
             var answer = await _builtIn.TryAnswerWithSubjectAsync(input.Question, ct);
+            if (answer is not null)
+            {
+                _lastBuiltInAnswer = answer;
+            }
+
             if (answer?.Subject is { Length: > 0 } subject)
             {
                 _turnSubject = subject;
@@ -433,18 +486,75 @@ public sealed class ModelRouter : IModelRouter
         }
     }
 
-    private async Task<ModelRouteResult?> TryProviderAsync(ILlmProvider provider, AiQueryInputDto input, RouteType routeType, CancellationToken ct)
+    private async Task<ModelRouteResult?> TryProviderAsync(
+        ILlmProvider provider,
+        AiQueryInputDto input,
+        RouteType routeType,
+        FactPackage facts,
+        CancellationToken ct)
     {
         try
         {
-            var snapshot = await _builtIn.GetSnapshotAsync(ct);
-            var systemPrompt = BuildSystemPrompt(snapshot, input.Question);
-            var answer = await provider.CompleteWithContextAsync(systemPrompt, input.Question, ct);
+            string systemPrompt;
+            string userPrompt;
+            bool usedStoreData;
+            IReadOnlyList<string> references;
+
+            if (routeType == RouteType.Cloud)
+            {
+                // قبل أي إرسال: تنقيح إلزامي للسؤال، ولا شيء يُرسل إطلاقاً بدون مفتاح التشارك.
+                var payload = _shareGuard.TryPrepare(input.Question);
+                if (payload is null) return null;
+                systemPrompt = BuildSafeCloudPrompt(payload);
+                userPrompt = payload.RedactedSummary;
+                usedStoreData = false;
+                references = new[] { "ملخص مجهول" };
+            }
+            else
+            {
+                // المحلي يعمل على الجهاز — لا إرسال للخارج، فيمكنه استخدام سياق المتجر.
+                var snapshot = await _builtIn.GetSnapshotAsync(ct);
+                systemPrompt = BuildSystemPrompt(snapshot, input.Question);
+                userPrompt = input.Question;
+                usedStoreData = true;
+                references = new[] { "مبيعات", "ديون", "منتجات" };
+            }
+
+            var answer = await provider.CompleteWithContextAsync(systemPrompt, userPrompt, ct);
             if (string.IsNullOrWhiteSpace(answer)) return null;
-            return new ModelRouteResult(answer.Trim(), provider.ProviderName, GetActiveModelName(provider), routeType, true, new[] { "مبيعات", "ديون", "منتجات" }, TimeSpan.Zero, IsFallback: false);
+
+            var draft = answer.Trim();
+            if (!string.IsNullOrWhiteSpace(facts.AuthoritativeText))
+            {
+                // المدمج يُحكّم كل رقم نهائي؛ أي رقم غريب يُسقط الصياغة ويعيد نص المدمج.
+                var adjudication = NumberAdjudicator.Adjudicate(draft, facts);
+                if (!adjudication.Accepted) return null;
+                draft = adjudication.FinalText;
+            }
+
+            return new ModelRouteResult(
+                draft, provider.ProviderName, GetActiveModelName(provider), routeType,
+                usedStoreData, references, TimeSpan.Zero, IsFallback: false);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { return null; }
         catch (Exception ex) { _lastCloudError = ex.Message; return null; }
+    }
+
+    /// <summary>
+    /// تعليمات آمنة للسحابة: ملخص مجهول فقط، بلا سياق متجر ولا سؤال خام ولا أرقام مطلوبة.
+    /// تُإرفق بفحص إضافي داخل مزوّد السحابة قبل أي طلب فعلي.
+    /// </summary>
+    private static string BuildSafeCloudPrompt(CloudSharePayload payload)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("أنت مساعد صياغة وتحليل يعمل بالملخص المجهول الآتي فقط.");
+        sb.AppendLine("قواعد صارمة:");
+        sb.AppendLine("1) لا تطلب بيانات إضافية، ولا تذكر أسماء أو معرّفات أو عناوين أو أرقاماً.");
+        sb.AppendLine("2) لا تُنتج رقمًا نهائيًا؛ الأرقام تُحكَّم محليًا بواسطة المساعد المدمج.");
+        sb.AppendLine("3) أجب بالعربية الفصحى، بإيجاز.");
+        sb.AppendLine($"الغرض المسموح: {payload.Purpose}");
+        sb.AppendLine($"الملخص المجهول: {payload.RedactedSummary}");
+        return sb.ToString();
     }
 
     private string BuildSystemPrompt(StoreSnapshot snapshot, string userQuestion)
@@ -511,7 +621,7 @@ public sealed class ModelRouter : IModelRouter
     {
         var parts = new List<string> { "لم أفهم السؤال بما يكفي." };
         if (!device.OllamaAvailable) parts.Add("لتشغيل الأسئلة الحرة محليًا: شغّل Ollama وثبّت نموذجاً خفيفاً يدعم العربية (ollama pull qwen2.5:0.5b-instruct).");
-        if (!cloudEnabled) parts.Add("لإضافة الأسئلة الحرة عبر السحابة: فعّل الذكاء الاصطناعي السحابي من الإعدادات ولصق مفتاح OpenRouter.");
+        if (!cloudEnabled) parts.Add("لإضافة الأسئلة الحرة عبر السحابة: فعّل النموذج السحابي والتشارك السحابي في الإعدادات، ثم لصق مفتاح OpenRouter.");
         if (!string.IsNullOrWhiteSpace(lastCloudError)) parts.Add($"(تعذّر استخدام السحابة: {lastCloudError})");
         parts.Add("جرّب صيغة أوضح مثل: «قائمة الديون», «مجموع الديون», «أكبر دين», «مبيعات أمس», «أفضل 3 منتجات», «سعر تفاح».");
         return string.Join("\n\n", parts);

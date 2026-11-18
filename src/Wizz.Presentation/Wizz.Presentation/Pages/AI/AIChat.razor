@@ -162,6 +162,16 @@
                         <span>— @lastDecision.Reason</span>
                     </div>
                 }
+                @if (!string.IsNullOrWhiteSpace(lastTransparency))
+                {
+                    <div class="small text-muted mt-1" title="أنماط العمل وتحكيم المدمج للأرقام">
+                        @if (!string.IsNullOrWhiteSpace(lastWorkMode))
+                        {
+                            <span class="badge bg-light text-dark border ms-1">نمط العمل: @lastWorkMode</span>
+                        }
+                        <span>@lastTransparency</span>
+                    </div>
+                }
             </div>
         </div>
     </div>
@@ -277,6 +287,8 @@
     private AiHistoryService? history;
     private string? rememberedSubject;
     private RouteDecision? lastDecision;
+    private string? lastWorkMode;
+    private string? lastTransparency;
     private IReadOnlyList<RouteDecisionEntry> recentDecisions = Array.Empty<RouteDecisionEntry>();
 
     protected override async Task OnInitializedAsync()
@@ -567,6 +579,8 @@
             lastRouteType = route.Route;
             lastRouteTypeLabel = route.Label;
             lastDecision = result.IsSuccess ? result.Value.Decision : null;
+            lastWorkMode = result.IsSuccess ? result.Value.WorkMode : null;
+            lastTransparency = result.IsSuccess ? result.Value.Transparency : null;
             RefreshRecentDecisions();
 
             var answerText = result.IsSuccess ? result.Value.Answer : $"تعذر الحصول على رد: {string.Join("، ", result.Errors)}";

@@ -18,7 +18,10 @@ public sealed record AiQueryResultDto(
     IReadOnlyList<string> ReferencedData,
     TimeSpan ResponseTime,
     string ProviderName,
-    RouteDecision? Decision = null
+    RouteDecision? Decision = null,
+    string? WorkMode = null,
+    string? Transparency = null,
+    bool Adjudicated = false
 );
 
 /// <summary>إعدادات AI.</summary>

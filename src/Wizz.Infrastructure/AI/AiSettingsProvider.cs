@@ -49,6 +49,24 @@ public sealed class AiSettingsProvider : IAiSettingsProvider
         }
     }
 
+    /// <summary>
+    /// مفتاح «التشارك السحابي» المستقل عن «النموذج السحابي». مغلق افتراضياً،
+    /// ولا يُبنى أي طلب سحابي يحمل ملخصاً مجهولاً إلا بعد تفعيله صراحةً.
+    /// </summary>
+    public bool CloudSharingEnabled
+    {
+        get => _state.CloudSharingEnabled;
+        set
+        {
+            lock (_gate)
+            {
+                if (_state.CloudSharingEnabled == value) return;
+                _state.CloudSharingEnabled = value;
+                Save();
+            }
+        }
+    }
+
     public string? PreferredLocalModel => _state.PreferredLocalModel ?? _configuration["AI:PreferredLocalModel"];
 
     public string LocalModelLevel
@@ -195,6 +213,7 @@ public sealed class AiSettingsProvider : IAiSettingsProvider
             var root = doc.RootElement;
             var state = new PersistedAiSettings();
             if (root.TryGetProperty("CloudEnabled", out var ce)) state.CloudEnabled = ce.GetBoolean();
+            if (root.TryGetProperty("CloudSharingEnabled", out var cse)) state.CloudSharingEnabled = cse.GetBoolean();
             if (root.TryGetProperty("LocalModelLevel", out var ll)) state.LocalModelLevel = ll.GetString() ?? "light";
             if (root.TryGetProperty("PreferredLocalModel", out var plm) && plm.ValueKind != JsonValueKind.Null) state.PreferredLocalModel = plm.GetString();
 
@@ -231,6 +250,7 @@ public sealed class AiSettingsProvider : IAiSettingsProvider
 internal sealed class PersistedAiSettings
 {
     public bool CloudEnabled { get; set; }
+    public bool CloudSharingEnabled { get; set; }
     public string LocalModelLevel { get; set; } = "light";
     public string? PreferredLocalModel { get; set; }
     public string CloudApiKey { get; set; } = "";

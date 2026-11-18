@@ -131,6 +131,7 @@ public sealed class ModelRouterTests : IAsyncLifetime
         }
 
         public bool IsCloudEnabled { get; set; }
+        public bool CloudSharingEnabled { get; set; }
         public string? PreferredLocalModel => null;
         public string LocalModelLevel { get; set; } = "light";
         public string? PreferredCloudProvider => null;

@@ -45,7 +45,10 @@ public sealed class QueryAiUseCase
                     Array.Empty<string>(),
                     sw.Elapsed,
                     routeResult.ProviderName,
-                    routeResult.Decision));
+                    routeResult.Decision,
+                    routeResult.WorkMode,
+                    routeResult.Transparency,
+                    routeResult.Adjudicated));
             }
 
             return Result<AiQueryResultDto>.Success(new AiQueryResultDto(

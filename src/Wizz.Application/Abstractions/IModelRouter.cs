@@ -39,7 +39,10 @@ public sealed record ModelRouteResult(
     TimeSpan ResponseTime,
     bool IsFallback,
     string? ErrorMessage = null,
-    RouteDecision? Decision = null);
+    RouteDecision? Decision = null,
+    string? WorkMode = null,
+    string? Transparency = null,
+    bool Adjudicated = false);
 
 /// <summary>مرشح مسار واحد: متاح أو لا، درجته، وسبب ظهوره/استبعاده.</summary>
 /// <param name="Route">المسار.</param>
@@ -88,6 +91,12 @@ public interface IAiSettingsProvider
 {
     /// <summary>هل الذكاء الاصطناعي السحابي مفعل من قبل المستخدم؟</summary>
     bool IsCloudEnabled { get; set; }
+
+    /// <summary>
+    /// هل يُسمح بإرسال ملخصات مجهولة لتحسين الصياغة والتحليل؟ مفتاح مستقل عن النموذج السحابي،
+    /// ومغلق افتراضياً. لا يُبنى أي طلب سحابي يحمل بيانات بدون تفعيله صراحةً بعد التنقيح.
+    /// </summary>
+    bool CloudSharingEnabled { get; set; }
 
     /// <summary>النموذج المحلي المفضل (يمكن أن يكون فارغاً للاختيار التلقائي).</summary>
     string? PreferredLocalModel { get; }

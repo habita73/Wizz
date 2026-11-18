@@ -7,6 +7,7 @@
 @inject Wizz.Application.Abstractions.IBackupService BackupService
 @inject Wizz.Application.Abstractions.IUnitOfWork UnitOfWork
 @inject Wizz.Application.Abstractions.IAiSettingsProvider AiSettings
+@using Wizz.Application.AI.Privacy
 @inject Wizz.Application.Abstractions.IDeviceCapabilityEvaluator DeviceEvaluator
 @inject Wizz.Application.Abstractions.IModelRouter ModelRouter
 @inject Wizz.Presentation.Pages.AI.AiMemoryStore MemoryStore
@@ -326,8 +327,8 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 d-flex align-items-center gap-2"><WizzIcon Icon="sparkles" Size="18" /><span>المساعد الذكي</span></h5>
                 <div class="d-flex align-items-center gap-2">
-                    <span class="badge @(aiCloudEnabled ? "bg-success" : "bg-secondary")">
-                        @(aiCloudEnabled ? "سحابي مجاني مفعل" : "محلي فقط")
+                    <span class="badge @(aiCloudEnabled && aiCloudSharingEnabled ? "bg-success" : "bg-secondary")">
+                        @(aiCloudEnabled && aiCloudSharingEnabled ? "سحابي مجاني مفعل" : "محلي فقط")
                     </span>
                     <button type="button" class="wizz-settings-toggle"
                             @onclick="ToggleAiCard"
@@ -343,13 +344,23 @@
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="aiCloud" @bind="aiCloudEnabled" />
                         <label class="form-check-label" for="aiCloud">
-                            تفعيل المساعد الذكي المجاني عبر الإنترنت (اختياري)
+                            تفعيل النموذج السحابي لتوليد النص (اختياري)
                         </label>
                     </div>
                     <div class="form-text">
-                        إذا فعّلت هذا الخيار، سيساعدك المساعد في الإجابة عن الأسئلة المعقدة باستخدام خدمة سحابية مجانية.
-                        إذا لم تُفعّله، سيعمل المساعد من بيانات متجرك محلياً دون إنترنت.
+                        يخصّ هذا المفتاح «من يُنشئ النص». لا يعمل وحده: يلزم أيضاً تفعيل «التشارك السحابي» أدناه،
+                        وإدخال مفتاح API، وتوفر اتصال بالإنترنت. إذا لم تُفعّله، سيعمل المساعد من بيانات متجرك محلياً دون إنترنت.
                     </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="aiCloudSharing" @bind="aiCloudSharingEnabled" />
+                        <label class="form-check-label" for="aiCloudSharing">
+                            تفعيل التشارك السحابي (ملخصات مجهولة لتحسين الصياغة والتحليل)
+                        </label>
+                    </div>
+                    <div class="form-text">@ApprovedPrivacyWording.Text</div>
                 </div>
 
                 @if (aiCloudEnabled)
@@ -459,7 +470,7 @@
 
                 <div class="alert alert-info">
                     <strong>مهم:</strong> البيع والمخزون والمال تعمل دائماً حتى لو كان المساعد الذكي غير متاح.
-                    لا تُرسل أي بيانات من متجرك إلى الإنترنت إلا إذا فعّلت الخيار أعلاه.
+                    @ApprovedPrivacyWording.Text
                 </div>
 
                 <div class="card card-body bg-light mt-3 border">
@@ -710,6 +721,7 @@
 
     // إعدادات الذكاء الاصطناعي
     private bool aiCloudEnabled = false;
+    private bool aiCloudSharingEnabled = false;
     private string localModelLevel = "light";
     private string cloudApiKey = "";
     private DeviceCapabilityAssessment? deviceAssessment;
@@ -881,6 +893,7 @@
     private async Task LoadAiSettings()
     {
         aiCloudEnabled = AiSettings.IsCloudEnabled;
+        aiCloudSharingEnabled = AiSettings.CloudSharingEnabled;
         cloudApiKey = AiSettings.GetCloudApiKey() ?? "";
         localModelLevel = AiSettings.LocalModelLevel;
         loadingDevice = true;
@@ -983,6 +996,7 @@
         }
 
         AiSettings.IsCloudEnabled = aiCloudEnabled;
+        AiSettings.CloudSharingEnabled = aiCloudSharingEnabled;
         if (!string.IsNullOrWhiteSpace(cloudApiKey))
         {
             AiSettings.SetCloudApiKey(cloudApiKey);

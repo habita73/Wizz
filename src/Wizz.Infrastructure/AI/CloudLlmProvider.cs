@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using Microsoft.Extensions.Logging;
 using Wizz.Application.Abstractions;
+using Wizz.Application.AI.Privacy;
 
 /// <summary>
 /// مزود سحابي مرن يعمل مع أي نقطة نهاية متوافقة مع واجهة OpenAI API
@@ -108,6 +109,14 @@ public sealed class CloudLlmProvider : ILlmProvider, IDisposable
 
     private async Task<string> SendRequestAsync(ChatCompletionRequest request, CancellationToken ct)
     {
+        // دفاع إضافي: لا يُرسل أي طلب قبل التأكد من خلوّ كل رسائله من البيانات المحظورة.
+        // الموجّه ينقّح السؤال أولاً، وهنا فحص نهائي مستقل قبل فتح الاتصال.
+        if (!CloudPromptGuard.IsSafeToSend(request.Messages.Select(m => m.Content).ToArray()))
+        {
+            _logger?.LogWarning("تم منع طلب سحابي يحتوي بيانات غير مسموح بتشاركها.");
+            throw new InvalidOperationException(CloudPromptGuard.BlockedMessage);
+        }
+
         var json = JsonSerializer.Serialize(request, new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
