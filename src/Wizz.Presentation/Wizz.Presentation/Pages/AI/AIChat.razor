@@ -247,6 +247,80 @@
                         <div class="small text-danger">@captureResult.Warning</div>
                     </div>
                 }
+
+                @if (decisionReport is not null)
+                {
+                    <div class="mt-3 border-top pt-3">
+                        <div class="small fw-bold mb-2">
+                            تقرير القرار
+                            <span class="badge bg-light text-dark border" title="ما جاء فيه منقول من حكم المدمج، ولا يزيد عليه دقة">@DecisionReportBuilder.EstimatedLabel</span>
+                        </div>
+
+                        @{
+                            var partCounts = decisionReport.PartLines
+                                .GroupBy(line => line.Part)
+                                .ToDictionary(group => group.Key, group => group.Count());
+                        }
+                        <div class="small mb-1">
+                            نوع الوثيقة (@DecisionReportBuilder.EstimatedLabel):
+                            <strong>@DecisionReportBuilder.TypeLabel(decisionReport.DocumentType)</strong>
+                        </div>
+                        <div class="small mb-1">
+                            أجزاء الوثيقة (تقسيم @DecisionReportBuilder.EstimatedLabel):
+                            @foreach (var part in new[]
+                                     {
+                                         EstimatedDocumentPart.Header,
+                                         EstimatedDocumentPart.Content,
+                                         EstimatedDocumentPart.Footer,
+                                         EstimatedDocumentPart.Unclassified
+                                     })
+                            {
+                                <span class="ms-2">@DecisionReportBuilder.PartLabel(part): @partCounts.GetValueOrDefault(part)</span>
+                            }
+                        </div>
+                        <div class="small mb-1">
+                            المحكّم: <strong>@decisionReport.AcceptedCount مقبول / @decisionReport.RejectedCount مرفوض</strong>
+                            — بدون كتابة — لا إرسال — المحكّم المدمج هو الحاكم
+                        </div>
+                        <div class="small mb-2">
+                            التصنيف:
+                            <span class="ms-2">مسجّلة معروفة: @decisionReport.RegisteredCount</span>
+                            <span class="ms-2">مجهولة: @decisionReport.UnknownCount</span>
+                            <span class="ms-2">مخالفة: @decisionReport.ConflictingCount</span>
+                        </div>
+
+                        @foreach (var category in new[]
+                                 {
+                                     GoodsDecisionCategory.Registered,
+                                     GoodsDecisionCategory.Unknown,
+                                     GoodsDecisionCategory.Conflicting
+                                 })
+                        {
+                            var group = decisionReport.Goods.Where(item => item.Category == category).ToList();
+                            if (group.Count == 0) continue;
+                            <div class="small fw-bold mt-2">
+                                @DecisionReportBuilder.CategoryLabel(category) (@group.Count)
+                                <span class="fw-normal text-muted">— @DecisionReportBuilder.ActionLabel(category)</span>
+                            </div>
+                            <ul class="small mb-0 ps-3">
+                                @foreach (var good in group)
+                                {
+                                    <li>
+                                        <span class="fw-semibold">@good.Name</span>
+                                        <span class="text-muted">— @good.Price</span>
+                                        <span class="ms-1">@good.Verdict</span>
+                                    </li>
+                                }
+                            </ul>
+                        }
+
+                        @if (decisionReport.UnknownCount > 0 || decisionReport.ConflictingCount > 0)
+                        {
+                            <div class="small text-danger mt-2">تنبيه: راجع يدويًا قبل أي اعتماد.</div>
+                        }
+                        <div class="small text-muted mt-1">التقرير للعرض المؤقت فقط، ولا يُحتفظ به بعد إغلاق البطاقة.</div>
+                    </div>
+                }
             </div>
         </div>
     </div>
@@ -369,6 +443,7 @@
     // إدخال التعرّف المحلي — حالة منفصلة عن المحادثة، لا تمرّ عبر ModelRouter
     private string captureInput = "";
     private DocumentCaptureResult? captureResult;
+    private DecisionReport? decisionReport;
     private bool capturing;
     private string? captureError;
     private IBrowserFile? captureImage;
@@ -892,10 +967,12 @@
         {
             captureResult = await CaptureService.CaptureAsync(
                 new DocumentCaptureRequest(captureInput.Trim()));
+            decisionReport = DecisionReportBuilder.Build(captureInput.Trim(), captureResult.Adjudication);
         }
         catch (Exception ex)
         {
             captureResult = null;
+            decisionReport = null;
             captureError = $"تعذّر تحكيم النص: {ex.Message}";
         }
         finally
@@ -934,12 +1011,14 @@
             if (!result.ReaderAvailable)
             {
                 captureResult = null;
+                decisionReport = null;
                 captureError = result.UnavailableReason ?? "قارئ النص غير متاح على هذا الجهاز؛ استخدم الإدخال اليدوي.";
                 return;
             }
 
             captureInput = result.RecognizedText;
             captureResult = result.Adjudication;
+            decisionReport = DecisionReportBuilder.Build(result.RecognizedText, captureResult.Adjudication);
             if (string.IsNullOrWhiteSpace(result.RecognizedText))
             {
                 captureError = "لم يستخرج القارئ نصًا من الصورة.";
@@ -948,6 +1027,7 @@
         catch (Exception ex)
         {
             captureResult = null;
+            decisionReport = null;
             captureError = $"تعذّت قراءة الصورة: {ex.Message}";
         }
         finally
