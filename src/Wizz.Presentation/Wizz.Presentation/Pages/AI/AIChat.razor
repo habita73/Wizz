@@ -9,6 +9,8 @@
 @using Wizz.Application.AI.Routing
 @inject Wizz.Application.AI.QueryAiUseCase QueryAiUseCase
 @inject DocumentCaptureService CaptureService
+@inject IOcrTextReader OcrReader
+@inject OcrDocumentCaptureService OcrCaptureService
 @inject Wizz.Application.UseCases.Store.GetStoreSettingsUseCase StoreSettings
 @inject Wizz.Application.Abstractions.IModelRouter ModelRouter
 @inject AiHistoryStore HistoryStore
@@ -184,7 +186,8 @@
             </div>
             <div class="card-body">
                 <p class="small text-muted mb-2">
-                    الصق هنا نصاً مستخرجاً محلياً من صورة أو مستند. يُحوَّل إلى مرشّحات، ثم يحكّمها المدمج مقابل منتجات متجرك.
+                    الصق هنا نصاً مستخرجاً محلياً من صورة أو مستند، أو ارفع صورة لتُقرأ بقرة التعرف المدمجة في Windows.
+                    النص يُحوَّل إلى مرشّحات، ثم يحكّمها المدمج مقابل منتجات متجرك.
                     لا يُرسل أي شيء للخارج، ولا تُكتب أي بيانات، ولا يتأثر توجيه الأسئلة.
                 </p>
                 <textarea class="form-control" rows="3" @bind="captureInput"
@@ -197,6 +200,13 @@
                     }
                     تحكيم النص
                 </button>
+
+                <div class="mt-3 border-top pt-3">
+                    <div class="small fw-bold mb-1">قراءة صورة محليًا</div>
+                    <InputFile OnChange="OnCaptureImageSelectedAsync" accept="image/png,image/jpeg,image/webp"
+                               class="form-control form-control-sm" disabled="@capturing" />
+                    <div class="small mt-1 @(ocrReaderSupported ? "text-success" : "text-muted")">@ocrReaderStatus</div>
+                </div>
 
                 @if (!string.IsNullOrWhiteSpace(captureError))
                 {
@@ -361,9 +371,17 @@
     private DocumentCaptureResult? captureResult;
     private bool capturing;
     private string? captureError;
+    private IBrowserFile? captureImage;
+    private bool ocrReaderSupported;
+    private string ocrReaderStatus = "";
 
     protected override async Task OnInitializedAsync()
     {
+        ocrReaderSupported = OcrReader.IsSupported;
+        ocrReaderStatus = ocrReaderSupported
+            ? "قارئ الصور متاح على هذا الجهاز."
+            : "قارئ الصور غير متاح؛ الإدخال اليدوي هو المسار المتاح.";
+
         await LoadStoreNameAsync();
         await LoadRoutePriorityAsync();
         await RefreshStatus();
@@ -879,6 +897,58 @@
         {
             captureResult = null;
             captureError = $"تعذّر تحكيم النص: {ex.Message}";
+        }
+        finally
+        {
+            capturing = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>يستقبل صورة مختارة محليًا ثم يمرّرها للقارئ والمحكّم دون إرسال أو كتابة.</summary>
+    private async Task OnCaptureImageSelectedAsync(InputFileChangeEventArgs e)
+    {
+        captureImage = e.File;
+        if (captureImage is null) return;
+        await RunImageCaptureAsync();
+    }
+
+    /// <summary>يقرأ الصورة بقرة Windows، ثم يعرض حكم المدمج على النص المستخرج فقط.</summary>
+    private async Task RunImageCaptureAsync()
+    {
+        if (capturing || captureImage is null) return;
+
+        capturing = true;
+        captureError = null;
+        StateHasChanged();
+
+        try
+        {
+            await using var buffer = new MemoryStream();
+            await using (var input = captureImage.OpenReadStream(OcrDocumentCaptureService.MaxImageBytes))
+            {
+                await input.CopyToAsync(buffer);
+            }
+
+            var result = await OcrCaptureService.CaptureAsync(buffer.ToArray());
+            if (!result.ReaderAvailable)
+            {
+                captureResult = null;
+                captureError = result.UnavailableReason ?? "قارئ النص غير متاح على هذا الجهاز؛ استخدم الإدخال اليدوي.";
+                return;
+            }
+
+            captureInput = result.RecognizedText;
+            captureResult = result.Adjudication;
+            if (string.IsNullOrWhiteSpace(result.RecognizedText))
+            {
+                captureError = "لم يستخرج القارئ نصًا من الصورة.";
+            }
+        }
+        catch (Exception ex)
+        {
+            captureResult = null;
+            captureError = $"تعذّت قراءة الصورة: {ex.Message}";
         }
         finally
         {

@@ -144,6 +144,9 @@ builder.Services.AddScoped<BuiltInAssistant>(sp => new BuiltInAssistant(
 builder.Services.AddScoped<QueryAiUseCase>();
 // طبقة إدخال ناتج التعرّف — محلية بالكامل، للعرض فقط، ولا تمرّ عبر موجه النماذج
 builder.Services.AddScoped<Wizz.Application.AI.Perception.DocumentCaptureService>();
+// قارئ نصوص الصور: قرة Windows المدمجة، ثم نفس المحكّم المدمج بلا كتابة ولا إرسال
+builder.Services.AddScoped<Wizz.Application.AI.Perception.IOcrTextReader, Wizz.Presentation.Services.WindowsOcrTextReader>();
+builder.Services.AddScoped<Wizz.Application.AI.Perception.OcrDocumentCaptureService>();
 builder.Services.AddScoped<Wizz.Presentation.Pages.AI.AiHistoryStore>();
 
 // ذاكرة المحادثة والتفضيلات (لكل جلسة Blazor) — تُحفظ في localStorage عبر AiMemoryStore
