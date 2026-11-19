@@ -51,11 +51,59 @@ public sealed class WindowsOcrTextReader : IOcrTextReader
             using var bitmap = await decoder.GetSoftwareBitmapAsync();
             var recognized = await engine.RecognizeAsync(bitmap);
 
-            return OcrReadResult.Success(recognized.Text, "ar");
+            // على بعض إصدارات Windows لا يضع OcrResult.Text فواصل بين الأسطر،
+            // فيُدمج الوصل كله في سطر واحد. نعيد بناء الأسطر من مواضع الكلمات محليًا.
+            return OcrReadResult.Success(ReconstructRows(recognized), "ar");
         }
         catch (Exception ex)
         {
             return OcrReadResult.Unavailable($"تعذّت قراءة الصورة محليًا: {ex.Message}");
         }
     }
+
+    /// <summary>
+    /// يجمع الكلمات ذات المستوى الأفقي القريب في سطر واحد، ويرتّبها من اليمين إلى اليسار،
+    /// ثم يفصل الأسطر بفاصل صريح. لا يضيف نصًا ولا يغيّر الكلمات، بل يستعيد بنية الصفحة فقط.
+    /// </summary>
+    private static string ReconstructRows(OcrResult result)
+    {
+        var words = result.Lines
+            .SelectMany(line => line.Words)
+            .Select(word => new WordBox(
+                word.Text,
+                (float)word.BoundingRect.X,
+                (float)(word.BoundingRect.Y + word.BoundingRect.Height / 2)))
+            .Where(word => !string.IsNullOrWhiteSpace(word.Text))
+            .OrderBy(word => word.CenterY)
+            .ThenByDescending(word => word.Left)
+            .ToList();
+
+        if (words.Count == 0) return string.Empty;
+
+        var rows = new List<string>();
+        var current = new List<WordBox> { words[0] };
+        var rowY = words[0].CenterY;
+
+        void Flush()
+        {
+            if (current.Count == 0) return;
+            rows.Add(string.Join(' ', current.Select(word => word.Text)));
+            current = new List<WordBox>();
+        }
+
+        foreach (var word in words.Skip(1))
+        {
+            if (Math.Abs(word.CenterY - rowY) > 16f)
+            {
+                Flush();
+                rowY = word.CenterY;
+            }
+            current.Add(word);
+        }
+        Flush();
+
+        return string.Join('\n', rows);
+    }
+
+    private sealed record WordBox(string Text, float Left, float CenterY);
 }

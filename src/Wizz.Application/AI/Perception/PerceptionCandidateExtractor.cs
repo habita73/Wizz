@@ -14,10 +14,16 @@ public static class PerceptionCandidateExtractor
         @"(?<price>\d+(?:[.,]\d{1,2})?)",
         RegexOptions.Compiled);
 
+    // نمط أوسع للصفوف المكتظة: يلتقط الكميات مثل 1.000 لاستبعادها من الأسعار.
+    private static readonly Regex DenseNumberPattern = new(
+        @"\d+(?:[.,]\d+)?",
+        RegexOptions.Compiled);
+
     private static readonly string[] LabelWords =
     {
         "سعر", "السعر", "ثمن", "الثمن", "التمن", "بشحال", "شحال", "اسم", "الاسم", "منتج", "المنتج",
-        "مادة", "المادة", "المجموع", "الاجمالي", "الإجمالي", "قطعه", "قطعة", "وحده", "وحدة"
+        "مادة", "المادة", "المجموع", "الاجمالي", "الإجمالي", "قطعه", "قطعة", "وحده", "وحدة",
+        "كغ", "حبه", "حبة", "علبه", "علبة", "الكميه", "الكمية", "الوحده", "الوحدة"
     };
 
     private static readonly char[] TrimChars = { ' ', '\t', '*', '-', '•', ':', '؛', '|', '.', '،' };
@@ -41,6 +47,18 @@ public static class PerceptionCandidateExtractor
             {
                 result.AddRange(ExtractNumberFirstLine(line, source));
                 continue;
+            }
+
+            // صفوف الوصولات المكتظة قد تحوي أكثر من رقم (كمية وسعر وحدة ومجموع سطر).
+            // نُنتج مرشّحات لكل صيغة اسم محتملة وكل سعر، والمدمج وحده يقرّر أيّها يُعتمد.
+            if (DenseNumberPattern.Matches(line).Count > 1)
+            {
+                var dense = ExtractDenseLine(line, source);
+                if (dense.Count > 0)
+                {
+                    result.AddRange(dense);
+                    continue;
+                }
             }
 
             // النمط المعتاد (الاسم ثم السعر) — سلوكه محفوظ كما كان تمامًا.
@@ -98,6 +116,53 @@ public static class PerceptionCandidateExtractor
         return result;
     }
 
+    /// <summary>
+    /// يعالج صفًا يضم أكثر من رقم. الكميات (ذات الخانات العشرية الثلاث) تُستبعد،
+    /// ويُكوَّن مرشّح للاسم الكامل ولكل كلمة مفردة مقابل كل سعر محتمل.
+    /// لا يُختلق اسم ولا رقم، والمدمج وحده يحكم على المرشّحات.
+    /// </summary>
+    private static IReadOnlyList<PerceptionCandidate> ExtractDenseLine(string line, PerceptionSource source)
+    {
+        var matches = DenseNumberPattern.Matches(line);
+        var prices = new List<decimal>();
+        foreach (Match match in matches)
+        {
+            if (!IsPriceToken(match.Value)) continue;
+            if (!TryParsePrice(match.Value, out var price)) continue;
+            if (!prices.Contains(price)) prices.Add(price);
+        }
+        if (prices.Count == 0) return Array.Empty<PerceptionCandidate>();
+
+        var withoutNumbers = line;
+        for (var i = matches.Count - 1; i >= 0; i--)
+        {
+            withoutNumbers = withoutNumbers.Remove(matches[i].Index, matches[i].Length);
+        }
+
+        var tokens = CleanTokens(withoutNumbers);
+        if (tokens.Count == 0) return Array.Empty<PerceptionCandidate>();
+
+        var names = new List<string> { string.Join(' ', tokens) };
+        names.AddRange(tokens.Where(t => t.Length >= 2));
+
+        var result = new List<PerceptionCandidate>();
+        foreach (var name in names.Distinct(StringComparer.Ordinal))
+        {
+            foreach (var price in prices)
+            {
+                if (result.Count >= 24) return result;
+                result.Add(new PerceptionCandidate(name, price, line, 0.8, source));
+            }
+        }
+        return result;
+    }
+
+    private static bool IsPriceToken(string raw)
+    {
+        var separator = raw.IndexOfAny(new[] { '.', ',' });
+        return separator < 0 || raw.Length - separator - 1 <= 2;
+    }
+
     private static bool TryParsePrice(string raw, out decimal price) =>
         decimal.TryParse(
             raw.Replace(',', '.'),
@@ -107,14 +172,15 @@ public static class PerceptionCandidateExtractor
 
     private static string? CleanName(string segment)
     {
-        var tokens = segment
+        var name = string.Join(' ', CleanTokens(segment)).Trim(TrimChars);
+        return name.Length == 0 ? null : name;
+    }
+
+    private static IReadOnlyList<string> CleanTokens(string segment) =>
+        segment
             .Split(new[] { ' ', '\t', '-', '|', '/' }, StringSplitOptions.RemoveEmptyEntries)
             .Select(t => t.Trim(TrimChars))
             .Where(t => t.Length > 0 && !LabelWords.Contains(t, StringComparer.Ordinal))
-            .Where(t => !Regex.IsMatch(t, @"^\d"))
+            .Where(t => !t.Any(char.IsDigit))
             .ToList();
-
-        var name = string.Join(' ', tokens).Trim(TrimChars);
-        return name.Length == 0 ? null : name;
-    }
 }

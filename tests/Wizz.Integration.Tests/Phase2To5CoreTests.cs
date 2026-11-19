@@ -232,6 +232,34 @@ public sealed class Phase2To5CoreTests
     }
 
     [Fact]
+    public void PerceptionExtractor_DenseReceiptRow_ProducesNameAndUnitPriceCandidates()
+    {
+        // صف وصل يضم كمية بثلاث خانات عشرية ثم سعر وحدة ثم مجموع سطر.
+        var candidates = PerceptionCandidateExtractor.Extract("تفاح أحمر كغ 1.000 12.5 450.00");
+
+        Assert.Contains(candidates, c => c.ProductName == "تفاح" && c.Price == 12.5m);
+        Assert.Contains(candidates, c => c.ProductName == "تفاح احمر" && c.Price == 450m);
+        Assert.DoesNotContain(candidates, c => c.Price == 1.0m);
+    }
+
+    [Fact]
+    public void PerceptionAdjudicator_DenseReceiptRow_AcceptsOnlyMatchingNameAndPrice()
+    {
+        var candidates = PerceptionCandidateExtractor.Extract("تفاح أحمر كغ 1.000 12.5 450.00");
+        var known = new Dictionary<string, IReadOnlyList<decimal>>
+        {
+            ["تفاح"] = new[] { 12.5m }
+        };
+
+        var result = PerceptionAdjudicator.Adjudicate(candidates, known);
+
+        Assert.Equal(1, result.AcceptedCount);
+        Assert.Contains(result.Candidates, v =>
+            v.Accepted && v.Candidate.ProductName == "تفاح" && v.Candidate.Price == 12.5m);
+        Assert.False(result.WrittenToDatabase);
+    }
+
+    [Fact]
     public void PerceptionAdjudicator_AcceptsKnownProductWithMatchingPrice_AndNeverWrites()
     {
         var candidates = PerceptionCandidateExtractor.Extract("حليب 12.5");
