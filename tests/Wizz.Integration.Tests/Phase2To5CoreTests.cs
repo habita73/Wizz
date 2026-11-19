@@ -198,6 +198,40 @@ public sealed class Phase2To5CoreTests
     }
 
     [Fact]
+    public void PerceptionExtractor_WindowsOcrNumberFirst_MapsEachPriceToItsFollowingName()
+    {
+        // نمط إخراج قرة Windows: الرقم قبل الاسم، وعدة منتجات في سطر واحد.
+        var candidates = PerceptionCandidateExtractor.Extract("12.5 حليب 5 خبز 150 تفاح");
+
+        Assert.Equal(3, candidates.Count);
+        Assert.Equal("حليب", candidates[0].ProductName);
+        Assert.Equal(12.5m, candidates[0].Price);
+        Assert.Equal("خبز", candidates[1].ProductName);
+        Assert.Equal(5m, candidates[1].Price);
+        Assert.Equal("تفاح", candidates[2].ProductName);
+        Assert.Equal(150m, candidates[2].Price);
+    }
+
+    [Fact]
+    public void PerceptionAdjudicator_WindowsOcrNumberFirst_AcceptsKnownAndRejectsUnknown()
+    {
+        var candidates = PerceptionCandidateExtractor.Extract("12.5 حليب 7 مجهول");
+        var known = new Dictionary<string, IReadOnlyList<decimal>>
+        {
+            ["حليب"] = new[] { 12.5m }
+        };
+
+        var result = PerceptionAdjudicator.Adjudicate(candidates, known);
+
+        Assert.Equal(1, result.AcceptedCount);
+        Assert.Equal(1, result.RejectedCount);
+        Assert.True(result.Candidates[0].Accepted);
+        Assert.False(result.Candidates[1].Accepted);
+        Assert.Equal(PerceptionAdjudicator.UnknownProductReason, result.Candidates[1].Reason);
+        Assert.False(result.WrittenToDatabase);
+    }
+
+    [Fact]
     public void PerceptionAdjudicator_AcceptsKnownProductWithMatchingPrice_AndNeverWrites()
     {
         var candidates = PerceptionCandidateExtractor.Extract("حليب 12.5");

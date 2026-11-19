@@ -5,8 +5,8 @@ using System.Text.RegularExpressions;
 
 /// <summary>
 /// يستخرج «مرشّحات» من نص ناتج عن تعرّف سابق (OCR/وصف صورة) بوسائل .NET القياسية فقط،
-/// دون أي مكتبة خارجية ودون أي اتصال أو كتابة. النص يُفترض أنه مُقدَّم من طبقة التقاط محلية؛
-/// هذا الصنف لا يلتقط صورة ولا يرسلها، بل يحوّل النص إلى مرشّحات خام يَرى المدمج وحده حكمها.
+/// دون أي مكتبة خارجية ودون أي اتصال أو كتابة. النص يُفترض أن يُقدَّم من طبقة التقاط محلية؛
+/// هذا الصنف لا يلتقط صورة ولا يرسلها، بل يحوّل النص إلى مرشّحات خام يرى المدمج وحده حكمها.
 /// </summary>
 public static class PerceptionCandidateExtractor
 {
@@ -34,13 +34,19 @@ public static class PerceptionCandidateExtractor
             var line = rawLine.Trim();
             if (line.Length == 0) continue;
 
-            var priceMatch = PricePattern.Match(line);
+            // قرة Windows تُخرج النص بترتيبه البصري: الرقم قبل الاسم، وقد تجمع عدة منتجات في سطر واحد
+            // (مثال: "12.5 حليب 5 خبز 150 تفاح"). نعالج هذا النمط دون تغيير نمط الإدخال اليدوي.
+            var firstPrice = PricePattern.Match(line);
+            if (firstPrice.Success && firstPrice.Index == 0)
+            {
+                result.AddRange(ExtractNumberFirstLine(line, source));
+                continue;
+            }
+
+            // النمط المعتاد (الاسم ثم السعر) — سلوكه محفوظ كما كان تمامًا.
+            var priceMatch = firstPrice;
             decimal? price = null;
-            if (priceMatch.Success && decimal.TryParse(
-                    priceMatch.Groups["price"].Value.Replace(',', '.'),
-                    NumberStyles.AllowDecimalPoint,
-                    CultureInfo.InvariantCulture,
-                    out var parsed))
+            if (priceMatch.Success && TryParsePrice(priceMatch.Value, out var parsed))
             {
                 price = parsed;
             }
@@ -65,6 +71,39 @@ public static class PerceptionCandidateExtractor
 
         return result;
     }
+
+    /// <summary>
+    /// يعالج سطرًا يبدأ برقم (نمط قرة Windows): يقرن كل رقم بالقطعة التي تليه حتى الرقم التالي،
+    /// فيُنتج مرشّحًا لكل منتج. القطعة بلا اسم تُتجاهل — لا يُختلق رقم ولا اسم.
+    /// </summary>
+    private static IReadOnlyList<PerceptionCandidate> ExtractNumberFirstLine(string line, PerceptionSource source)
+    {
+        var result = new List<PerceptionCandidate>();
+        var matches = PricePattern.Matches(line);
+
+        for (var i = 0; i < matches.Count; i++)
+        {
+            var priceMatch = matches[i];
+            if (!TryParsePrice(priceMatch.Value, out var price)) continue;
+
+            var nameStart = priceMatch.Index + priceMatch.Length;
+            var nameEnd = i + 1 < matches.Count ? matches[i + 1].Index : line.Length;
+            var nameSegment = line[nameStart..nameEnd];
+            var productName = CleanName(nameSegment);
+            if (productName is null) continue;
+
+            result.Add(new PerceptionCandidate(productName, price, line, 1.0, source));
+        }
+
+        return result;
+    }
+
+    private static bool TryParsePrice(string raw, out decimal price) =>
+        decimal.TryParse(
+            raw.Replace(',', '.'),
+            NumberStyles.AllowDecimalPoint,
+            CultureInfo.InvariantCulture,
+            out price);
 
     private static string? CleanName(string segment)
     {
