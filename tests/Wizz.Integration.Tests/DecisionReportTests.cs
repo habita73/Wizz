@@ -206,6 +206,24 @@ public sealed class DecisionReportTests
     }
 
     [Fact]
+    public void DecisionReport_DoesNotTreatDateLineAsProduct()
+    {
+        var candidates = new[]
+        {
+            new PerceptionCandidate("العاصمه الجزاير ماي", 1945m, "العاصمة 1945 الجزائر - 08 ماي", 0.8, PerceptionSource.Embedded),
+            new PerceptionCandidate("حليب", 12.5m, "حليب 12.5", 1, PerceptionSource.Embedded)
+        };
+        var adjudication = PerceptionAdjudicator.Adjudicate(
+            candidates, new Dictionary<string, IReadOnlyList<decimal>> { ["حليب"] = new[] { 12.5m } });
+
+        var report = DecisionReportBuilder.Build("العاصمة 1945 الجزائر - 08 ماي\nحليب 12.5", adjudication);
+
+        Assert.NotEqual(EstimatedDocumentPart.Content, report.PartLines[0].Part);
+        Assert.Single(report.Goods);
+        Assert.Equal("حليب", report.Goods[0].Name);
+    }
+
+    [Fact]
     public void DecisionReport_SuggestsNearKnownNamesWithoutChangingVerdict()
     {
         var candidates = new[]
