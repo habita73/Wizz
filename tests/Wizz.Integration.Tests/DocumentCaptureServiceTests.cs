@@ -120,6 +120,46 @@ public sealed class DocumentCaptureServiceTests : IAsyncLifetime
         Assert.False(result.WrittenToDatabase);
     }
 
+    [Fact]
+    public async Task Capture_DenseRow_JudgesOnePrimaryAndKeepsOtherReadingsUnjudged()
+    {
+        await SeedProductAsync("تفاح", 12.5m, 10m);
+
+        var result = await _service.CaptureAsync(
+            new DocumentCaptureRequest("تفاح أحمر كغ 1.000 12.5 450.00"));
+
+        // صف مكتظ واحد ← مرشّح أساسي واحد يدخل التحكيم، ويُختار الاسم المعروف من بيانات المتجر.
+        var verdict = Assert.Single(result.Adjudication.Candidates);
+        Assert.Equal("تفاح", verdict.Candidate.ProductName);
+        Assert.True(verdict.Accepted);
+        Assert.Equal(PerceptionAdjudicator.AcceptedReason, verdict.Reason);
+
+        // بقية الصيغ محفوظة للمراجعة بلا حكم، ولا تدخل أعداد المدمج.
+        Assert.NotEmpty(result.Adjudication.PossibleReadings);
+        Assert.DoesNotContain(result.Adjudication.PossibleReadings,
+            item => item.ProductName == "تفاح" && item.Price == 12.5m);
+        Assert.Equal(1, result.Adjudication.AcceptedCount);
+        Assert.Equal(0, result.Adjudication.RejectedCount);
+        Assert.False(result.WrittenToDatabase);
+    }
+
+    [Fact]
+    public async Task Capture_NumberFirstRow_KeepsEveryProductAsPrimary()
+    {
+        await SeedProductAsync("حليب", 12.5m, 10m);
+        await SeedProductAsync("خبز", 5m, 4m);
+
+        var result = await _service.CaptureAsync(
+            new DocumentCaptureRequest("12.5 حليب 5 خبز 150 تفاح"));
+
+        // هذا النمط منتجات مختلفة فعلًا في سطر واحد؛ لا يُسقط منها شيء.
+        Assert.Equal(3, result.Adjudication.Candidates.Count);
+        Assert.Empty(result.Adjudication.PossibleReadings);
+        Assert.Equal(2, result.Adjudication.AcceptedCount);
+        Assert.Equal(1, result.Adjudication.RejectedCount);
+        Assert.False(result.WrittenToDatabase);
+    }
+
     private async Task<Product> SeedProductAsync(string name, decimal retail, decimal wholesale)
     {
         var product = new Product(name, retail, wholesale, false, $"BAR-{Guid.NewGuid():N}");

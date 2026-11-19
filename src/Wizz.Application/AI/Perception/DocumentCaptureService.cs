@@ -47,9 +47,12 @@ public sealed class DocumentCaptureService
             text = text[..MaxTextLength];
         }
 
-        var candidates = PerceptionCandidateExtractor.Extract(text, request.Source);
+        var groups = PerceptionCandidateExtractor.ExtractGroups(text, request.Source);
         var known = await BuildKnownProductsAsync(ct);
-        var adjudication = PerceptionAdjudicator.Adjudicate(candidates, known);
+        var (primaries, possibleReadings) =
+            PerceptionCandidateExtractor.SelectPrimaryReadings(groups, known);
+        var adjudication = PerceptionAdjudicator.Adjudicate(primaries, known)
+            with { PossibleReadings = possibleReadings };
 
         return new DocumentCaptureResult(adjudication, PerceptionAdjudicator.NoWriteReason);
     }

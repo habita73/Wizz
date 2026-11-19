@@ -47,4 +47,10 @@ public sealed record PerceptionResult(
     int AcceptedCount,
     int RejectedCount,
     string Summary,
-    bool WrittenToDatabase = false);
+    bool WrittenToDatabase = false)
+{
+    /// <summary>
+    /// قراءات بديلة للصفوف المكتظة لم يُحكَم عليها؛ للمراجعة فقط، ولا تُعدّ أصنافًا ولا تدخل العدد.
+    /// </summary>
+    public IReadOnlyList<PerceptionCandidate> PossibleReadings { get; init; } = Array.Empty<PerceptionCandidate>();
+}

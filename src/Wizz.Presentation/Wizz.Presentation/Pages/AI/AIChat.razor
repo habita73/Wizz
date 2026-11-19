@@ -244,6 +244,27 @@
                                 </table>
                             </div>
                         }
+                        @if (captureResult.Adjudication.PossibleReadings.Count > 0)
+                        {
+                            <details class="small mt-2">
+                                <summary class="text-muted">
+                                    قراءات محتملة للمراجعة (@captureResult.Adjudication.PossibleReadings.Count)
+                                    — لم يحكم عليها المدمج
+                                </summary>
+                                <ul class="small mb-1 ps-3 mt-1">
+                                    @foreach (var alt in captureResult.Adjudication.PossibleReadings)
+                                    {
+                                        <li>
+                                            @(alt.ProductName ?? "—") — @(alt.Price?.ToString("0.##") ?? "—")
+                                            <span class="text-muted">(من السطر: @alt.RawLine)</span>
+                                        </li>
+                                    }
+                                </ul>
+                                <div class="text-muted mb-1">
+                                    صيغ بديلة للسطر نفسه، لم تُحكَّم ولا تُعدّ أصنافًا؛ راجعها يدويًا قبل أي اعتماد.
+                                </div>
+                            </details>
+                        }
                         <div class="small text-danger">@captureResult.Warning</div>
                     </div>
                 }

@@ -31,7 +31,28 @@ public static class PerceptionCandidateExtractor
     /// <summary>يحوّل نص التعرّف إلى مرشّحات. سطر فارغ أو بلا محتوى مُفيد يُتجاهل.</summary>
     public static IReadOnlyList<PerceptionCandidate> Extract(string? recognizedText, PerceptionSource source = PerceptionSource.Embedded)
     {
-        var result = new List<PerceptionCandidate>();
+        // السلوك القديم محفوظ لكل من يستدعي هذا الأسلوب: كل القراءات تُعاد كما كانت.
+        // التطبيق يستخدم ExtractGroups لفصل القراءة الأساسية عن القراءات المحتملة.
+        return ExtractGroups(recognizedText, source)
+            .SelectMany(group => group.Candidates)
+            .ToList();
+    }
+
+    /// <summary>قراءات سطر واحد: مرشّحاته كلها، مع وسم الصف المكتظ الذي يُنتج صيغًا متعددة.</summary>
+    public sealed record PerceptionReadingGroup(
+        string RawLine,
+        bool IsDense,
+        IReadOnlyList<PerceptionCandidate> Candidates);
+
+    /// <summary>
+    /// يجمع مرشّحات كل سطر على حدة. الصف المكتظ وحده هو الذي يحوي صيغًا متعددة لنفس السطر؛
+    /// نمط «رقم ثم اسم» يمثل منتجات مختلفة، فتبقى مرشّحاته كلها أساسية ولا يُسقط منها شيء.
+    /// </summary>
+    public static IReadOnlyList<PerceptionReadingGroup> ExtractGroups(
+        string? recognizedText,
+        PerceptionSource source = PerceptionSource.Embedded)
+    {
+        var result = new List<PerceptionReadingGroup>();
         if (string.IsNullOrWhiteSpace(recognizedText)) return result;
 
         var normalized = TextNormalizer.Normalize(recognizedText);
@@ -49,18 +70,19 @@ public static class PerceptionCandidateExtractor
             // لا يُقرأ الرقم الزائد في الكمية (1.000 ← 1.00 + 0) سعرًا مستقلًا.
             if (firstPrice.Success && firstPrice.Index == 0 && IsNumberFirstList(line, denseMatches))
             {
-                result.AddRange(ExtractNumberFirstLine(line, source));
+                result.Add(new PerceptionReadingGroup(line, false, ExtractNumberFirstLine(line, source)));
                 continue;
             }
 
             // صفوف الوصولات المكتظة قد تحوي أكثر من رقم (كمية وسعر وحدة ومجموع سطر).
-            // نُنتج مرشّحات لكل صيغة اسم محتملة وكل سعر، والمدمج وحده يقرّر أيّها يُعتمد.
+            // نُنتج مرشّحات لكل صيغة اسم محتملة وكل سعر، ثم يختار باني العرض مرشّحًا أساسيًا واحدًا
+            // ويحتفظ بالباقي كقراءات محتملة؛ المحكّم وحده يصدر الحكم على الأساسي.
             if (denseMatches.Count > 1)
             {
                 var dense = ExtractDenseLine(line, source);
                 if (dense.Count > 0)
                 {
-                    result.AddRange(dense);
+                    result.Add(new PerceptionReadingGroup(line, true, dense));
                     continue;
                 }
             }
@@ -83,15 +105,65 @@ public static class PerceptionCandidateExtractor
                 ? 1.0
                 : productName is not null || price.HasValue ? 0.5 : 0.0;
 
-            result.Add(new PerceptionCandidate(
-                productName,
-                price,
-                line,
-                confidence,
-                source));
+            result.Add(new PerceptionReadingGroup(line, false, new[]
+            {
+                new PerceptionCandidate(productName, price, line, confidence, source)
+            }));
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// يختار مرشّحًا أساسيًا واحدًا لكل صف مكتظ، ويحتفظ ببقية الصيغ كقراءات محتملة للمراجعة.
+    /// يُفضَّل ما يطابق اسمه وسعره بيانات المتجر، ثم ما يطابق اسمه فقط، ثم أول قراءة. هذا اختيار عرض
+    /// من بيانات متاحة أصلًا، ولا يُصدر حكمًا جديدًا: المحكّم وحده يقرّر القبول بعد ذلك.
+    /// الصفوف غير المكتظة تبقى مرشّحاتها كلها أساسية.
+    /// </summary>
+    public static (IReadOnlyList<PerceptionCandidate> Primaries, IReadOnlyList<PerceptionCandidate> PossibleReadings)
+        SelectPrimaryReadings(
+            IReadOnlyList<PerceptionReadingGroup> groups,
+            IReadOnlyDictionary<string, IReadOnlyList<decimal>> knownProducts)
+    {
+        var primaries = new List<PerceptionCandidate>();
+        var possible = new List<PerceptionCandidate>();
+
+        foreach (var group in groups)
+        {
+            if (!group.IsDense || group.Candidates.Count <= 1)
+            {
+                primaries.AddRange(group.Candidates);
+                continue;
+            }
+
+            var primary = group.Candidates.FirstOrDefault(candidate =>
+                              IsKnownNameAndPrice(candidate, knownProducts))
+                          ?? group.Candidates.FirstOrDefault(candidate =>
+                              IsKnownName(candidate.ProductName, knownProducts))
+                          ?? group.Candidates[0];
+
+            primaries.Add(primary);
+            possible.AddRange(group.Candidates.Where(candidate => !ReferenceEquals(candidate, primary)));
+        }
+
+        return (primaries, possible);
+    }
+
+    private static bool IsKnownNameAndPrice(
+        PerceptionCandidate candidate,
+        IReadOnlyDictionary<string, IReadOnlyList<decimal>> knownProducts)
+    {
+        if (candidate.Price is not { } price || string.IsNullOrWhiteSpace(candidate.ProductName)) return false;
+        return knownProducts.TryGetValue(TextNormalizer.Normalize(candidate.ProductName), out var prices)
+               && prices.Contains(price);
+    }
+
+    private static bool IsKnownName(
+        string? productName,
+        IReadOnlyDictionary<string, IReadOnlyList<decimal>> knownProducts)
+    {
+        if (string.IsNullOrWhiteSpace(productName)) return false;
+        return knownProducts.ContainsKey(TextNormalizer.Normalize(productName));
     }
 
     /// <summary>
