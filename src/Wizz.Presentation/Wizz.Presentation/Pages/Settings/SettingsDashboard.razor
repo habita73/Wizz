@@ -14,6 +14,9 @@
 @inject CurrentUser CurrentUser
 @inject SafeAudit Audit
 @inject IJSRuntime JS
+@using Wizz.Application.Modules
+@inject Wizz.Application.UseCases.Modules.GetModulesUseCase GetModules
+@inject Wizz.Application.UseCases.Modules.SetModuleEnabledUseCase SetModuleEnabled
 
 <h2>
     <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -317,6 +320,93 @@
                         <tr><td>الترخيص</td><td class="text-end">MIT</td></tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- الوحدات الاختيارية -->
+    <div class="col-12" id="modules-settings">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 d-flex align-items-center gap-2">
+                    <WizzIcon Icon="settings" Size="18" />
+                    <span>الوحدات الاختيارية</span>
+                </h5>
+                <button type="button" class="wizz-settings-toggle"
+                        @onclick="ToggleModulesCard"
+                        aria-expanded="@(!IsCollapsed("modules") ? "true" : "false")"
+                        aria-controls="settings-card-modules"
+                        title="@(IsCollapsed("modules") ? "توسيع الوحدات الاختيارية" : "طي الوحدات الاختيارية")">
+                    <WizzIcon Icon="@(IsCollapsed("modules") ? "chevron-down" : "chevron-up")" Size="16" />
+                </button>
+            </div>
+            <div id="settings-card-modules" class="@CardBodyClass("modules")">
+                @if (moduleStatuses.Count == 0)
+                {
+                    <div class="alert alert-info mb-0">
+                        لا توجد وحدات اختيارية متاحة حالياً. ستظهر الوحدات هنا عند إضافتها.
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>الوحدة</th>
+                                    <th>المجموعة</th>
+                                    <th>الحالة</th>
+                                    <th>الاحتياجات</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var module in moduleStatuses)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="fw-semibold">@module.Descriptor.NameAr</div>
+                                            <div class="small text-muted">@module.Descriptor.DescriptionAr</div>
+                                            <div class="small text-muted">الإصدار @module.Descriptor.Version</div>
+                                        </td>
+                                        <td>@GroupText(module.Descriptor.Group)</td>
+                                        <td>
+                                            <span class="badge @(module.Enabled ? "bg-success" : "bg-secondary")">
+                                                @(module.Enabled ? "مفعّلة" : "معطّلة")
+                                            </span>
+                                            @if (module.Availability == ModuleAvailability.Unavailable)
+                                            {
+                                                <div class="small text-danger mt-1">@module.ReasonAr</div>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (module.Descriptor.RequirementsAr.Count == 0)
+                                            {
+                                                <span class="text-muted">لا شيء</span>
+                                            }
+                                            else
+                                            {
+                                                @string.Join(" · ", module.Descriptor.RequirementsAr)
+                                            }
+                                        </td>
+                                        <td>
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-@(module.Enabled ? "danger" : "primary")"
+                                                    disabled="@(module.Availability == ModuleAvailability.Unavailable)"
+                                                    @onclick="() => ToggleModuleAsync(module)">
+                                                @(module.Enabled ? "تعطيل" : "تفعيل")
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                <div class="alert alert-secondary py-2 small mt-3 mb-0">
+                    كل وحدة مطفأة افتراضياً. البيع يعمل دون أي وحدة، وتعطيل أي وحدة لا يحذف بياناتها.
+                    لا تظهر أسماء باقات أو أسعار هنا قبل اعتمادها.
+                </div>
             </div>
         </div>
     </div>
@@ -746,6 +836,9 @@
     private bool rememberContext = true;
     private bool allowInternetAccess;
 
+    // الوحدات الاختيارية — تُقرأ من الكتالوج المحلي القائم في التطبيق.
+    private IReadOnlyList<ModuleStatus> moduleStatuses = Array.Empty<ModuleStatus>();
+
     // طي بطاقات الإعدادات — حالة الصفحة فقط، ولا تُحفظ بين الجلسات.
     private readonly HashSet<string> collapsedCards = new();
 
@@ -753,6 +846,8 @@
     {
         canManageUsers = await CurrentUser.HasPermissionAsync(Permission.ManageUsers);
         canBackupRestore = await CurrentUser.HasPermissionAsync(Permission.BackupRestore);
+
+        moduleStatuses = GetModules.Execute();
 
         await LoadStore();
         if (canManageUsers) await LoadUsers();
@@ -797,6 +892,7 @@
         if (canManageUsers) yield return "users";
         if (canBackupRestore) yield return "backup";
         yield return "system";
+        yield return "modules";
         yield return "ai";
     }
 
@@ -821,6 +917,8 @@
 
     private void ToggleSystemCard() => ToggleCard("system");
 
+    private void ToggleModulesCard() => ToggleCard("modules");
+
     private void ToggleAiCard() => ToggleCard("ai");
 
     private void ExpandAllCards() => collapsedCards.Clear();
@@ -832,6 +930,48 @@
         {
             collapsedCards.Add(key);
         }
+    }
+
+    private static string GroupText(ModuleGroup group) => group switch
+    {
+        ModuleGroup.Sales => "بيع",
+        ModuleGroup.Data => "بيانات",
+        ModuleGroup.Documents => "مستندات",
+        ModuleGroup.Integrations => "تكاملات",
+        _ => "أخرى",
+    };
+
+    /// <summary>
+    /// تفعيل أو تعطيل وحدة. الصلاحية تُفحص هنا وفي صفحة الإعدادات،
+    /// والتغيير نفسه يُسجَّل في سجل التدقيق داخل حالة الاستخدام.
+    /// </summary>
+    private async Task ToggleModuleAsync(ModuleStatus module)
+    {
+        if (module.Availability == ModuleAvailability.Unavailable) return;
+
+        if (!await EnsurePermissionAsync(
+                Permission.ManageStoreSettings,
+                "محاولة تغيير حالة وحدة اختيارية دون صلاحية",
+                "Module",
+                module.Descriptor.Id))
+        {
+            return;
+        }
+
+        var result = await SetModuleEnabled.ExecuteAsync(
+            module.Descriptor.Id,
+            !module.Enabled,
+            await CurrentUser.IdAsync(),
+            await CurrentUser.UsernameAsync());
+
+        if (result.IsFailure)
+        {
+            await JS.InvokeVoidAsync("alert", string.Join("\n", result.Errors));
+            return;
+        }
+
+        moduleStatuses = GetModules.Execute();
+        StateHasChanged();
     }
 
     /// <summary>يحمّل تفضيلات المساعد المحفوظة محلياً.</summary>

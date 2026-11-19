@@ -8,9 +8,12 @@ using OllamaSharp;
 using System.Linq;
 using Wizz.Application.Abstractions;
 using Wizz.Application.AI;
+using Wizz.Application.Modules;
+using Wizz.Application.UseCases.Modules;
 using Wizz.Infrastructure.AI;
 using Wizz.Infrastructure.Data;
 using Wizz.Infrastructure.Devices;
+using Wizz.Infrastructure.Modules;
 using Wizz.Infrastructure.Repositories;
 using Wizz.Infrastructure.Services;
 
@@ -38,6 +41,14 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IStoreRepository, StoreRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IAuditLogger, AuditLogger>();
+
+        // الوحدات الاختيارية — كتالوج محلي ثابت وحالة محفوظة في ملف محلي.
+        // الوحدة المطفأة لا تُسجَّل خدماتها ولا تستهلك موارد الجهاز.
+        services.AddSingleton<IModuleStateStore>(_ => new ModuleStateStore());
+        services.AddSingleton(ModuleCatalog.Empty);
+        services.AddSingleton<IModuleGate, ModuleGate>();
+        services.AddScoped<GetModulesUseCase>();
+        services.AddScoped<SetModuleEnabledUseCase>();
 
         // Devices (Mock for MVP)
         services.AddSingleton<IBarcodeReader, MockScanner>();
