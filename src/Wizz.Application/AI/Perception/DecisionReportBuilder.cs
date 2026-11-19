@@ -102,6 +102,7 @@ public sealed record DecisionReportGood(
 /// <param name="ConflictingCount">عدد أصناف «مخالفة» في صفوف المحتوى.</param>
 /// <param name="AcceptedCount">عدد المقبول كما صدر عن المحكّم.</param>
 /// <param name="RejectedCount">عدد المرفوض كما صدر عن المحكّم.</param>
+/// <param name="NumericHints">احتمالات تصحيح الأرقام للمراجعة فقط؛ لم تدخل التحكيم ولا تغيّر النص.</param>
 /// <param name="WrittenToDatabase">يبقى <c>false</c> دائمًا.</param>
 public sealed record DecisionReport(
     EstimatedDocumentType DocumentType,
@@ -114,6 +115,7 @@ public sealed record DecisionReport(
     int ConflictingCount,
     int AcceptedCount,
     int RejectedCount,
+    IReadOnlyList<OcrNumericCleanup.Hint> NumericHints,
     bool WrittenToDatabase);
 
 /// <summary>
@@ -194,6 +196,9 @@ public static class DecisionReportBuilder
         var goods = BuildGoods(adjudication, partLines, lineIndexByText);
         var goodsCandidateCount = goods.Sum(item => item.CandidateCount);
 
+        // احتمالات رقمية للمراجعة فقط، مشتقّة من النص المقروء كما هو؛ لا تُمرَّر للمحكّم.
+        var numericHints = OcrNumericCleanup.Analyze(recognizedText).Hints;
+
         return new DecisionReport(
             documentType,
             partLines,
@@ -205,6 +210,7 @@ public static class DecisionReportBuilder
             goods.Count(item => item.Category == GoodsDecisionCategory.Conflicting),
             adjudication.AcceptedCount,
             adjudication.RejectedCount,
+            numericHints,
             adjudication.WrittenToDatabase);
     }
 

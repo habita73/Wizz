@@ -248,6 +248,33 @@ public sealed class DecisionReportTests
     }
 
     [Fact]
+    public void DecisionReport_CarriesNumericHintsWithoutChangingAdjudicatorVerdict()
+    {
+        // التعرف قرأ أحد الرقمين مشوّشًا، فالمرشّح بلا سعر مقروء والاحتمال المقترح للمراجعة فقط.
+        var candidates = new[]
+        {
+            new PerceptionCandidate("حليب", null, "حليب 12.5 I.OOO", 0.5, PerceptionSource.Embedded)
+        };
+        var known = new Dictionary<string, IReadOnlyList<decimal>> { ["حليب"] = new[] { 12.5m } };
+        var adjudication = PerceptionAdjudicator.Adjudicate(candidates, known);
+
+        var report = DecisionReportBuilder.Build("حليب 12.5 I.OOO", adjudication);
+
+        var hint = Assert.Single(report.NumericHints);
+        Assert.Equal("I.OOO", hint.Original);
+        Assert.Equal("1.000", hint.Suggested);
+        Assert.Equal("حليب 12.5 I.OOO", hint.Line);
+
+        // الاحتمال لم يدخل التحكيم: الحكم والعددان كما صدرا عن المدمج، والنص الأصلي ظاهر في التقرير.
+        Assert.Equal(PerceptionAdjudicator.MissingPriceReason, report.Goods[0].Verdict);
+        Assert.Equal(adjudication.AcceptedCount, report.AcceptedCount);
+        Assert.Equal(adjudication.RejectedCount, report.RejectedCount);
+        Assert.Contains("I.OOO", report.Goods[0].SourceLine);
+        Assert.Contains("12.5", report.Goods[0].SourceLine);
+        Assert.False(report.WrittenToDatabase);
+    }
+
+    [Fact]
     public void DecisionReport_StatesLimitsOfAvailabilityAndNameMatching()
     {
         Assert.Contains("لا يعني توفر كمية في المخزون", DecisionReportBuilder.StockNote);

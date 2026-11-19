@@ -368,6 +368,30 @@
                             </ul>
                         }
 
+                        @if (decisionReport.NumericHints.Count > 0)
+                        {
+                            <div class="small fw-bold mt-3">احتمالات تصحيح الأرقام (للمراجعة فقط)</div>
+                            <div class="small text-muted mb-1">@OcrNumericCleanup.Note</div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped mb-1">
+                                    <thead>
+                                        <tr><th>السطر</th><th>كما قرئ</th><th>الاحتمال</th><th>السطر الأصلي</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var hint in decisionReport.NumericHints)
+                                        {
+                                            <tr>
+                                                <td>@hint.LineNumber</td>
+                                                <td>@hint.Original</td>
+                                                <td>@hint.Suggested</td>
+                                                <td class="text-muted">@hint.Line</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+
                         <div class="small text-muted mt-2">@DecisionReportBuilder.StockNote</div>
                         <div class="small text-muted mt-1">@DecisionReportBuilder.NameMatchingNote</div>
                         <div class="small text-muted mt-1">@DecisionReportBuilder.NearNameNote</div>
