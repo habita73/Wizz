@@ -322,6 +322,48 @@
                             </ul>
                         }
 
+                        @{
+                            var faithfulBlocks = FaithfulDocumentView.Build(decisionReport.PartLines);
+                        }
+                        <div class="small fw-bold mt-3">الوثيقة كما قُرئت (عرض أمين — بلا تصحيح أو حذف)</div>
+                        <div class="small text-muted mb-2">
+                            كل ما أخرجه القارئ منقول حرفيًا وبترتيبه، ومقسَّم إلى أجزائه. الصفوف ذات المظهر
+                            الجدولي تُعرض كجدول نصي خلاياه كلمات السطر كما قُرئت؛ لا تُضاف ولا تُصحَّح ولا تُحذف
+                            أي كلمة. أي تشويه في الحروف أو الأرقام يظهر هنا كما هو ليُقارَن بالصورة يدويًا.
+                        </div>
+                        @foreach (var part in partsInOrder)
+                        {
+                            var blocksOfPart = faithfulBlocks.Where(block => block.Part == part).ToList();
+                            if (blocksOfPart.Count == 0) continue;
+                            <div class="small mt-2"><span class="badge bg-light text-dark border">@DecisionReportBuilder.PartLabel(part)</span></div>
+                            @foreach (var block in blocksOfPart)
+                            {
+                                if (block.Kind == FaithfulBlockKind.Table)
+                                {
+                                    var columnCount = block.Rows.Count == 0 ? 0 : block.Rows.Max(row => row.Count);
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered mb-1 w-auto">
+                                            <tbody>
+                                                @foreach (var row in block.Rows)
+                                                {
+                                                    <tr>
+                                                        @for (var c = 0; c < columnCount; c++)
+                                                        {
+                                                            <td>@(c < row.Count ? row[c] : string.Empty)</td>
+                                                        }
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="small">@block.Lines[0]</div>
+                                }
+                            }
+                        }
+
                         <div class="small fw-bold mt-3">أصناف صفوف المحتوى</div>
                         <div class="small text-muted mb-1">
                             حكّم المدمج على @decisionReport.CandidateTotal مرشّحًا؛ يُعرض هنا
