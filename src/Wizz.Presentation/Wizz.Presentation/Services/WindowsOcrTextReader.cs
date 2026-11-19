@@ -7,12 +7,14 @@ using Windows.Storage.Streams;
 using Wizz.Application.AI.Perception;
 
 /// <summary>
-/// قارئ نصوص الصور باستخدام قرة التعرف المدمجة في Windows. ينتج نصًا خامًا فقط،
-/// ولا يعرف المنتجات ولا الأسعار، ولا يكتب ولا يرسل أي شيء للخارج.
+/// قارئ نصوص الصور باستخدام قرة التعرف المدمجة في Windows. يقرأ بالعربية أساسًا، ويستعين
+/// بالفرنسية لتحسين الرموز الرقمية إن كانت حزمتها مثبّتة. ينتج نصًا خامًا فقط، ولا يعرف
+/// المنتجات ولا الأسعار، ولا يكتب ولا يرسل أي شيء للخارج.
 /// </summary>
 public sealed class WindowsOcrTextReader : IOcrTextReader
 {
     private static readonly Language ArabicLanguage = new("ar");
+    private static readonly Language FrenchLanguage = new("fr");
 
     /// <summary>تُفحص اللغة وقت التشغيل؛ لا يُفترض وجود حزمة عربية مسبقًا.</summary>
     public bool IsSupported => OcrEngine.IsLanguageSupported(ArabicLanguage);
@@ -31,8 +33,8 @@ public sealed class WindowsOcrTextReader : IOcrTextReader
                 "قرة التعرف العربية غير مثبّتة على هذا الجهاز؛ استخدم الإدخال اليدوي.");
         }
 
-        var engine = OcrEngine.TryCreateFromLanguage(ArabicLanguage);
-        if (engine is null)
+        var arabicEngine = OcrEngine.TryCreateFromLanguage(ArabicLanguage);
+        if (arabicEngine is null)
         {
             return OcrReadResult.Unavailable("تعذّر تشغيل قرة التعرف على هذا الجهاز؛ استخدم الإدخال اليدوي.");
         }
@@ -48,17 +50,60 @@ public sealed class WindowsOcrTextReader : IOcrTextReader
             stream.Seek(0);
 
             var decoder = await BitmapDecoder.CreateAsync(stream);
-            using var bitmap = await decoder.GetSoftwareBitmapAsync();
-            var recognized = await engine.RecognizeAsync(bitmap);
+            using var bitmap = await DecodeWithOptionalUpscaleAsync(decoder);
 
-            // على بعض إصدارات Windows لا يضع OcrResult.Text فواصل بين الأسطر،
-            // فيُدمج الوصل كله في سطر واحد. نعيد بناء الأسطر من مواضع الكلمات محليًا.
-            return OcrReadResult.Success(ReconstructRows(recognized), "ar");
+            var arabic = await arabicEngine.RecognizeAsync(bitmap);
+            var primaryText = ReconstructRows(arabic);
+
+            var frenchEngine = OcrEngine.IsLanguageSupported(FrenchLanguage)
+                ? OcrEngine.TryCreateFromLanguage(FrenchLanguage)
+                : null;
+
+            if (frenchEngine is null)
+            {
+                return OcrReadResult.Success(primaryText, OcrReadingMerger.PrimaryLanguageTag);
+            }
+
+            // فشل القراءة المساعدة لا يُسقط القراءة الأساسية؛ تُستخدم العربية وحدها عندئذ.
+            try
+            {
+                var french = await frenchEngine.RecognizeAsync(bitmap);
+                var merged = OcrReadingMerger.Merge(primaryText, ReconstructRows(french));
+                return OcrReadResult.Success(merged, OcrReadingMerger.MergedLanguageTag);
+            }
+            catch
+            {
+                return OcrReadResult.Success(primaryText, OcrReadingMerger.PrimaryLanguageTag);
+            }
         }
         catch (Exception ex)
         {
             return OcrReadResult.Unavailable($"تعذّت قراءة الصورة محليًا: {ex.Message}");
         }
+    }
+
+    /// <summary>يكبّر الصور الصغيرة جدًا فقط، بجودة عالية، بلا تغيير للصور الكافية.</summary>
+    private static async Task<SoftwareBitmap> DecodeWithOptionalUpscaleAsync(BitmapDecoder decoder)
+    {
+        var scale = OcrImagePreprocessor.ComputeScale(decoder.PixelWidth, decoder.PixelHeight);
+        if (scale <= 1.0)
+        {
+            return await decoder.GetSoftwareBitmapAsync();
+        }
+
+        var transform = new BitmapTransform
+        {
+            ScaledWidth = (uint)Math.Round(decoder.PixelWidth * scale),
+            ScaledHeight = (uint)Math.Round(decoder.PixelHeight * scale),
+            InterpolationMode = BitmapInterpolationMode.Cubic
+        };
+
+        return await decoder.GetSoftwareBitmapAsync(
+            BitmapPixelFormat.Bgra8,
+            BitmapAlphaMode.Premultiplied,
+            transform,
+            ExifOrientationMode.IgnoreExifOrientation,
+            ColorManagementMode.DoNotColorManage);
     }
 
     /// <summary>
