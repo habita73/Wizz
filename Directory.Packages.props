@@ -23,6 +23,9 @@
     <PackageVersion Include="Microsoft.Extensions.AI" Version="10.8.0" />
     <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.8.0" />
 
+    <!-- التعرّف على النصوص — قارئ محلي مضمّن داخل وحدة قراءة الوثائق -->
+    <PackageVersion Include="Tesseract" Version="5.2.0" />
+
     <!-- تحليل الكود -->
     <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" />
     <PackageVersion Include="StyleCop.Analyzers" Version="1.2.0-beta.556" />

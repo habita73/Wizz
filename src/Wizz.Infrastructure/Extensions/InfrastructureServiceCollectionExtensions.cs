@@ -45,7 +45,7 @@ public static class InfrastructureServiceCollectionExtensions
         // الوحدات الاختيارية — كتالوج محلي ثابت وحالة محفوظة في ملف محلي.
         // الوحدة المطفأة لا تُسجَّل خدماتها ولا تستهلك موارد الجهاز.
         services.AddSingleton<IModuleStateStore>(_ => new ModuleStateStore());
-        services.AddSingleton(ModuleCatalog.Empty);
+        services.AddSingleton(_ => new ModuleCatalog(new[] { DocumentReaderModule.Descriptor }));
         services.AddSingleton<IModuleGate, ModuleGate>();
         services.AddScoped<GetModulesUseCase>();
         services.AddScoped<SetModuleEnabledUseCase>();

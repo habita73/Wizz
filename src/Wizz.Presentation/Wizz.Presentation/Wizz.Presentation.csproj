@@ -10,6 +10,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Wizz.Presentation.Client\Wizz.Presentation.Client.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
+    <!-- قارئ OCR محلي مضمّن؛ يُحمَّل فقط عند تفعيل وحدة قراءة الوثائق -->
+    <PackageReference Include="Tesseract" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -19,6 +21,14 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Wizz.Application\Wizz.Application.csproj" />
     <ProjectReference Include="..\..\Wizz.Infrastructure\Wizz.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <!-- بيانات لغات القارئ المضمّن: تُنقل إلى مخرجات البناء بلا تعديل -->
+  <ItemGroup>
+    <None Remove="tessdata\*.traineddata" />
+    <Content Remove="tessdata\*.traineddata" />
+    <Content Include="tessdata\ara.traineddata" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="tessdata\eng.traineddata" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

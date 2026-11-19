@@ -11,6 +11,7 @@
 @inject DocumentCaptureService CaptureService
 @inject IOcrTextReader OcrReader
 @inject OcrDocumentCaptureService OcrCaptureService
+@inject Wizz.Application.Abstractions.IModuleGate ModuleGate
 @inject Wizz.Application.UseCases.Store.GetStoreSettingsUseCase StoreSettings
 @inject Wizz.Application.Abstractions.IModelRouter ModelRouter
 @inject AiHistoryStore HistoryStore
@@ -179,6 +180,8 @@
             </div>
         </div>
 
+        @if (documentReaderEnabled)
+        {
         <div class="card mt-3">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0 d-inline-flex align-items-center gap-2"><WizzIcon Icon="sparkles" Size="16" /><span>تحكيم نص مستند</span></h6>
@@ -186,8 +189,8 @@
             </div>
             <div class="card-body">
                 <p class="small text-muted mb-2">
-                    الصق هنا نصاً مستخرجاً محلياً من صورة أو مستند، أو ارفع صورة لتُقرأ بقرة التعرف المدمجة في Windows.
-                    النص يُحوَّل إلى مرشّحات، ثم يحكّمها المدمج مقابل منتجات متجرك.
+                    الصق هنا نصاً مستخرجاً محلياً من صورة أو مستند، أو ارفع صورة لتُقرأ بالقارئ المحلي المضمّن
+                    (أو بقرة Windows حين تتوفر بيانات لغتها). النص يُحوَّل إلى مرشّحات، ثم يحكّمها المدمج مقابل منتجات متجرك.
                     لا يُرسل أي شيء للخارج، ولا تُكتب أي بيانات، ولا يتأثر توجيه الأسئلة.
                 </p>
                 <textarea class="form-control" rows="3" @bind="captureInput"
@@ -446,6 +449,7 @@
                 }
             </div>
         </div>
+        }
     </div>
 
     <div class="col-lg-4">
@@ -572,13 +576,17 @@
     private IBrowserFile? captureImage;
     private bool ocrReaderSupported;
     private string ocrReaderStatus = "";
+    private bool documentReaderEnabled;
 
     protected override async Task OnInitializedAsync()
     {
-        ocrReaderSupported = OcrReader.IsSupported;
-        ocrReaderStatus = ocrReaderSupported
-            ? "قارئ الصور متاح على هذا الجهاز."
-            : "قارئ الصور غير متاح؛ الإدخال اليدوي هو المسار المتاح.";
+        documentReaderEnabled = ModuleGate.IsEnabled(Wizz.Application.Modules.DocumentReaderModule.Id);
+        ocrReaderSupported = documentReaderEnabled && OcrReader.IsSupported;
+        ocrReaderStatus = !documentReaderEnabled
+            ? "وحدة قراءة الوثائق معطّلة؛ فعّلها من الإعدادات ← الوحدات الاختيارية."
+            : ocrReaderSupported
+                ? "قارئ الصور المحلي متاح على هذا الجهاز."
+                : "قارئ الصور غير متاح؛ الإدخال اليدوي هو المسار المتاح.";
 
         await LoadStoreNameAsync();
         await LoadRoutePriorityAsync();
@@ -1113,7 +1121,7 @@
         await RunImageCaptureAsync();
     }
 
-    /// <summary>يقرأ الصورة بقرة Windows، ثم يعرض حكم المدمج على النص المستخرج فقط.</summary>
+    /// <summary>يقرأ الصورة بالقارئ المحلي المفعّل، ثم يعرض حكم المدمج على النص المستخرج فقط.</summary>
     private async Task RunImageCaptureAsync()
     {
         if (capturing || captureImage is null) return;
