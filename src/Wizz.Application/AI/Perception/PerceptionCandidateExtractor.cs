@@ -40,10 +40,14 @@ public static class PerceptionCandidateExtractor
             var line = rawLine.Trim();
             if (line.Length == 0) continue;
 
-            // قرة Windows تُخرج النص بترتيبه البصري: الرقم قبل الاسم، وقد تجمع عدة منتجات في سطر واحد
-            // (مثال: "12.5 حليب 5 خبز 150 تفاح"). نعالج هذا النمط دون تغيير نمط الإدخال اليدوي.
+            var denseMatches = DenseNumberPattern.Matches(line);
             var firstPrice = PricePattern.Match(line);
-            if (firstPrice.Success && firstPrice.Index == 0)
+
+            // قرة Windows تُخرج النص بترتيبه البصري: الرقم قبل الاسم، وقد تجمع عدة منتجات في سطر واحد
+            // (مثال: "12.5 حليب 5 خبز 150 تفاح"). هذا النمط يعني أن كل رقم متبوع باسم قبلي، بلا رقمين
+            // متجاورين. إن وُجد رقم بلا اسم بعده (كمية أو مجموع سطر) فالصف مكتظ ويُعالَج أدناه؛ بهذا
+            // لا يُقرأ الرقم الزائد في الكمية (1.000 ← 1.00 + 0) سعرًا مستقلًا.
+            if (firstPrice.Success && firstPrice.Index == 0 && IsNumberFirstList(line, denseMatches))
             {
                 result.AddRange(ExtractNumberFirstLine(line, source));
                 continue;
@@ -51,7 +55,7 @@ public static class PerceptionCandidateExtractor
 
             // صفوف الوصولات المكتظة قد تحوي أكثر من رقم (كمية وسعر وحدة ومجموع سطر).
             // نُنتج مرشّحات لكل صيغة اسم محتملة وكل سعر، والمدمج وحده يقرّر أيّها يُعتمد.
-            if (DenseNumberPattern.Matches(line).Count > 1)
+            if (denseMatches.Count > 1)
             {
                 var dense = ExtractDenseLine(line, source);
                 if (dense.Count > 0)
@@ -114,6 +118,27 @@ public static class PerceptionCandidateExtractor
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// يقرّر هل الصف نمط «رقم ثم اسم» لقرة Windows: كل رقم متبوع بقطعة اسم قبل الرقم التالي،
+    /// بلا رقمين متجاورين. رقمان متجاوران يعنيان صف وصل مكتظ (كمية + سعر + مجموع).
+    /// </summary>
+    private static bool IsNumberFirstList(string line, MatchCollection numbers)
+    {
+        for (var i = 0; i < numbers.Count - 1; i++)
+        {
+            var between = line[(numbers[i].Index + numbers[i].Length)..numbers[i + 1].Index];
+            if (string.IsNullOrWhiteSpace(between)) return false;
+        }
+
+        if (numbers.Count > 0)
+        {
+            var last = numbers[^1];
+            if (string.IsNullOrWhiteSpace(line[(last.Index + last.Length)..])) return false;
+        }
+
+        return true;
     }
 
     /// <summary>

@@ -243,6 +243,18 @@ public sealed class Phase2To5CoreTests
     }
 
     [Fact]
+    public void PerceptionExtractor_DenseRowStartingWithNumbers_HasNoZeroPriceCandidate()
+    {
+        // صف وصل حقيقي يبدأ بالمجموع وسعر الوحدة ثم كمية بثلاث خانات عشرية.
+        // الكمية يجب ألّا تُقرأ سعرًا، وألّا يظهر سعر صفر من الرقم الزائد.
+        var candidates = PerceptionCandidateExtractor.Extract("240.00 120.00 حبة 2.000 حليب معقم");
+
+        Assert.Contains(candidates, c => c.ProductName == "حليب معقم" && c.Price == 120m);
+        Assert.DoesNotContain(candidates, c => c.Price == 0m);
+        Assert.DoesNotContain(candidates, c => c.Price == 2m);
+    }
+
+    [Fact]
     public void PerceptionAdjudicator_DenseReceiptRow_AcceptsOnlyMatchingNameAndPrice()
     {
         var candidates = PerceptionCandidateExtractor.Extract("تفاح أحمر كغ 1.000 12.5 450.00");
