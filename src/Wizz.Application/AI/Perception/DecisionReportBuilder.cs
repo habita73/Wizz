@@ -48,31 +48,58 @@ public enum GoodsDecisionCategory
     Conflicting
 }
 
+/// <summary>
+/// معرفة الاسم بسجل المنتجات؛ تُشتقّ من نص سبب المحكّم نفسه، ولا تعني توفر كمية في المخزون.
+/// </summary>
+public enum StoreNameKnowledge
+{
+    /// <summary>السبب يفيد بأن الاسم مطابق، أو أن السعر غير مطابق مع بقاء الاسم معروفًا.</summary>
+    Known = 0,
+
+    /// <summary>السبب يقول صراحة إن الاسم غير معروف في بيانات المتجر.</summary>
+    Unknown,
+
+    /// <summary>لا يمكن تحديده من السبب (لا يوجد سعر مقروء). لا يُخمَّن.</summary>
+    NotDetermined
+}
+
 /// <summary>سطر من النص المقروء مع جزئه المقدَّر.</summary>
 /// <param name="Text">النص كما قرأه التطبيق.</param>
 /// <param name="Part">الجزء المقدَّر حسب الموضع.</param>
 public sealed record DecisionReportPartLine(string Text, EstimatedDocumentPart Part);
 
-/// <summary>صنف في تقرير القرار؛ كل حقل منقول من نتيجة المحكّم.</summary>
+/// <summary>
+/// مرشّح معروض داخل سطر مُعاد تركيبها؛ كل حقل منقول من نتيجة المحكّم، مع دمج المرشّحات المطابقة.
+/// </summary>
 /// <param name="Name">الاسم كما قرأه التطبيق.</param>
 /// <param name="Price">السعر كما قرأه التطبيق أو «—».</param>
 /// <param name="Verdict">سبب المحكّم كما صدر، دون تعديل.</param>
 /// <param name="Category">الفئة المشتقّة من السبب.</param>
+/// <param name="StoreKnowledge">معرفة الاسم بالسجل، المشتقّة من السبب.</param>
 /// <param name="Accepted">حكم المحكّم.</param>
+/// <param name="SourceLine">السطر المُعاد تركيبها الذي جاء منه المرشّح.</param>
+/// <param name="CandidateCount">عدد مرشّحات المدمج المدمجة في هذا الصف.</param>
+/// <param name="NearKnownNames">أسماء معروفة قريبة نصيًا؛ تلميح للمراجعة لا حكم إضافي.</param>
 public sealed record DecisionReportGood(
     string Name,
     string Price,
     string Verdict,
     GoodsDecisionCategory Category,
-    bool Accepted);
+    StoreNameKnowledge StoreKnowledge,
+    bool Accepted,
+    string SourceLine,
+    int CandidateCount,
+    IReadOnlyList<string> NearKnownNames);
 
 /// <summary>تقرير قرار للعرض فقط: ناقل لأحكام المحكّم، لا حاكم جديد.</summary>
 /// <param name="DocumentType">نوع الوثيقة المقدَّر.</param>
-/// <param name="PartLines">أسطر النص مع أجزائها المقدَّرة.</param>
-/// <param name="Goods">أصناف التقرير بترتيب أحكام المدمج.</param>
-/// <param name="RegisteredCount">عدد أصناف «مسجّلة معروفة».</param>
-/// <param name="UnknownCount">عدد أصناف «مجهولة».</param>
-/// <param name="ConflictingCount">عدد أصناف «مخالفة».</param>
+/// <param name="PartLines">أسطر النص المُعاد تركيبها مع أجزائها المقدَّرة.</param>
+/// <param name="Goods">مرشّحات صفوف المحتوى فقط، مجمّعة حسب السطر.</param>
+/// <param name="CandidateTotal">عدد كل مرشّحات المدمج قبل أي تجميع.</param>
+/// <param name="MetadataCandidateCount">مرشّحات أسطر الرأس والذيل؛ أحكامها باقية في العدد الكلي.</param>
+/// <param name="RegisteredCount">عدد أصناف «مسجّلة معروفة» في صفوف المحتوى.</param>
+/// <param name="UnknownCount">عدد أصناف «مجهولة» في صفوف المحتوى.</param>
+/// <param name="ConflictingCount">عدد أصناف «مخالفة» في صفوف المحتوى.</param>
 /// <param name="AcceptedCount">عدد المقبول كما صدر عن المحكّم.</param>
 /// <param name="RejectedCount">عدد المرفوض كما صدر عن المحكّم.</param>
 /// <param name="WrittenToDatabase">يبقى <c>false</c> دائمًا.</param>
@@ -80,6 +107,8 @@ public sealed record DecisionReport(
     EstimatedDocumentType DocumentType,
     IReadOnlyList<DecisionReportPartLine> PartLines,
     IReadOnlyList<DecisionReportGood> Goods,
+    int CandidateTotal,
+    int MetadataCandidateCount,
     int RegisteredCount,
     int UnknownCount,
     int ConflictingCount,
@@ -89,7 +118,7 @@ public sealed record DecisionReport(
 
 /// <summary>
 /// يبني تقرير القرار من نتيجة المحكّم المدمج ومن النص المقروء فقط. لا يقرأ قاعدة بيانات،
-/// لا يرسل، لا يحسب أسعارًا، ولا يخترع حكمًا؛ كل ما يفعله هو نقل الأحكام وتجميعها للعرض.
+/// لا يرسل، لا يحسب أسعارًا، ولا يخترع حكمًا؛ كل ما يفعله هو تجميع الأحكام وعرضها.
 /// </summary>
 public static class DecisionReportBuilder
 {
@@ -99,8 +128,30 @@ public static class DecisionReportBuilder
     /// <summary>يُستخدم حين لا يتوفر اسم أو سعر مقروء.</summary>
     public const string MissingValue = "—";
 
-    // قرينة تقريبية لصف صنف: رقم عشري مثل 12.5 أو 180.00. الرأس والتذييل لا يحويان عادةً رقمًا عشريًا.
-    private static readonly Regex DecimalToken = new(@"\d+[.,]\d+", RegexOptions.Compiled);
+    /// <summary>توضيح حدود «متوفر» في هذا التقرير.</summary>
+    public const string StockNote =
+        "«معروف في بيانات المتجر» يعني أن الاسم موجود في سجل المنتجات، ولا يعني توفر كمية في المخزون.";
+
+    /// <summary>توضيح حدود مطابقة الأسماء في الإصدار الحالي.</summary>
+    public const string NameMatchingNote =
+        "المطابقة الحالية للأسماء حرفية بعد التطبيع؛ أي اختلاف بسيط يُحكم عليه «غير معروف» من المدمج. " +
+        "التقرير لا يغيّر هذا الحكم، وراجع الاسم يدويًا قبل أي إضافة.";
+
+    /// <summary>توضيح أن التقريب اسمي للمراجعة فقط.</summary>
+    public const string NearNameNote =
+        "التقريب بين الأسماء تلميح للمراجعة فقط؛ لا يغيّر حكم المدمج ولا يُعدّ قبولًا أو رفضًا جديدًا.";
+
+    // قرينة تقريبية لصف صنف: رقم بحجم سعر (180، 12.5، 1.000) لا ضمن رقم طويل كالتاريخ أو الهاتف.
+    private static readonly Regex PriceLikeToken = new(@"(?<!\d)\d{1,3}(?:[.,]\d{1,3})?(?!\d)", RegexOptions.Compiled);
+
+    // كلمات تدل على أن السطر بيانات وثيقة (مجموع، ضريبة، دفع...) لا صف صنف، حتى لو حوى رقمًا عشريًا.
+    private static readonly string[] MetadataMarkers =
+    {
+        "مجموع", "المحموع", "المحصوع", "الكلي", "الاجمالي", "الإجمالي",
+        "ضريبه", "tva", "المدفوع", "المبلغ", "البقي", "الباقي",
+        "شكرا", "الهاتف", "هاتف", "التاريخ", "تاريخ", "الوقت", "رقم", "فاتور",
+        "بطاقه", "دفع", "الرصيد", "العنوان", "عنوان", "السجل", "الرخصه", "الفرع", "العميل"
+    };
 
     /// <summary>يبني التقرير؛ لا تعديل على المدخلات ولا تأثير لها خارج العرض.</summary>
     public static DecisionReport Build(string? recognizedText, PerceptionResult adjudication)
@@ -114,21 +165,40 @@ public static class DecisionReportBuilder
             .ToList();
 
         // لا يُستخدم وجود مرشّح قرينةً على «صف صنف»: المستخرج يُنتج مرشّحات لأسطر الرأس
-        // والتذييل أيضًا. القرينة التقديرية هي رقم عشري في السطر، ثم يُحدد الرأس والذيل بالموضع.
+        // والتذييل أيضًا. القرينة التقديرية هي رقم بحجم سعر مع خلوّ السطر من كلمات بيانات الوثيقة
+        // (مجموع، ضريبة، دفع...)؛ ثم يُحدد الرأس والذيل بالموضع. هذا كله تقريبي وموسوم كذلك.
+        var normalizedLines = lines.Select(TextNormalizer.Normalize).ToList();
         var contentIndexes = lines
             .Select((line, index) => (line, index))
-            .Where(item => DecimalToken.IsMatch(item.line))
+            .Where(item => PriceLikeToken.IsMatch(item.line)
+                           && !MetadataMarkers.Any(marker =>
+                               normalizedLines[item.index].Contains(marker, StringComparison.Ordinal)))
             .Select(item => item.index)
             .ToList();
 
         var partLines = BuildParts(lines, contentIndexes);
         var documentType = DetectDocumentType(partLines, lines);
-        var goods = BuildGoods(adjudication);
+
+        // يربط كل مرشّح بالسطر المُعاد تركيبها الذي أنتجه، فيُفصل «المنتجات» عن بيانات الوثيقة.
+        var lineIndexByText = new Dictionary<string, int>(StringComparer.Ordinal);
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var key = TextNormalizer.Normalize(lines[i]);
+            if (key.Length > 0 && !lineIndexByText.ContainsKey(key))
+            {
+                lineIndexByText[key] = i;
+            }
+        }
+
+        var goods = BuildGoods(adjudication, partLines, lineIndexByText);
+        var goodsCandidateCount = goods.Sum(item => item.CandidateCount);
 
         return new DecisionReport(
             documentType,
             partLines,
             goods,
+            adjudication.Candidates.Count,
+            adjudication.Candidates.Count - goodsCandidateCount,
             goods.Count(item => item.Category == GoodsDecisionCategory.Registered),
             goods.Count(item => item.Category == GoodsDecisionCategory.Unknown),
             goods.Count(item => item.Category == GoodsDecisionCategory.Conflicting),
@@ -169,6 +239,14 @@ public static class DecisionReportBuilder
         GoodsDecisionCategory.Registered => "اعتماد الصنف بعد تأكيده",
         GoodsDecisionCategory.Unknown => "إضافة الصنف أو تجاهله",
         _ => "مراجعة السعر يدويًا"
+    };
+
+    /// <summary>الاسم المعروض لمعرفة الاسم بالسجل؛ مشتق من سبب المدمج.</summary>
+    public static string KnowledgeLabel(StoreNameKnowledge knowledge) => knowledge switch
+    {
+        StoreNameKnowledge.Known => "معروف في بيانات المتجر",
+        StoreNameKnowledge.Unknown => "غير معروف في بيانات المتجر",
+        _ => "يحتاج مراجعة"
     };
 
     private static IReadOnlyList<DecisionReportPartLine> BuildParts(
@@ -227,28 +305,128 @@ public static class DecisionReportBuilder
         return found.Distinct().Count() == 1 ? found[0] : EstimatedDocumentType.Unspecified;
     }
 
-    private static IReadOnlyList<DecisionReportGood> BuildGoods(PerceptionResult adjudication)
+    private static IReadOnlyList<DecisionReportGood> BuildGoods(
+        PerceptionResult adjudication,
+        IReadOnlyList<DecisionReportPartLine> partLines,
+        IReadOnlyDictionary<string, int> lineIndexByText)
     {
-        var goods = new List<DecisionReportGood>(adjudication.Candidates.Count);
+        // الأسماء المعروفة تُؤخذ من أحكام المدمج نفسه: سببا القبول واختلاف السعر يقولان صراحةً
+        // إن الاسم معروف في بيانات المتجر. لا تُقرأ قاعدة بيانات، ولا يُخترع اسم معروف.
+        var knownNames = adjudication.Candidates
+            .Where(verdict => verdict.Reason is PerceptionAdjudicator.AcceptedReason
+                or PerceptionAdjudicator.PriceMismatchReason)
+            .Select(verdict => (
+                Display: verdict.Candidate.ProductName ?? string.Empty,
+                Key: TextNormalizer.Normalize(verdict.Candidate.ProductName ?? string.Empty)))
+            .Where(item => item.Key.Length >= 3)
+            .GroupBy(item => item.Key, StringComparer.Ordinal)
+            .Select(group => group.First())
+            .ToList();
+
+        var merged = new List<DecisionReportGood>();
+        var positions = new Dictionary<string, int>(StringComparer.Ordinal);
+
         foreach (var verdict in adjudication.Candidates)
         {
-            var category = verdict.Reason switch
-            {
-                PerceptionAdjudicator.AcceptedReason => GoodsDecisionCategory.Registered,
-                PerceptionAdjudicator.UnknownProductReason => GoodsDecisionCategory.Unknown,
-                PerceptionAdjudicator.PriceMismatchReason => GoodsDecisionCategory.Conflicting,
-                PerceptionAdjudicator.MissingPriceReason => GoodsDecisionCategory.Conflicting,
-                _ => GoodsDecisionCategory.Conflicting
-            };
+            var rawLine = TextNormalizer.Normalize(verdict.Candidate.RawLine).Trim();
+            if (!lineIndexByText.TryGetValue(rawLine, out var lineIndex)) continue;
+            if (partLines[lineIndex].Part != EstimatedDocumentPart.Content) continue;
 
-            goods.Add(new DecisionReportGood(
-                verdict.Candidate.ProductName ?? MissingValue,
-                verdict.Candidate.Price?.ToString("0.##", CultureInfo.InvariantCulture) ?? MissingValue,
+            var name = verdict.Candidate.ProductName ?? MissingValue;
+            var price = verdict.Candidate.Price?.ToString("0.##", CultureInfo.InvariantCulture) ?? MissingValue;
+            var sourceLine = partLines[lineIndex].Text;
+            var key = sourceLine + "\u001f" + name + "\u001f" + price + "\u001f" + verdict.Reason;
+
+            if (positions.TryGetValue(key, out var position))
+            {
+                merged[position] = merged[position] with { CandidateCount = merged[position].CandidateCount + 1 };
+                continue;
+            }
+
+            var category = CategoryFor(verdict.Reason);
+            var nameKey = TextNormalizer.Normalize(name);
+            var nearNames = category == GoodsDecisionCategory.Unknown
+                ? knownNames
+                    .Where(item => !string.Equals(item.Key, nameKey, StringComparison.Ordinal)
+                                   && IsNearName(nameKey, item.Key))
+                    .Select(item => item.Display)
+                    .Take(3)
+                    .ToList()
+                : new List<string>();
+
+            positions[key] = merged.Count;
+            merged.Add(new DecisionReportGood(
+                name,
+                price,
                 verdict.Reason,
                 category,
-                verdict.Accepted));
+                KnowledgeFor(verdict.Reason),
+                verdict.Accepted,
+                sourceLine,
+                1,
+                nearNames));
         }
 
-        return goods;
+        // ترتيب المدمج محفوظ كما صدر؛ الواجهة هي التي تجمّع النتائج حسب السطر عند العرض.
+        return merged;
     }
+
+    /// <summary>
+    /// تقريب نصي بسيط للمراجعة: احتواء أحد الاسمين في الآخر أو تشابه ثنائيات الحروف.
+    /// لا يغيّر حكمًا، بل يُقرّب اسمًا قد يكون مختلفًا قليلاً؛ القرار للعامل.
+    /// </summary>
+    private static bool IsNearName(string candidate, string known)
+    {
+        if (candidate.Length < 3 || known.Length < 3) return false;
+        if (candidate.Contains(known, StringComparison.Ordinal)
+            || known.Contains(candidate, StringComparison.Ordinal)) return true;
+
+        return BigramDice(candidate, known) >= 0.62;
+    }
+
+    private static double BigramDice(string a, string b)
+    {
+        if (string.Equals(a, b, StringComparison.Ordinal)) return 1.0;
+        if (a.Length < 2 || b.Length < 2) return 0.0;
+
+        var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+        for (var i = 0; i < a.Length - 1; i++)
+        {
+            var gram = a.Substring(i, 2);
+            counts[gram] = counts.GetValueOrDefault(gram) + 1;
+        }
+
+        var shared = 0;
+        for (var i = 0; i < b.Length - 1; i++)
+        {
+            var gram = b.Substring(i, 2);
+            if (counts.TryGetValue(gram, out var count) && count > 0)
+            {
+                shared++;
+                counts[gram] = count - 1;
+            }
+        }
+
+        return 2.0 * shared / (a.Length - 1 + b.Length - 1);
+    }
+
+    private static GoodsDecisionCategory CategoryFor(string reason) => reason switch
+    {
+        PerceptionAdjudicator.AcceptedReason => GoodsDecisionCategory.Registered,
+        PerceptionAdjudicator.UnknownProductReason => GoodsDecisionCategory.Unknown,
+        PerceptionAdjudicator.PriceMismatchReason => GoodsDecisionCategory.Conflicting,
+        PerceptionAdjudicator.MissingPriceReason => GoodsDecisionCategory.Conflicting,
+        _ => GoodsDecisionCategory.Conflicting
+    };
+
+    private static StoreNameKnowledge KnowledgeFor(string reason) => reason switch
+    {
+        // السببان يقولان صراحة إن الاسم معروف: أحدهما يطابق السعر والآخر لا يطابقه.
+        PerceptionAdjudicator.AcceptedReason => StoreNameKnowledge.Known,
+        PerceptionAdjudicator.PriceMismatchReason => StoreNameKnowledge.Known,
+        // السبب يقول صراحة إن الاسم غير معروف.
+        PerceptionAdjudicator.UnknownProductReason => StoreNameKnowledge.Unknown,
+        // لا يوجد سعر مقروء، والسبب لا يحدد معرفة الاسم — لا يُخمَّن.
+        _ => StoreNameKnowledge.NotDetermined
+    };
 }

@@ -257,30 +257,61 @@
                         </div>
 
                         @{
+                            var partsInOrder = new[]
+                            {
+                                EstimatedDocumentPart.Header,
+                                EstimatedDocumentPart.Content,
+                                EstimatedDocumentPart.Footer,
+                                EstimatedDocumentPart.Unclassified
+                            };
                             var partCounts = decisionReport.PartLines
                                 .GroupBy(line => line.Part)
                                 .ToDictionary(group => group.Key, group => group.Count());
+                            var knownCount = decisionReport.Goods.Count(item => item.StoreKnowledge == StoreNameKnowledge.Known);
+                            var unknownCount = decisionReport.Goods.Count(item => item.StoreKnowledge == StoreNameKnowledge.Unknown);
+                            var undeterminedCount = decisionReport.Goods.Count(item => item.StoreKnowledge == StoreNameKnowledge.NotDetermined);
                         }
                         <div class="small mb-1">
                             نوع الوثيقة (@DecisionReportBuilder.EstimatedLabel):
                             <strong>@DecisionReportBuilder.TypeLabel(decisionReport.DocumentType)</strong>
                         </div>
                         <div class="small mb-1">
+                            المحكّم: <strong>@decisionReport.AcceptedCount مقبول / @decisionReport.RejectedCount مرفوض</strong>
+                            — بدون كتابة — لا إرسال — المحكّم المدمج هو الحاكم
+                        </div>
+                        <div class="small mb-2">
                             أجزاء الوثيقة (تقسيم @DecisionReportBuilder.EstimatedLabel):
-                            @foreach (var part in new[]
-                                     {
-                                         EstimatedDocumentPart.Header,
-                                         EstimatedDocumentPart.Content,
-                                         EstimatedDocumentPart.Footer,
-                                         EstimatedDocumentPart.Unclassified
-                                     })
+                            @foreach (var part in partsInOrder)
                             {
                                 <span class="ms-2">@DecisionReportBuilder.PartLabel(part): @partCounts.GetValueOrDefault(part)</span>
                             }
                         </div>
-                        <div class="small mb-1">
-                            المحكّم: <strong>@decisionReport.AcceptedCount مقبول / @decisionReport.RejectedCount مرفوض</strong>
-                            — بدون كتابة — لا إرسال — المحكّم المدمج هو الحاكم
+
+                        <div class="small fw-bold mt-2">الوثيقة مُعاد تركيبها (@DecisionReportBuilder.EstimatedLabel)</div>
+                        @foreach (var part in partsInOrder)
+                        {
+                            var linesOfPart = decisionReport.PartLines.Where(line => line.Part == part).ToList();
+                            if (linesOfPart.Count == 0) continue;
+                            <div class="small mt-1"><span class="badge bg-light text-dark border">@DecisionReportBuilder.PartLabel(part)</span></div>
+                            <ul class="small mb-0 ps-3">
+                                @foreach (var line in linesOfPart)
+                                {
+                                    <li>@line.Text</li>
+                                }
+                            </ul>
+                        }
+
+                        <div class="small fw-bold mt-3">أصناف صفوف المحتوى</div>
+                        <div class="small text-muted mb-1">
+                            حكّم المدمج على @decisionReport.CandidateTotal مرشّحًا؛ يُعرض هنا
+                            @(decisionReport.CandidateTotal - decisionReport.MetadataCandidateCount) مرشّحًا من صفوف المحتوى،
+                            و@decisionReport.MetadataCandidateCount مرشّحًا من بيانات الرأس والذيل باقية في العدد الكلي ولم تُعرض كأصناف.
+                        </div>
+                        <div class="small mb-2">
+                            معرفة الاسم بسجل المتجر (مشتقّة من سبب المدمج، لا من تخمين):
+                            <span class="ms-2">معروف: @knownCount</span>
+                            <span class="ms-2">غير معروف: @unknownCount</span>
+                            <span class="ms-2">لم يُحدد: @undeterminedCount</span>
                         </div>
                         <div class="small mb-2">
                             التصنيف:
@@ -289,31 +320,36 @@
                             <span class="ms-2">مخالفة: @decisionReport.ConflictingCount</span>
                         </div>
 
-                        @foreach (var category in new[]
-                                 {
-                                     GoodsDecisionCategory.Registered,
-                                     GoodsDecisionCategory.Unknown,
-                                     GoodsDecisionCategory.Conflicting
-                                 })
+                        @foreach (var lineGroup in decisionReport.Goods.GroupBy(item => item.SourceLine))
                         {
-                            var group = decisionReport.Goods.Where(item => item.Category == category).ToList();
-                            if (group.Count == 0) continue;
-                            <div class="small fw-bold mt-2">
-                                @DecisionReportBuilder.CategoryLabel(category) (@group.Count)
-                                <span class="fw-normal text-muted">— @DecisionReportBuilder.ActionLabel(category)</span>
-                            </div>
+                            <div class="small fw-semibold mt-2">@lineGroup.Key</div>
                             <ul class="small mb-0 ps-3">
-                                @foreach (var good in group)
+                                @foreach (var good in lineGroup)
                                 {
                                     <li>
                                         <span class="fw-semibold">@good.Name</span>
                                         <span class="text-muted">— @good.Price</span>
                                         <span class="ms-1">@good.Verdict</span>
+                                        <span class="ms-1 text-muted">(@DecisionReportBuilder.KnowledgeLabel(good.StoreKnowledge))</span>
+                                        @if (good.CandidateCount > 1)
+                                        {
+                                            <span class="ms-1 text-muted">— يجمع @good.CandidateCount مرشّحات متطابقة</span>
+                                        }
+                                        @if (good.NearKnownNames.Count > 0)
+                                        {
+                                            <div class="small text-muted ms-3">
+                                                قريب من: @string.Join("، ", good.NearKnownNames)
+                                                — تلميح للمراجعة، ولم يعتمده المدمج
+                                            </div>
+                                        }
                                     </li>
                                 }
                             </ul>
                         }
 
+                        <div class="small text-muted mt-2">@DecisionReportBuilder.StockNote</div>
+                        <div class="small text-muted mt-1">@DecisionReportBuilder.NameMatchingNote</div>
+                        <div class="small text-muted mt-1">@DecisionReportBuilder.NearNameNote</div>
                         @if (decisionReport.UnknownCount > 0 || decisionReport.ConflictingCount > 0)
                         {
                             <div class="small text-danger mt-2">تنبيه: راجع يدويًا قبل أي اعتماد.</div>
