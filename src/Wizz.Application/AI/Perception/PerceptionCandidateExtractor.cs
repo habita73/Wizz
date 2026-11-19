@@ -28,6 +28,10 @@ public static class PerceptionCandidateExtractor
 
     private static readonly char[] TrimChars = { ' ', '\t', '*', '-', '•', ':', '؛', '|', '.', '،' };
 
+    // حروف لاتينية ورموز يخلط قارئ الصور بينها وبين الأرقام (I/O/l/1/0). الرمز المكوّن منها وحدها
+    // ليس اسم منتج، بل قراءة مشوّشة لرقم؛ يُستبعد من الأسماء ويبقى في السطر الخام للمراجعة.
+    private static readonly char[] DigitLikeChars = { 'o', 'i', 'l', '|', '.', ',', '\'' };
+
     /// <summary>يحوّل نص التعرّف إلى مرشّحات. سطر فارغ أو بلا محتوى مُفيد يُتجاهل.</summary>
     public static IReadOnlyList<PerceptionCandidate> Extract(string? recognizedText, PerceptionSource source = PerceptionSource.Embedded)
     {
@@ -100,7 +104,10 @@ public static class PerceptionCandidateExtractor
                 : line;
             var productName = CleanName(namePart);
 
-            // مرشّح يُسجَّل حتى لو ناقص — المدمج هو من يرفضه لاحقاً، لا يُسقط هنا صامتاً.
+            // سطر لم يبقَ منه إلا رموز تشبه الأرقام ليس منتجًا ولا يحوي سعرًا؛ لا يُسجَّل مرشّحًا.
+            // بقية المرشّحات الناقصة تُسجَّل — المدمج هو من يرفضها لاحقاً، لا تُسقط هنا صامتاً.
+            if (productName is null && price is null) continue;
+
             var confidence = productName is not null && price.HasValue
                 ? 1.0
                 : productName is not null || price.HasValue ? 0.5 : 0.0;
@@ -279,5 +286,9 @@ public static class PerceptionCandidateExtractor
             .Select(t => t.Trim(TrimChars))
             .Where(t => t.Length > 0 && !LabelWords.Contains(t, StringComparer.Ordinal))
             .Where(t => !t.Any(char.IsDigit))
+            .Where(t => !IsDigitLikeToken(t))
             .ToList();
+
+    private static bool IsDigitLikeToken(string token) =>
+        token.Length > 0 && token.All(c => DigitLikeChars.Contains(char.ToLowerInvariant(c)));
 }

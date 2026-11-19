@@ -265,9 +265,14 @@ public sealed class Phase2To5CoreTests
 
         var result = PerceptionAdjudicator.Adjudicate(candidates, known);
 
-        Assert.Equal(1, result.AcceptedCount);
+        // بعد إذن المطابقة التقريبية يُقبل الاسم الحرفي وصيغة «تفاح أحمر» حين يطابق السعر،
+        // ولا يُقبل سعر المجموع ٤٥٠. التطبيق يعرض مرشّحًا أساسيًا واحدًا لهذا السطر.
+        Assert.Equal(2, result.AcceptedCount);
         Assert.Contains(result.Candidates, v =>
             v.Accepted && v.Candidate.ProductName == "تفاح" && v.Candidate.Price == 12.5m);
+        Assert.Contains(result.Candidates, v =>
+            v.Accepted && v.Candidate.ProductName == "تفاح احمر" && v.Candidate.Price == 12.5m);
+        Assert.DoesNotContain(result.Candidates, v => v.Accepted && v.Candidate.Price == 450m);
         Assert.False(result.WrittenToDatabase);
     }
 

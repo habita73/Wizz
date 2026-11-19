@@ -69,41 +69,13 @@ public sealed class WindowsOcrTextReader : IOcrTextReader
     {
         var words = result.Lines
             .SelectMany(line => line.Words)
-            .Select(word => new WordBox(
+            .Select(word => new OcrWordBox(
                 word.Text,
                 (float)word.BoundingRect.X,
-                (float)(word.BoundingRect.Y + word.BoundingRect.Height / 2)))
-            .Where(word => !string.IsNullOrWhiteSpace(word.Text))
-            .OrderBy(word => word.CenterY)
-            .ThenByDescending(word => word.Left)
+                (float)(word.BoundingRect.Y + word.BoundingRect.Height / 2),
+                (float)word.BoundingRect.Height))
             .ToList();
 
-        if (words.Count == 0) return string.Empty;
-
-        var rows = new List<string>();
-        var current = new List<WordBox> { words[0] };
-        var rowY = words[0].CenterY;
-
-        void Flush()
-        {
-            if (current.Count == 0) return;
-            rows.Add(string.Join(' ', current.Select(word => word.Text)));
-            current = new List<WordBox>();
-        }
-
-        foreach (var word in words.Skip(1))
-        {
-            if (Math.Abs(word.CenterY - rowY) > 16f)
-            {
-                Flush();
-                rowY = word.CenterY;
-            }
-            current.Add(word);
-        }
-        Flush();
-
-        return string.Join('\n', rows);
+        return OcrRowReconstructor.Reconstruct(words);
     }
-
-    private sealed record WordBox(string Text, float Left, float CenterY);
 }

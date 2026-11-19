@@ -134,14 +134,14 @@ public static class DecisionReportBuilder
     public const string StockNote =
         "«معروف في بيانات المتجر» يعني أن الاسم موجود في سجل المنتجات، ولا يعني توفر كمية في المخزون.";
 
-    /// <summary>توضيح حدود مطابقة الأسماء في الإصدار الحالي.</summary>
+    /// <summary>توضيح حدود مطابقة الأسماء بعد إذن المطابقة التقريبية المقيدة.</summary>
     public const string NameMatchingNote =
-        "المطابقة الحالية للأسماء حرفية بعد التطبيع؛ أي اختلاف بسيط يُحكم عليه «غير معروف» من المدمج. " +
-        "التقرير لا يغيّر هذا الحكم، وراجع الاسم يدويًا قبل أي إضافة.";
+        "المطابقة الحالية للأسماء حرفية بعد التطبيع، ثم تقريبية مقيدة بترتيب الكلمات وأوصاف معروفة؛ " +
+        "يُعرض سبب المدمج كما صدر، وراجع الاسم يدويًا قبل أي إضافة.";
 
-    /// <summary>توضيح أن التقريب اسمي للمراجعة فقط.</summary>
+    /// <summary>الفرق بين تلميح «قريب من» والقبول التقريبي الصادر عن المدمج.</summary>
     public const string NearNameNote =
-        "التقريب بين الأسماء تلميح للمراجعة فقط؛ لا يغيّر حكم المدمج ولا يُعدّ قبولًا أو رفضًا جديدًا.";
+        "تلميح «قريب من» للمراجعة فقط؛ لا يضيف قبولًا ولا رفضًا. أما القبول التقريبي فصادر عن المدمج ويظهر سببه في الجدول.";
 
     // قرينة تقريبية لصف صنف: رقم بحجم سعر (180، 12.5، 1.000) لا ضمن رقم طويل كالتاريخ أو الهاتف.
     private static readonly Regex PriceLikeToken = new(@"(?<!\d)\d{1,3}(?:[.,]\d{1,3})?(?!\d)", RegexOptions.Compiled);
@@ -321,6 +321,7 @@ public static class DecisionReportBuilder
         // إن الاسم معروف في بيانات المتجر. لا تُقرأ قاعدة بيانات، ولا يُخترع اسم معروف.
         var knownNames = adjudication.Candidates
             .Where(verdict => verdict.Reason is PerceptionAdjudicator.AcceptedReason
+                or PerceptionAdjudicator.ApproximateNameAcceptedReason
                 or PerceptionAdjudicator.PriceMismatchReason)
             .Select(verdict => (
                 Display: verdict.Candidate.ProductName ?? string.Empty,
@@ -420,6 +421,7 @@ public static class DecisionReportBuilder
     private static GoodsDecisionCategory CategoryFor(string reason) => reason switch
     {
         PerceptionAdjudicator.AcceptedReason => GoodsDecisionCategory.Registered,
+        PerceptionAdjudicator.ApproximateNameAcceptedReason => GoodsDecisionCategory.Registered,
         PerceptionAdjudicator.UnknownProductReason => GoodsDecisionCategory.Unknown,
         PerceptionAdjudicator.PriceMismatchReason => GoodsDecisionCategory.Conflicting,
         PerceptionAdjudicator.MissingPriceReason => GoodsDecisionCategory.Conflicting,
@@ -428,8 +430,9 @@ public static class DecisionReportBuilder
 
     private static StoreNameKnowledge KnowledgeFor(string reason) => reason switch
     {
-        // السببان يقولان صراحة إن الاسم معروف: أحدهما يطابق السعر والآخر لا يطابقه.
+        // الأسباب تقول صراحة إن الاسم معروف: قبول حرفي، قبول تقريبي، أو سعر غير مطابق مع بقاء الاسم معروفًا.
         PerceptionAdjudicator.AcceptedReason => StoreNameKnowledge.Known,
+        PerceptionAdjudicator.ApproximateNameAcceptedReason => StoreNameKnowledge.Known,
         PerceptionAdjudicator.PriceMismatchReason => StoreNameKnowledge.Known,
         // السبب يقول صراحة إن الاسم غير معروف.
         PerceptionAdjudicator.UnknownProductReason => StoreNameKnowledge.Unknown,

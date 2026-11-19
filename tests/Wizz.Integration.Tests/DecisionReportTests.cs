@@ -229,14 +229,14 @@ public sealed class DecisionReportTests
         var candidates = new[]
         {
             new PerceptionCandidate("حليب", 12.5m, "حليب 12.5", 1, PerceptionSource.Embedded),
-            new PerceptionCandidate("حليب معقم", 9.5m, "حليب معقم 9.5", 1, PerceptionSource.Embedded)
+            new PerceptionCandidate("حليب مملح", 9.5m, "حليب مملح 9.5", 1, PerceptionSource.Embedded)
         };
         var known = new Dictionary<string, IReadOnlyList<decimal>> { ["حليب"] = new[] { 12.5m } };
         var adjudication = PerceptionAdjudicator.Adjudicate(candidates, known);
 
-        var report = DecisionReportBuilder.Build("حليب 12.5\nحليب معقم 9.5", adjudication);
+        var report = DecisionReportBuilder.Build("حليب 12.5\nحليب مملح 9.5", adjudication);
 
-        var near = report.Goods.Single(item => item.Name == "حليب معقم");
+        var near = report.Goods.Single(item => item.Name == "حليب مملح");
         Assert.Equal(PerceptionAdjudicator.UnknownProductReason, near.Verdict);
         Assert.False(near.Accepted);
         Assert.Contains("حليب", near.NearKnownNames);
@@ -278,8 +278,8 @@ public sealed class DecisionReportTests
     public void DecisionReport_StatesLimitsOfAvailabilityAndNameMatching()
     {
         Assert.Contains("لا يعني توفر كمية في المخزون", DecisionReportBuilder.StockNote);
-        Assert.Contains("المطابقة الحالية للأسماء حرفية", DecisionReportBuilder.NameMatchingNote);
-        Assert.Contains("تلميح للمراجعة فقط", DecisionReportBuilder.NearNameNote);
+        Assert.Contains("المطابقة الحالية للأسماء حرفية بعد التطبيع، ثم تقريبية مقيدة", DecisionReportBuilder.NameMatchingNote);
+        Assert.Contains("للمراجعة فقط", DecisionReportBuilder.NearNameNote);
         Assert.Equal("معروف في بيانات المتجر", DecisionReportBuilder.KnowledgeLabel(StoreNameKnowledge.Known));
         Assert.Equal("غير معروف في بيانات المتجر", DecisionReportBuilder.KnowledgeLabel(StoreNameKnowledge.Unknown));
     }
