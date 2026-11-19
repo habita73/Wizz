@@ -145,14 +145,14 @@ builder.Services.AddScoped<QueryAiUseCase>();
 // طبقة إدخال ناتج التعرّف — محلية بالكامل، للعرض فقط، ولا تمرّ عبر موجه النماذج
 builder.Services.AddScoped<Wizz.Application.AI.Perception.DocumentCaptureService>();
 // قارئ نصوص الصور وحدة اختيارية: لا يُنشأ محرك التعرّف إلا إذا كانت الوحدة مفعّلة.
-// المضمّن المحلي هو القارئ الأساسي، وقرة Windows بديل عند غياب بيانات اللغة المضمّنة.
+// قرة Windows هي الأساس لأنها أدق على صور الوصول، والمضمّن بديل أخير حين لا تتوفر لغتها.
 builder.Services.AddScoped<Wizz.Application.AI.Perception.IOcrTextReader>(sp =>
     new Wizz.Application.AI.Perception.GatedOcrTextReader(
         sp.GetRequiredService<IModuleGate>(),
         Wizz.Application.Modules.DocumentReaderModule.Id,
         () => new Wizz.Application.AI.Perception.CompositeOcrTextReader(
-            new Wizz.Presentation.Services.TesseractOcrTextReader(),
-            new Wizz.Presentation.Services.WindowsOcrTextReader())));
+            new Wizz.Presentation.Services.WindowsOcrTextReader(),
+            new Wizz.Presentation.Services.TesseractOcrTextReader())));
 builder.Services.AddScoped<Wizz.Application.AI.Perception.OcrDocumentCaptureService>();
 builder.Services.AddScoped<Wizz.Presentation.Pages.AI.AiHistoryStore>();
 

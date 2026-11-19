@@ -16,8 +16,8 @@ public static class DocumentReaderModule
         version: "1.0",
         requirementsAr: new[]
         {
-            "بيانات لغتين مضمّنة محليًا (نحو ٥ ميغابايت)",
-            "قرة Windows حين تتوفر كلغتها",
+            "قرة Windows حين تتوفر لغتها العربية (الأدق)",
+            "بيانات لغتين مضمّنة بديلًا أخيرًا (نحو ٥ ميغابايت)",
         },
         licenseCapability: ModuleLicenseCapability.Included);
 }
