@@ -4,5 +4,6 @@
 *.md text eol=lf
 *.json text eol=lf
 
-# بيانات لغات القارئ المضمّن: ملفات ثنائية لا تخضع لتحويل نهايات الأسطر.
-*.traineddata binary
+# نماذج القارئ المضمّن: ملفات ثنائية لا تخضع لتحويل نهايات الأسطر.
+*.onnx binary
+src/Wizz.Presentation/Wizz.Presentation/models/ocr/** binary

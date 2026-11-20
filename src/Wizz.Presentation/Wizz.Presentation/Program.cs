@@ -152,8 +152,13 @@ builder.Services.AddScoped<Wizz.Application.AI.Perception.IOcrTextReader>(sp =>
         Wizz.Application.Modules.DocumentReaderModule.Id,
         () => new Wizz.Application.AI.Perception.CompositeOcrTextReader(
             new Wizz.Presentation.Services.WindowsOcrTextReader(),
-            new Wizz.Presentation.Services.TesseractOcrTextReader())));
+            new Wizz.Presentation.Services.RapidOcrArabicTextReader())));
 builder.Services.AddScoped<Wizz.Application.AI.Perception.OcrDocumentCaptureService>();
+// مساعدة اختيارية لتصحيح النص المستخرج: لا تُستدعى إلا بضغط المستخدم، وتستخدم الموفر المحلي فقط،
+// بلا تنزيل نموذج ولا إرسال للخارج ولا كتابة في قاعدة البيانات.
+builder.Services.AddScoped<Wizz.Application.AI.Perception.OcrTextAssistService>(sp =>
+    new Wizz.Application.AI.Perception.OcrTextAssistService(
+        sp.GetRequiredKeyedService<Wizz.Application.Abstractions.ILlmProvider>("local")));
 builder.Services.AddScoped<Wizz.Presentation.Pages.AI.AiHistoryStore>();
 
 // ذاكرة المحادثة والتفضيلات (لكل جلسة Blazor) — تُحفظ في localStorage عبر AiMemoryStore

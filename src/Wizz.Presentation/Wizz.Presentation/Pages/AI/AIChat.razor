@@ -11,6 +11,7 @@
 @inject DocumentCaptureService CaptureService
 @inject IOcrTextReader OcrReader
 @inject OcrDocumentCaptureService OcrCaptureService
+@inject OcrTextAssistService OcrAssist
 @inject Wizz.Application.Abstractions.IModuleGate ModuleGate
 @inject Wizz.Application.UseCases.Store.GetStoreSettingsUseCase StoreSettings
 @inject Wizz.Application.Abstractions.IModelRouter ModelRouter
@@ -190,8 +191,9 @@
             <div class="card-body">
                 <p class="small text-muted mb-2">
                     الصق هنا نصاً مستخرجاً محلياً من صورة أو مستند، أو ارفع صورة لتُقرأ بقرة Windows حين تتوفر لغتها
-                    العربية، وبالقارئ المضمّن بديلًا أخيرًا. النص يُحوَّل إلى مرشّحات، ثم يحكّمها المدمج مقابل منتجات متجرك.
-                    لا يُرسل أي شيء للخارج، ولا تُكتب أي بيانات، ولا يتأثر توجيه الأسئلة.
+                    العربية، وبقارئ PP-OCR المحلي بالنموذج العربي بديلًا أخيرًا. النص يُحوَّل إلى مرشّحات، ثم يحكّمها
+                    المدمج مقابل منتجات متجرك. لا يُرسل أي شيء للخارج، ولا تُكتب أي بيانات، ولا يتأثر توجيه الأسئلة.
+                    مساعدة النموذج المحلي اختيارية ولا تعمل إلا عند الطلب.
                 </p>
                 <textarea class="form-control" rows="3" @bind="captureInput"
                           placeholder="مثال: حليب 12.5&#10;خبز 5" disabled="@capturing"></textarea>
@@ -209,6 +211,39 @@
                     <InputFile OnChange="OnCaptureImageSelectedAsync" accept="image/png,image/jpeg,image/webp"
                                class="form-control form-control-sm" disabled="@capturing" />
                     <div class="small mt-1 @(ocrReaderSupported ? "text-success" : "text-muted")">@ocrReaderStatus</div>
+                </div>
+
+                <div class="mt-3 border-top pt-3">
+                    <div class="small fw-bold mb-1">مساعدة النموذج المحلي (اختياري)</div>
+                    <div class="small text-muted mb-2">
+                        لا تعمل هذه المساعدة تلقائيًا؛ تعمل فقط عند الضغط، وتستخدم النموذج المحلي المثبّت
+                        لتصحيح الحروف والأرقام في النص أعلاه. لا تُنزَّل نماذج، ولا يُرسل شيء للخارج،
+                        ولا يُغيَّر النص الأصلي؛ يظهر اقتراح تقرّر أنت وحدك اعتماده.
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                            @onclick="RunAssistAsync"
+                            disabled="@(assisting || capturing || string.IsNullOrWhiteSpace(captureInput))">
+                        @if (assisting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        اطلب تصحيح النص محليًا
+                    </button>
+                    @if (!string.IsNullOrWhiteSpace(assistError))
+                    {
+                        <div class="alert alert-warning py-2 mt-2 mb-0 small">@assistError</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(assistSuggestion))
+                    {
+                        <div class="mt-2">
+                            <label class="small fw-bold mb-1">الاقتراح (للمراجعة فقط)</label>
+                            <textarea class="form-control" rows="3" readonly dir="rtl">@assistSuggestion</textarea>
+                            <button type="button" class="btn btn-outline-success btn-sm mt-2"
+                                    @onclick="AcceptAssistSuggestion">
+                                نسخ الاقتراح إلى مربع النص
+                            </button>
+                        </div>
+                    }
                 </div>
 
                 @if (!string.IsNullOrWhiteSpace(captureError))
@@ -574,6 +609,10 @@
     private bool capturing;
     private string? captureError;
     private IBrowserFile? captureImage;
+    // مساعدة النموذج المحلي — عند الطلب فقط؛ الاقتراح لا يُطبَّق إلا بضغط المستخدم
+    private bool assisting;
+    private string? assistSuggestion;
+    private string? assistError;
     private bool ocrReaderSupported;
     private string ocrReaderStatus = "";
     private bool documentReaderEnabled;
@@ -1092,6 +1131,8 @@
         if (capturing || string.IsNullOrWhiteSpace(captureInput)) return;
         capturing = true;
         captureError = null;
+        assistSuggestion = null;
+        assistError = null;
         StateHasChanged();
 
         try
@@ -1113,6 +1154,47 @@
         }
     }
 
+    /// <summary>
+    /// يطلب تصحيح النص من النموذج المحلي بعد ضغط المستخدم فقط. النتيجة اقتراح للعرض،
+    /// ولا تُكتب ولا تُطبَّق ولا تمرّ عبر موجه النماذج.
+    /// </summary>
+    private async Task RunAssistAsync()
+    {
+        if (assisting || capturing || string.IsNullOrWhiteSpace(captureInput)) return;
+        assisting = true;
+        assistSuggestion = null;
+        assistError = null;
+        StateHasChanged();
+
+        try
+        {
+            var result = await OcrAssist.SuggestAsync(captureInput.Trim());
+            if (result.Available)
+                assistSuggestion = result.Suggestion;
+            else
+                assistError = result.Reason;
+        }
+        catch (Exception)
+        {
+            // لا يُسجَّل أي جزء من نص الوصل في أي سجل.
+            assistError = "تعذّت مساعدة النموذج المحلي؛ راجع النص يدويًا.";
+        }
+        finally
+        {
+            assisting = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>ينقل الاقتراح إلى مربع النص بعد ضغط المستخدم؛ لا يعيد التحكيم تلقائيًا.</summary>
+    private void AcceptAssistSuggestion()
+    {
+        if (string.IsNullOrWhiteSpace(assistSuggestion)) return;
+        captureInput = assistSuggestion;
+        assistSuggestion = null;
+        StateHasChanged();
+    }
+
     /// <summary>يستقبل صورة مختارة محليًا ثم يمرّرها للقارئ والمحكّم دون إرسال أو كتابة.</summary>
     private async Task OnCaptureImageSelectedAsync(InputFileChangeEventArgs e)
     {
@@ -1128,6 +1210,8 @@
 
         capturing = true;
         captureError = null;
+        assistSuggestion = null;
+        assistError = null;
         StateHasChanged();
 
         try
