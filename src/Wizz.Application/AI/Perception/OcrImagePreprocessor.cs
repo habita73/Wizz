@@ -33,4 +33,33 @@ public static class OcrImagePreprocessor
 
         return Math.Max(1.0, scale);
     }
+
+    /// <summary>
+    /// أبعاد الصورة المستهدفة قبل التعرّف، محسوبة من الأبعاد <em>الموجّهة</em> (بعد تطبيق دوران EXIF).
+    /// فصل هذا الحساب عن فكّ الصورة يجعل سلوك التكبير قابلًا للاختبار ببيانات اصطناعية، ويمنع حساب
+    /// عامل التكبير من أبعاد خاطئة حين تكون الصورة مخزّنة باتجاه مختلف عن اتجاه عرضها.
+    /// </summary>
+    /// <param name="orientedWidth">عرض الصورة بعد تطبيق اتجاه EXIF.</param>
+    /// <param name="orientedHeight">ارتفاع الصورة بعد تطبيق اتجاه EXIF.</param>
+    public static OcrTargetSize ComputeTargetSize(long orientedWidth, long orientedHeight)
+    {
+        var scale = ComputeScale(orientedWidth, orientedHeight);
+        if (orientedWidth <= 0 || orientedHeight <= 0 || scale <= 1.0)
+        {
+            return new OcrTargetSize(
+                (int)Math.Max(0, orientedWidth),
+                (int)Math.Max(0, orientedHeight),
+                1.0);
+        }
+
+        var width = (int)Math.Min(MaximumLongSidePixels, Math.Round(orientedWidth * scale));
+        var height = (int)Math.Min(MaximumLongSidePixels, Math.Round(orientedHeight * scale));
+        return new OcrTargetSize(width, height, scale);
+    }
 }
+
+/// <summary>أبعاد الصورة بعد التكبير الاختياري، والعامل المستخدم.</summary>
+/// <param name="Width">العرض المستهدف بالبكسل.</param>
+/// <param name="Height">الارتفاع المستهدف بالبكسل.</param>
+/// <param name="Scale">عامل التكبير؛ <c>1</c> يعني بلا تغيير.</param>
+public readonly record struct OcrTargetSize(int Width, int Height, double Scale);

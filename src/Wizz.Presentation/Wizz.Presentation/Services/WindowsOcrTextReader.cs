@@ -85,19 +85,33 @@ public sealed class WindowsOcrTextReader : IOcrTextReader
         }
     }
 
-    /// <summary>يكبّر الصور الصغيرة جدًا فقط، بجودة عالية، بلا تغيير للصور الكافية.</summary>
+    /// <summary>
+    /// يفكّ الصورة مع احترام اتجاه EXIF، ويكبّر الصور الصغيرة جدًا فقط بجودة عالية.
+    /// صور الهاتف تُخزَّن غالبًا باتجاه مستشعر مختلف عن اتجاه عرضها؛ تجاهل وسمة EXIF كان يجعل
+    /// النص يصل إلى قرة التعرّف مقلوبًا، فتتدهور العربية خصوصًا. الأبعاد <em>الموجّهة</em> هي أساس
+    /// حساب التكبير حتى تبقى الأرقام صحيحة بعد الدوران.
+    /// </summary>
     private static async Task<SoftwareBitmap> DecodeWithOptionalUpscaleAsync(BitmapDecoder decoder)
     {
-        var scale = OcrImagePreprocessor.ComputeScale(decoder.PixelWidth, decoder.PixelHeight);
-        if (scale <= 1.0)
+        var target = OcrImagePreprocessor.ComputeTargetSize(
+            decoder.OrientedPixelWidth,
+            decoder.OrientedPixelHeight);
+
+        if (target.Scale <= 1.0)
         {
-            return await decoder.GetSoftwareBitmapAsync();
+            // نستدعي الحمولة الصريحة لأن الحمولة بلا معاملات لا تضمن اتجاه EXIF نفسه في كل إصدار.
+            return await decoder.GetSoftwareBitmapAsync(
+                BitmapPixelFormat.Bgra8,
+                BitmapAlphaMode.Premultiplied,
+                new BitmapTransform(),
+                ExifOrientationMode.RespectExifOrientation,
+                ColorManagementMode.DoNotColorManage);
         }
 
         var transform = new BitmapTransform
         {
-            ScaledWidth = (uint)Math.Round(decoder.PixelWidth * scale),
-            ScaledHeight = (uint)Math.Round(decoder.PixelHeight * scale),
+            ScaledWidth = (uint)target.Width,
+            ScaledHeight = (uint)target.Height,
             InterpolationMode = BitmapInterpolationMode.Cubic
         };
 
@@ -105,7 +119,7 @@ public sealed class WindowsOcrTextReader : IOcrTextReader
             BitmapPixelFormat.Bgra8,
             BitmapAlphaMode.Premultiplied,
             transform,
-            ExifOrientationMode.IgnoreExifOrientation,
+            ExifOrientationMode.RespectExifOrientation,
             ColorManagementMode.DoNotColorManage);
     }
 

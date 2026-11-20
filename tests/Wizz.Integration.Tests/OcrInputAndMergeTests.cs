@@ -43,6 +43,49 @@ public sealed class OcrInputAndMergeTests
     }
 
     [Fact]
+    public void ComputeTargetSize_UsesOrientedDimensionsWithoutUpscalingAdequateImage()
+    {
+        var target = OcrImagePreprocessor.ComputeTargetSize(1200, 1600);
+
+        Assert.Equal(1200, target.Width);
+        Assert.Equal(1600, target.Height);
+        Assert.Equal(1.0, target.Scale);
+    }
+
+    [Fact]
+    public void ComputeTargetSize_ScalesSmallOrientedImage()
+    {
+        var target = OcrImagePreprocessor.ComputeTargetSize(480, 640);
+
+        Assert.Equal(2.0, target.Scale);
+        Assert.Equal(960, target.Width);
+        Assert.Equal(1280, target.Height);
+    }
+
+    [Fact]
+    public void ComputeTargetSize_CapsScaleAndLongSide()
+    {
+        // عامل 960/240 = 4 يُقيَّد بـ٢٫٥، والضلع الطويل ٤٠٠٠ لا يتجاوز السقف.
+        var capped = OcrImagePreprocessor.ComputeTargetSize(240, 320);
+        Assert.Equal(OcrImagePreprocessor.MaximumUpscaleFactor, capped.Scale);
+        Assert.Equal(600, capped.Width);
+        Assert.Equal(800, capped.Height);
+
+        var tall = OcrImagePreprocessor.ComputeTargetSize(100, 4000);
+        Assert.True(tall.Height <= OcrImagePreprocessor.MaximumLongSidePixels);
+    }
+
+    [Fact]
+    public void ComputeTargetSize_ReturnsSafeValuesForInvalidDimensions()
+    {
+        var target = OcrImagePreprocessor.ComputeTargetSize(0, 100);
+
+        Assert.Equal(0, target.Width);
+        Assert.Equal(100, target.Height);
+        Assert.Equal(1.0, target.Scale);
+    }
+
+    [Fact]
     public void Merge_ReplacesGarbledNumberWithCleanFrenchNumber()
     {
         var arabic = "حليب i.ooo";
