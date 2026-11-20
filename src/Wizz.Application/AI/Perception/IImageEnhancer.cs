@@ -6,8 +6,10 @@ namespace Wizz.Application.AI.Perception;
 /// </summary>
 public interface IImageEnhancer
 {
-    /// <summary>يعيد صورة محسّنة بصيغة PNG، أو <c>null</c> إذا تعذّر فكّ الصورة.</summary>
-    byte[]? Enhance(byte[] imageBytes);
+    /// <summary>
+    /// يعيد صورة محسّنة بصيغة PNG في الشدة المطلوبة، أو <c>null</c> إذا تعذّر فكّ الصورة.
+    /// </summary>
+    byte[]? Enhance(byte[] imageBytes, ImageEnhanceLevel level = ImageEnhanceLevel.Strong);
 
     /// <summary>يعيد نسخة مصغّرة بصيغة JPEG للمعاينة فقط، أو <c>null</c> إذا تعذّر فكّ الصورة.</summary>
     byte[]? CreateThumbnail(byte[] imageBytes, int maxDimension);

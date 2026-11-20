@@ -1,3 +1,4 @@
+using Wizz.Application.AI.Perception;
 using Wizz.Application.Abstractions;
 using Wizz.Infrastructure.AI.Perception;
 
@@ -5,7 +6,7 @@ namespace Wizz.Integration.Tests;
 
 /// <summary>
 /// اختبارات ببيانات اصطناعية لتخصيصات التقاط الصورة: القيم الافتراضية، الحفظ المحلي،
-/// والقراءة الآمنة لملف تالف. لا قاعدة بيانات ولا إرسال في هذه الاختبارات.
+/// والقراءة الآمنة لملف قديم أو تالف. لا قاعدة بيانات ولا إرسال في هذه الاختبارات.
 /// </summary>
 public sealed class ImageCaptureSettingsTests
 {
@@ -34,7 +35,8 @@ public sealed class ImageCaptureSettingsTests
             var expected = new ImageCaptureSettings(
                 EnhanceEnabled: true,
                 PreviewBeforeAnalysis: false,
-                ShowEnhancedPreview: true);
+                ShowEnhancedPreview: true,
+                EnhanceLevel: ImageEnhanceLevel.Light);
             new ImageCaptureSettingsStore(path).Save(expected);
 
             var actual = new ImageCaptureSettingsStore(path).Get();
@@ -76,6 +78,59 @@ public sealed class ImageCaptureSettingsTests
             Assert.True(actual.EnhanceEnabled);
             Assert.Equal(ImageCaptureSettings.Default.PreviewBeforeAnalysis, actual.PreviewBeforeAnalysis);
             Assert.Equal(ImageCaptureSettings.Default.ShowEnhancedPreview, actual.ShowEnhancedPreview);
+            Assert.Equal(ImageCaptureSettings.Default.EnhanceLevel, actual.EnhanceLevel);
+        }
+        finally
+        {
+            Delete(path);
+        }
+    }
+
+    [Fact]
+    public void LegacyFileWithoutLevel_UsesPreviousStrongSetting()
+    {
+        var path = NewPath();
+        try
+        {
+            File.WriteAllText(path, "{\"EnhanceEnabled\": true, \"PreviewBeforeAnalysis\": true, \"ShowEnhancedPreview\": true}");
+
+            var actual = new ImageCaptureSettingsStore(path).Get();
+
+            Assert.Equal(ImageEnhanceLevel.Strong, actual.EnhanceLevel);
+        }
+        finally
+        {
+            Delete(path);
+        }
+    }
+
+    [Fact]
+    public void UnknownLevelValue_FallsBackToDefault()
+    {
+        var path = NewPath();
+        try
+        {
+            File.WriteAllText(path, "{\"EnhanceLevel\": \"NonExistent\"}");
+
+            Assert.Equal(ImageCaptureSettings.Default.EnhanceLevel,
+                new ImageCaptureSettingsStore(path).Get().EnhanceLevel);
+        }
+        finally
+        {
+            Delete(path);
+        }
+    }
+
+    [Fact]
+    public void NumericLevelValue_IsRead()
+    {
+        var path = NewPath();
+        try
+        {
+            File.WriteAllText(path, "{\"EnhanceLevel\": 2}");
+
+            Assert.Equal(ImageEnhanceLevel.Medium,
+                new ImageCaptureSettingsStore(path).Get().EnhanceLevel);
         }
         finally
         {

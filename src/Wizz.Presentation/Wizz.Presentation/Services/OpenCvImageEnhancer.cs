@@ -12,11 +12,10 @@ using Wizz.Application.AI.Perception;
 /// </summary>
 public sealed class OpenCvImageEnhancer : IImageEnhancer
 {
-    private const double ContrastClipLimit = 2.0;
     private const int ThumbnailJpegQuality = 75;
 
-    /// <summary>يعيد صورة PNG محسّنة، أو <c>null</c> عند تعذّر فكّ الصورة أو تحسينها.</summary>
-    public byte[]? Enhance(byte[] imageBytes)
+    /// <summary>يعيد صورة PNG محسّنة بالشدة المطلوبة، أو <c>null</c> عند تعذّر فكّ الصورة.</summary>
+    public byte[]? Enhance(byte[] imageBytes, ImageEnhanceLevel level = ImageEnhanceLevel.Strong)
     {
         if (imageBytes is null || imageBytes.Length == 0) return null;
 
@@ -31,7 +30,7 @@ public sealed class OpenCvImageEnhancer : IImageEnhancer
             var channels = Cv2.Split(lab);
             try
             {
-                using var clahe = CLAHE.Create(ContrastClipLimit, new Size(8, 8));
+                using var clahe = CLAHE.Create(ImageEnhanceLevels.ClipLimit(level), new Size(8, 8));
                 var enhancedLight = new Mat();
                 clahe.Apply(channels[0], enhancedLight);
                 channels[0].Dispose();

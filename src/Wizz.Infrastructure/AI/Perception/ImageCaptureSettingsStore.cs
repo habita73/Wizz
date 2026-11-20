@@ -2,6 +2,7 @@ namespace Wizz.Infrastructure.AI.Perception;
 
 using System.Text.Json;
 using Wizz.Application.Abstractions;
+using Wizz.Application.AI.Perception;
 
 /// <summary>
 /// يحفظ تخصيصات التقاط الصورة في ملف JSON محلي داخل مجلد بيانات المستخدم، بنفس نمط
@@ -59,7 +60,15 @@ public sealed class ImageCaptureSettingsStore : IImageCaptureSettingsStore
         {
             var directory = Path.GetDirectoryName(_path);
             if (!string.IsNullOrWhiteSpace(directory)) Directory.CreateDirectory(directory);
-            File.WriteAllText(_path, JsonSerializer.Serialize(_settings, new JsonSerializerOptions { WriteIndented = true }));
+            // الشدة تُكتب بالاسم لا برقمها، ليظل الملف مقروءًا عند فحصه يدويًا.
+            var payload = new
+            {
+                _settings.EnhanceEnabled,
+                _settings.PreviewBeforeAnalysis,
+                _settings.ShowEnhancedPreview,
+                EnhanceLevel = _settings.EnhanceLevel.ToString()
+            };
+            File.WriteAllText(_path, JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true }));
         }
         catch
         {
@@ -85,10 +94,30 @@ public sealed class ImageCaptureSettingsStore : IImageCaptureSettingsStore
                     ? value.GetBoolean()
                     : defaultValue;
 
+            // الملفات المكتوبة قبل إضافة المستويات بلا هذا الحقل؛ تعود إلى الشدة السابقة.
+            ImageEnhanceLevel ReadLevel()
+            {
+                if (!document.RootElement.TryGetProperty(nameof(ImageCaptureSettings.EnhanceLevel), out var value))
+                    return fallback.EnhanceLevel;
+
+                if (value.ValueKind == JsonValueKind.String
+                    && Enum.TryParse(value.GetString(), ignoreCase: true, out ImageEnhanceLevel parsed)
+                    && Enum.IsDefined(parsed))
+                    return parsed;
+
+                if (value.ValueKind == JsonValueKind.Number
+                    && value.TryGetInt32(out var number)
+                    && Enum.IsDefined((ImageEnhanceLevel)number))
+                    return (ImageEnhanceLevel)number;
+
+                return fallback.EnhanceLevel;
+            }
+
             return new ImageCaptureSettings(
                 Read(nameof(ImageCaptureSettings.EnhanceEnabled), fallback.EnhanceEnabled),
                 Read(nameof(ImageCaptureSettings.PreviewBeforeAnalysis), fallback.PreviewBeforeAnalysis),
-                Read(nameof(ImageCaptureSettings.ShowEnhancedPreview), fallback.ShowEnhancedPreview));
+                Read(nameof(ImageCaptureSettings.ShowEnhancedPreview), fallback.ShowEnhancedPreview),
+                ReadLevel());
         }
         catch
         {

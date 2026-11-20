@@ -232,10 +232,16 @@
 
                 <div class="mt-3 border-top pt-3">
                     <div class="small fw-bold mb-1">إعدادات الصورة ومعاينتها</div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="enhanceImage"
-                               checked="@enhanceEnabled" @onchange="OnEnhanceChanged" disabled="@capturing" />
-                        <label class="form-check-label small" for="enhanceImage">تحسين الصورة محليًا قبل القراءة (اختياري)</label>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" type="checkbox" id="enhanceImage"
+                                   checked="@enhanceEnabled" @onchange="OnEnhanceChanged" disabled="@capturing" />
+                            <label class="form-check-label small" for="enhanceImage">تحسين الصورة محليًا قبل القراءة (اختياري)</label>
+                        </div>
+                        <button type="button" class="btn btn-link btn-sm p-0"
+                                @onclick="() => showEnhanceSettingsModal = true" disabled="@capturing">
+                            إعدادات التحسين (@ImageEnhanceLevels.Label(enhanceLevel))
+                        </button>
                     </div>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="previewBeforeAnalysis"
@@ -251,9 +257,50 @@
                         </div>
                     }
                     <div class="small text-muted mt-1">
-                        التحسين يعمل داخل الجهاز بـOpenCV بلا نماذج ولا اتصال، ولا يغيّر القارئ الافتراضي.
-                        إلغاء المعاينة يذهب إلى النتيجة مباشرة عند اختيار الصورة. تُحفظ هذه الخيارات في ملف محلي.
+                        التحسين يعمل داخل الجهاز بـOpenCV بلا نماذج ولا اتصال، وله ثلاث شِدّات تضبطها من «إعدادات التحسين».
+                        لا يغيّر القارئ الافتراضي. إلغاء المعاينة يذهب إلى النتيجة مباشرة عند اختيار الصورة.
+                        تُحفظ هذه الخيارات تلقائيًا في ملف محلي.
                     </div>
+
+                    @if (showEnhanceSettingsModal)
+                    {
+                        <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">إعدادات تحسين الصورة</h5>
+                                        <button type="button" class="btn-close" @onclick="() => showEnhanceSettingsModal = false"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="small text-muted mb-2">
+                                            كل المستويات تستخدم المعالجة نفسها داخل الجهاز، بلا نماذج ولا اتصال.
+                                            اختر الشدة التي تناسب صورك؛ لا يوجد تبديل تلقائي للقارئ.
+                                        </div>
+                                        @foreach (var level in EnhanceLevels)
+                                        {
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="enhanceLevel"
+                                                       id="@("enhance-level-" + (int)level)"
+                                                       checked="@(enhanceLevel == level)"
+                                                       @onchange="() => OnEnhanceLevelChanged(level)" />
+                                                <label class="form-check-label small" for="@("enhance-level-" + (int)level)">
+                                                    @ImageEnhanceLevels.Label(level)
+                                                </label>
+                                            </div>
+                                        }
+                                        <div class="small text-muted mt-2">
+                                            «قوي» هو الإعداد الذي كان مستخدمًا قبل إضافة المستويات. يُحفظ اختيارك تلقائيًا،
+                                            وتُحدَّث المعاينة فورًا إن كانت الصورة محمّلة.
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-primary btn-sm"
+                                                @onclick="() => showEnhanceSettingsModal = false">تم</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
                     @if (!string.IsNullOrWhiteSpace(imagePreviewNote))
                     {
                         <div class="small text-warning mt-1">@imagePreviewNote</div>
@@ -695,6 +742,9 @@
     private bool enhanceEnabled;
     private bool previewBeforeAnalysis = true;
     private bool showEnhancedPreview = true;
+    private ImageEnhanceLevel enhanceLevel = ImageEnhanceLevel.Strong;
+    private bool showEnhanceSettingsModal;
+    private static readonly ImageEnhanceLevel[] EnhanceLevels = Enum.GetValues<ImageEnhanceLevel>();
     private byte[]? originalImageBytes;
     private byte[]? enhancedImageBytes;
     private string? originalPreviewUrl;
@@ -718,6 +768,7 @@
         enhanceEnabled = imageSettings.EnhanceEnabled;
         previewBeforeAnalysis = imageSettings.PreviewBeforeAnalysis;
         showEnhancedPreview = imageSettings.ShowEnhancedPreview;
+        enhanceLevel = imageSettings.EnhanceLevel;
         documentReaderEnabled = ModuleGate.IsEnabled(Wizz.Application.Modules.DocumentReaderModule.Id);
         ocrReaderSupported = documentReaderEnabled && OcrReader.IsSupported;
         ocrReaderStatus = !documentReaderEnabled
@@ -1368,7 +1419,7 @@
         imagePreviewNote = null;
         if (!enhanceEnabled || originalImageBytes is null) return;
 
-        enhancedImageBytes = ImageEnhancer.Enhance(originalImageBytes);
+        enhancedImageBytes = ImageEnhancer.Enhance(originalImageBytes, enhanceLevel);
         if (enhancedImageBytes is null)
         {
             imagePreviewNote = "تعذّ تحسين الصورة؛ ستُقرأ الأصلية.";
@@ -1403,8 +1454,17 @@
         StateHasChanged();
     }
 
+    /// <summary>تغيير الشدة يُحفظ فورًا ويعيد بناء المعاينة المحسّنة إن وُجدت صورة.</summary>
+    private void OnEnhanceLevelChanged(ImageEnhanceLevel level)
+    {
+        enhanceLevel = level;
+        ImageCaptureSettings.Save(CurrentImageSettings());
+        PrepareEnhancedImage();
+        StateHasChanged();
+    }
+
     private ImageCaptureSettings CurrentImageSettings() =>
-        new(enhanceEnabled, previewBeforeAnalysis, showEnhancedPreview);
+        new(enhanceEnabled, previewBeforeAnalysis, showEnhancedPreview, enhanceLevel);
 
     /// <summary>يقرأ الصورة بالقارئ المحلي المفعّل، ثم يعرض حكم المدمج على النص المستخرج فقط.</summary>
     private async Task RunImageCaptureAsync()
