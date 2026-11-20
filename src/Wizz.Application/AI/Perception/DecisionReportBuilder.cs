@@ -103,6 +103,7 @@ public sealed record DecisionReportGood(
 /// <param name="AcceptedCount">عدد المقبول كما صدر عن المحكّم.</param>
 /// <param name="RejectedCount">عدد المرفوض كما صدر عن المحكّم.</param>
 /// <param name="NumericHints">احتمالات تصحيح الأرقام للمراجعة فقط؛ لم تدخل التحكيم ولا تغيّر النص.</param>
+/// <param name="ReviewHints">ملاحظات مراجعة تقديرية للرقم والشعار؛ لم تدخل التحكيم ولا تغيّر النص.</param>
 /// <param name="WrittenToDatabase">يبقى <c>false</c> دائمًا.</param>
 public sealed record DecisionReport(
     EstimatedDocumentType DocumentType,
@@ -116,6 +117,7 @@ public sealed record DecisionReport(
     int AcceptedCount,
     int RejectedCount,
     IReadOnlyList<OcrNumericCleanup.Hint> NumericHints,
+    IReadOnlyList<OcrReviewHint> ReviewHints,
     bool WrittenToDatabase);
 
 /// <summary>
@@ -199,6 +201,9 @@ public static class DecisionReportBuilder
         // احتمالات رقمية للمراجعة فقط، مشتقّة من النص المقروء كما هو؛ لا تُمرَّر للمحكّم.
         var numericHints = OcrNumericCleanup.Analyze(recognizedText).Hints;
 
+        // ملاحظات مراجعة تقديرية للكلمة الرقمية والشعار؛ لا تُغيّر النص ولا تدخل الحكم.
+        var reviewHints = OcrReviewHints.Analyze(recognizedText, contentIndexes.ToHashSet());
+
         return new DecisionReport(
             documentType,
             partLines,
@@ -211,6 +216,7 @@ public static class DecisionReportBuilder
             adjudication.AcceptedCount,
             adjudication.RejectedCount,
             numericHints,
+            reviewHints,
             adjudication.WrittenToDatabase);
     }
 
