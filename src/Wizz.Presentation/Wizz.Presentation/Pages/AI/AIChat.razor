@@ -10,6 +10,7 @@
 @inject Wizz.Application.AI.QueryAiUseCase QueryAiUseCase
 @inject DocumentCaptureService CaptureService
 @inject IOcrTextReader OcrReader
+@inject IOcrReaderSelection OcrReaderSelection
 @inject OcrDocumentCaptureService OcrCaptureService
 @inject OcrTextAssistService OcrAssist
 @inject Wizz.Application.Abstractions.IModuleGate ModuleGate
@@ -211,6 +212,18 @@
                     <InputFile OnChange="OnCaptureImageSelectedAsync" accept="image/png,image/jpeg,image/webp"
                                class="form-control form-control-sm" disabled="@capturing" />
                     <div class="small mt-1 @(ocrReaderSupported ? "text-success" : "text-muted")">@ocrReaderStatus</div>
+                    <label class="small fw-bold mt-2 mb-1" for="ocrReaderChoice">القارئ المستخدم لهذه الصورة</label>
+                    <select id="ocrReaderChoice" class="form-select form-select-sm"
+                            value="@((int)selectedReader)" @onchange="OnReaderChoiceChanged" disabled="@capturing">
+                        <option value="@((int)OcrReaderChoice.Default)">تلقائي — Windows أساسًا (الإعداد المعتمد)</option>
+                        <option value="@((int)OcrReaderChoice.Windows)">Windows OCR مباشرة</option>
+                        <option value="@((int)OcrReaderChoice.RapidOcr)">القارئ المضمّن (PP-OCR عربي) مباشرة</option>
+                    </select>
+                    <div class="small text-muted mt-1">
+                        للمقارنة فقط: اختر قارئًا ثم ارفع الصورة نفسها لمقارنة الناتج. لا يغيّر هذا الاختيار
+                        الإعداد الافتراضي، ولا يُرسل شيء، ولا تُكتب بيانات في أي خيار. لا يوجد تبديل تلقائي
+                        عند فشل القارئ المختار؛ تظهر رسالة واضحة بدلًا من ذلك.
+                    </div>
                 </div>
 
                 <div class="mt-3 border-top pt-3">
@@ -254,6 +267,13 @@
                 @if (captureResult is not null)
                 {
                     <div class="mt-3">
+                        @if (!string.IsNullOrWhiteSpace(lastReaderName))
+                        {
+                            <div class="small mb-1">
+                                القارئ الذي اشتغل: <strong>@lastReaderName</strong>
+                                <span class="badge bg-light text-dark border ms-1">@SelectedReaderLabel(selectedReader)</span>
+                            </div>
+                        }
                         <div class="small fw-bold mb-1">@captureResult.Adjudication.Summary</div>
                         @if (captureResult.Adjudication.Candidates.Count == 0)
                         {
@@ -609,6 +629,9 @@
     private bool capturing;
     private string? captureError;
     private IBrowserFile? captureImage;
+    // اختيار القارئ للمقارنة اليدوية؛ الافتراضي هو القرار المعتمد ولا يُحفظ
+    private OcrReaderChoice selectedReader = OcrReaderChoice.Default;
+    private string? lastReaderName;
     // مساعدة النموذج المحلي — عند الطلب فقط؛ الاقتراح لا يُطبَّق إلا بضغط المستخدم
     private bool assisting;
     private string? assistSuggestion;
@@ -619,6 +642,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        OcrReaderSelection.Set(OcrReaderChoice.Default);
         documentReaderEnabled = ModuleGate.IsEnabled(Wizz.Application.Modules.DocumentReaderModule.Id);
         ocrReaderSupported = documentReaderEnabled && OcrReader.IsSupported;
         ocrReaderStatus = !documentReaderEnabled
@@ -1133,6 +1157,7 @@
         captureError = null;
         assistSuggestion = null;
         assistError = null;
+        lastReaderName = null;
         StateHasChanged();
 
         try
@@ -1195,6 +1220,25 @@
         StateHasChanged();
     }
 
+    /// <summary>يثبّت اختيار القارئ لهذه الجلسة عند تغيير المستخدم له؛ لا يغيّر الافتراضي المعتمد.</summary>
+    private void OnReaderChoiceChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var value) &&
+            Enum.IsDefined(typeof(OcrReaderChoice), value))
+        {
+            selectedReader = (OcrReaderChoice)value;
+            OcrReaderSelection.Set(selectedReader);
+        }
+    }
+
+    /// <summary>وسم مختصر يوضح هل قرأ القارئ عبر المسار التلقائي أم باختيار مباشر.</summary>
+    private static string SelectedReaderLabel(OcrReaderChoice choice) => choice switch
+    {
+        OcrReaderChoice.Windows => "اختيار مباشر",
+        OcrReaderChoice.RapidOcr => "اختيار مباشر",
+        _ => "المسار التلقائي"
+    };
+
     /// <summary>يستقبل صورة مختارة محليًا ثم يمرّرها للقارئ والمحكّم دون إرسال أو كتابة.</summary>
     private async Task OnCaptureImageSelectedAsync(InputFileChangeEventArgs e)
     {
@@ -1212,6 +1256,8 @@
         captureError = null;
         assistSuggestion = null;
         assistError = null;
+        lastReaderName = null;
+        OcrReaderSelection.Set(selectedReader);
         StateHasChanged();
 
         try
@@ -1233,6 +1279,7 @@
 
             captureInput = result.RecognizedText;
             captureResult = result.Adjudication;
+            lastReaderName = result.ReaderName;
             decisionReport = DecisionReportBuilder.Build(result.RecognizedText, captureResult.Adjudication);
             if (string.IsNullOrWhiteSpace(result.RecognizedText))
             {

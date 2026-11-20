@@ -68,11 +68,19 @@ public static class PerceptionCandidateExtractor
             var denseMatches = DenseNumberPattern.Matches(line);
             var firstPrice = PricePattern.Match(line);
 
+            // نمط «رقم ثم اسم» لقرة Windows يُعالَج أولًا؛ صفوف المنتجات لا تُستبعد منه.
+            var numberFirst = firstPrice.Success && firstPrice.Index == 0 && IsNumberFirstList(line, denseMatches);
+
+            // أسطر الرأس والذيل (رقم الهاتف والفاتورة والتاريخ والوقت والمجاميع) ليست صفوف منتجات.
+            // استبعادها يمنع مولّد الصيغ من اختراع عشرات القراءات المحتملة من أرقامها. النص الخام
+            // نفسه يُعرض كما قرأه القارئ في مكان مستقل، فلا يُحذف من العرض ولا يُغيَّر.
+            if (!numberFirst && IsMetadataLine(line)) continue;
+
             // قرة Windows تُخرج النص بترتيبه البصري: الرقم قبل الاسم، وقد تجمع عدة منتجات في سطر واحد
             // (مثال: "12.5 حليب 5 خبز 150 تفاح"). هذا النمط يعني أن كل رقم متبوع باسم قبلي، بلا رقمين
             // متجاورين. إن وُجد رقم بلا اسم بعده (كمية أو مجموع سطر) فالصف مكتظ ويُعالَج أدناه؛ بهذا
             // لا يُقرأ الرقم الزائد في الكمية (1.000 ← 1.00 + 0) سعرًا مستقلًا.
-            if (firstPrice.Success && firstPrice.Index == 0 && IsNumberFirstList(line, denseMatches))
+            if (numberFirst)
             {
                 result.Add(new PerceptionReadingGroup(line, false, ExtractNumberFirstLine(line, source)));
                 continue;
@@ -259,6 +267,26 @@ public static class PerceptionCandidateExtractor
             }
         }
         return result;
+    }
+
+    /// <summary>
+    /// سطر بيانات وصفية لا يُنتج مرشّحات منتجات: إمّا يحوي فاصل تسمية (كالنقطة والفاصلة المنقوطة)
+    /// قبل أرقامه، وإمّا بلا أرقام، وإمّا يحوي عدة أرقام صحيحة بلا فاصل عشري (هاتف، تاريخ، عنوان).
+    /// صف المنتج يحوي سعرًا عشريًا، أو رقمًا صحيحًا واحدًا، ولا يستخدم فاصل تسمية قبل أرقامه.
+    /// </summary>
+    private static bool IsMetadataLine(string line)
+    {
+        if (line.Contains(':') || line.Contains('؛')) return true;
+
+        var numbers = DenseNumberPattern.Matches(line);
+        if (numbers.Count == 0) return true;
+
+        foreach (Match match in numbers)
+        {
+            if (match.Value.Contains('.') || match.Value.Contains(',')) return false;
+        }
+
+        return numbers.Count > 1;
     }
 
     private static bool IsPriceToken(string raw)

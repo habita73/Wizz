@@ -44,11 +44,12 @@ public sealed class RapidOcrArabicTextReader : IOcrTextReader
     public async Task<OcrReadResult> ReadAsync(byte[] imageBytes, CancellationToken ct = default)
     {
         if (imageBytes is null || imageBytes.Length == 0)
-            return OcrReadResult.Unavailable("لم تُرفع صورة.");
+            return OcrReadResult.Unavailable("لم تُرفع صورة.", OcrReaderNames.RapidOcr);
 
         if (!IsSupported)
             return OcrReadResult.Unavailable(
-                "نماذج القارئ العربي المضمّنة غير موجودة؛ استخدم الإدخال اليدوي.");
+                "نماذج القارئ العربي المضمّنة غير موجودة؛ استخدم الإدخال اليدوي.",
+                OcrReaderNames.RapidOcr);
 
         try
         {
@@ -63,7 +64,7 @@ public sealed class RapidOcrArabicTextReader : IOcrTextReader
             using var stream = new MemoryStream(imageBytes, writable: false);
             using var bitmap = SKBitmap.Decode(stream);
             if (bitmap is null)
-                return OcrReadResult.Unavailable("لم يمكن فك ترميز الصورة محليًا.");
+                return OcrReadResult.Unavailable("لم يمكن فك ترميز الصورة محليًا.", OcrReaderNames.RapidOcr);
 
             var result = await ocr.DetectAsync(bitmap, RapidOcrOptions.Default, null, ct);
             var lines = (result?.TextBlocks ?? Array.Empty<TextBlock>())
@@ -72,16 +73,17 @@ public sealed class RapidOcrArabicTextReader : IOcrTextReader
 
             return OcrReadResult.Success(
                 string.Join(Environment.NewLine, lines),
-                OcrReadingMerger.PrimaryLanguageTag);
+                OcrReadingMerger.PrimaryLanguageTag,
+                OcrReaderNames.RapidOcr);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            return OcrReadResult.Unavailable("أُلغيت قراءة الصورة.");
+            return OcrReadResult.Unavailable("أُلغيت قراءة الصورة.", OcrReaderNames.RapidOcr);
         }
         catch (Exception ex)
         {
             // الرسالة تصف فشل المحرك فقط، ولا تحتوي أي جزء من نص الوصل.
-            return OcrReadResult.Unavailable($"تعذّت قراءة الصورة محليًا: {ex.Message}");
+            return OcrReadResult.Unavailable($"تعذّت قراءة الصورة محليًا: {ex.Message}", OcrReaderNames.RapidOcr);
         }
     }
 }

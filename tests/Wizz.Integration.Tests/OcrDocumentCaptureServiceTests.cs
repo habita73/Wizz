@@ -61,13 +61,14 @@ public sealed class OcrDocumentCaptureServiceTests : IAsyncLifetime
     {
         await SeedProductAsync("حليب", 12.5m, 10m);
         var service = new OcrDocumentCaptureService(
-            new FakeReader(OcrReadResult.Success("حليب 12.5", "ar")),
+            new FakeReader(OcrReadResult.Success("حليب 12.5", "ar", OcrReaderNames.Windows)),
             new DocumentCaptureService(_unitOfWork.Products));
 
         var result = await service.CaptureAsync(new byte[] { 1, 2, 3 });
 
         Assert.True(result.ReaderAvailable);
         Assert.Equal("حليب 12.5", result.RecognizedText);
+        Assert.Equal(OcrReaderNames.Windows, result.ReaderName);
         Assert.NotNull(result.Adjudication);
         Assert.Equal(1, result.Adjudication.Adjudication.AcceptedCount);
         Assert.Equal(0, result.Adjudication.Adjudication.RejectedCount);

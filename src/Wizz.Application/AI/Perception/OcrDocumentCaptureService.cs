@@ -5,11 +5,13 @@ namespace Wizz.Application.AI.Perception;
 /// <param name="RecognizedText">النص الخام الذي استخرجه القارئ للعرض.</param>
 /// <param name="UnavailableReason">سبب عدم توفر القارئ، عند عدم التوفر فقط.</param>
 /// <param name="Adjudication">حكم المدمج على مستخرجات النص، أو <c>null</c> عند عدم التوفر.</param>
+/// <param name="ReaderName">اسم القارئ الذي أنتج النص، ليعرف المستخدم أي محرك اشتغل.</param>
 public sealed record OcrDocumentCaptureResult(
     bool ReaderAvailable,
     string RecognizedText,
     string? UnavailableReason,
-    DocumentCaptureResult? Adjudication)
+    DocumentCaptureResult? Adjudication,
+    string ReaderName = "")
 {
     /// <summary>يبقى <c>false</c> دائمًا في هذه المرحلة.</summary>
     public bool WrittenToDatabase => Adjudication?.WrittenToDatabase ?? false;
@@ -61,6 +63,6 @@ public sealed class OcrDocumentCaptureService
             new DocumentCaptureRequest(read.Text, PerceptionSource.Local),
             ct);
 
-        return new OcrDocumentCaptureResult(true, read.Text, null, adjudication);
+        return new OcrDocumentCaptureResult(true, read.Text, null, adjudication, read.ReaderName);
     }
 }

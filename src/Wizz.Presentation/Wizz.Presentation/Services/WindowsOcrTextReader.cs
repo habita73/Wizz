@@ -24,19 +24,22 @@ public sealed class WindowsOcrTextReader : IOcrTextReader
     {
         if (imageBytes is null || imageBytes.Length == 0)
         {
-            return OcrReadResult.Unavailable("لم تُرفع صورة.");
+            return OcrReadResult.Unavailable("لم تُرفع صورة.", OcrReaderNames.Windows);
         }
 
         if (!IsSupported)
         {
             return OcrReadResult.Unavailable(
-                "قرة التعرف العربية غير مثبّتة على هذا الجهاز؛ استخدم الإدخال اليدوي.");
+                "قرة التعرف العربية غير مثبّتة على هذا الجهاز؛ استخدم الإدخال اليدوي.",
+                OcrReaderNames.Windows);
         }
 
         var arabicEngine = OcrEngine.TryCreateFromLanguage(ArabicLanguage);
         if (arabicEngine is null)
         {
-            return OcrReadResult.Unavailable("تعذّر تشغيل قرة التعرف على هذا الجهاز؛ استخدم الإدخال اليدوي.");
+            return OcrReadResult.Unavailable(
+                "تعذّر تشغيل قرة التعرف على هذا الجهاز؛ استخدم الإدخال اليدوي.",
+                OcrReaderNames.Windows);
         }
 
         try
@@ -61,7 +64,7 @@ public sealed class WindowsOcrTextReader : IOcrTextReader
 
             if (frenchEngine is null)
             {
-                return OcrReadResult.Success(primaryText, OcrReadingMerger.PrimaryLanguageTag);
+                return OcrReadResult.Success(primaryText, OcrReadingMerger.PrimaryLanguageTag, OcrReaderNames.Windows);
             }
 
             // فشل القراءة المساعدة لا يُسقط القراءة الأساسية؛ تُستخدم العربية وحدها عندئذ.
@@ -69,16 +72,16 @@ public sealed class WindowsOcrTextReader : IOcrTextReader
             {
                 var french = await frenchEngine.RecognizeAsync(bitmap);
                 var merged = OcrReadingMerger.Merge(primaryText, ReconstructRows(french));
-                return OcrReadResult.Success(merged, OcrReadingMerger.MergedLanguageTag);
+                return OcrReadResult.Success(merged, OcrReadingMerger.MergedLanguageTag, OcrReaderNames.Windows);
             }
             catch
             {
-                return OcrReadResult.Success(primaryText, OcrReadingMerger.PrimaryLanguageTag);
+                return OcrReadResult.Success(primaryText, OcrReadingMerger.PrimaryLanguageTag, OcrReaderNames.Windows);
             }
         }
         catch (Exception ex)
         {
-            return OcrReadResult.Unavailable($"تعذّت قراءة الصورة محليًا: {ex.Message}");
+            return OcrReadResult.Unavailable($"تعذّت قراءة الصورة محليًا: {ex.Message}", OcrReaderNames.Windows);
         }
     }
 

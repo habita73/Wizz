@@ -5,19 +5,28 @@ namespace Wizz.Application.AI.Perception;
 /// <param name="Text">النص الخام المستخرج محليًا، أو سلسلة فارغة عند عدم التوفر.</param>
 /// <param name="LanguageTag">وسم اللغة التي استخدمها القارئ، إن وُجد.</param>
 /// <param name="UnavailableReason">سبب عدم التوفر بلغة المستخدم، عند عدم التوفر فقط.</param>
+/// <param name="ReaderName">اسم القارئ الذي أنتج النتيجة، ليعرف المستخدم أي محرك اشتغل.</param>
 public sealed record OcrReadResult(
     bool IsAvailable,
     string Text,
     string? LanguageTag,
-    string? UnavailableReason)
+    string? UnavailableReason,
+    string ReaderName = "")
 {
     /// <summary>ينشئ نتيجة ناجحة بالنص الخام.</summary>
-    public static OcrReadResult Success(string text, string? languageTag) =>
-        new(true, text, languageTag, null);
+    public static OcrReadResult Success(string text, string? languageTag, string readerName = "") =>
+        new(true, text, languageTag, null, readerName);
 
     /// <summary>ينشئ نتيجة تعلن أن القارئ غير متاح دون أي نص.</summary>
-    public static OcrReadResult Unavailable(string reason) =>
-        new(false, string.Empty, null, reason);
+    public static OcrReadResult Unavailable(string reason, string readerName = "") =>
+        new(false, string.Empty, null, reason, readerName);
+}
+
+/// <summary>أسماء القرّاء المحليين كما تظهر للمستخدم. لا تتضمن أي مسار أو إعداد سحابي.</summary>
+public static class OcrReaderNames
+{
+    public const string Windows = "قارئ Windows OCR";
+    public const string RapidOcr = "القارئ المضمّن (PP-OCR عربي)";
 }
 
 /// <summary>

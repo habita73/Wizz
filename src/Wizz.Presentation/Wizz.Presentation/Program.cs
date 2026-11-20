@@ -146,13 +146,26 @@ builder.Services.AddScoped<QueryAiUseCase>();
 builder.Services.AddScoped<Wizz.Application.AI.Perception.DocumentCaptureService>();
 // قارئ نصوص الصور وحدة اختيارية: لا يُنشأ محرك التعرّف إلا إذا كانت الوحدة مفعّلة.
 // قرة Windows هي الأساس لأنها أدق على صور الوصول، والمضمّن بديل أخير حين لا تتوفر لغتها.
+// اختيار القارئ للمقارنة اليدوية لا يغيّر هذا الافتراضي، ولا يضيف أي مسار سحابي.
+builder.Services.AddScoped<Wizz.Application.AI.Perception.IOcrReaderSelection,
+    Wizz.Application.AI.Perception.OcrReaderSelection>();
 builder.Services.AddScoped<Wizz.Application.AI.Perception.IOcrTextReader>(sp =>
-    new Wizz.Application.AI.Perception.GatedOcrTextReader(
+{
+    var selection = sp.GetRequiredService<Wizz.Application.AI.Perception.IOcrReaderSelection>();
+    return new Wizz.Application.AI.Perception.GatedOcrTextReader(
         sp.GetRequiredService<IModuleGate>(),
         Wizz.Application.Modules.DocumentReaderModule.Id,
-        () => new Wizz.Application.AI.Perception.CompositeOcrTextReader(
-            new Wizz.Presentation.Services.WindowsOcrTextReader(),
-            new Wizz.Presentation.Services.RapidOcrArabicTextReader())));
+        () =>
+        {
+            var windows = new Wizz.Presentation.Services.WindowsOcrTextReader();
+            var rapid = new Wizz.Presentation.Services.RapidOcrArabicTextReader();
+            return new Wizz.Application.AI.Perception.SelectableOcrTextReader(
+                selection,
+                new Wizz.Application.AI.Perception.CompositeOcrTextReader(windows, rapid),
+                windows,
+                rapid);
+        });
+});
 builder.Services.AddScoped<Wizz.Application.AI.Perception.OcrDocumentCaptureService>();
 // مساعدة اختيارية لتصحيح النص المستخرج: لا تُستدعى إلا بضغط المستخدم، وتستخدم الموفر المحلي فقط،
 // بلا تنزيل نموذج ولا إرسال للخارج ولا كتابة في قاعدة البيانات.
