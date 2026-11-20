@@ -29,7 +29,9 @@
 
 <div class="row">
     <div class="col-lg-8">
-        <div class="card h-100">
+        @* بلا h-100: بطاقة المحادثة تحتفظ بارتفاع محتواها، فلا تظهر مساحة فارغة أسفل التلميح
+           حين تكبر بطاقة «تحكيم نص مستند» بعد قراءة صورة (تمدد صف Bootstrap). *@
+        <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h5 class="mb-0 d-inline-flex align-items-center gap-2"><WizzIcon Icon="message" Size="18" /><span>المحادثة</span></h5>
                 <div class="d-flex gap-2 align-items-center">
