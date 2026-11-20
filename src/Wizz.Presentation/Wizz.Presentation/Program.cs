@@ -167,6 +167,9 @@ builder.Services.AddScoped<Wizz.Application.AI.Perception.IOcrTextReader>(sp =>
         });
 });
 builder.Services.AddScoped<Wizz.Application.AI.Perception.OcrDocumentCaptureService>();
+// تحسين الصورة اختياري داخل الجهاز؛ لا يُستدعى إلا إن فعّله المستخدم في شاشة القراءة.
+builder.Services.AddScoped<Wizz.Application.AI.Perception.IImageEnhancer,
+    Wizz.Presentation.Services.OpenCvImageEnhancer>();
 // مساعدة اختيارية لتصحيح النص المستخرج: لا تُستدعى إلا بضغط المستخدم، وتستخدم الموفر المحلي فقط،
 // بلا تنزيل نموذج ولا إرسال للخارج ولا كتابة في قاعدة البيانات.
 builder.Services.AddScoped<Wizz.Application.AI.Perception.OcrTextAssistService>(sp =>

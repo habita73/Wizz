@@ -11,6 +11,7 @@ using Wizz.Application.AI;
 using Wizz.Application.Modules;
 using Wizz.Application.UseCases.Modules;
 using Wizz.Infrastructure.AI;
+using Wizz.Infrastructure.AI.Perception;
 using Wizz.Infrastructure.Data;
 using Wizz.Infrastructure.Devices;
 using Wizz.Infrastructure.Modules;
@@ -49,6 +50,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IModuleGate, ModuleGate>();
         services.AddScoped<GetModulesUseCase>();
         services.AddScoped<SetModuleEnabledUseCase>();
+
+        // تخصيصات التقاط الصورة — ملف محلي مستقل بلا قاعدة بيانات ولا إرسال.
+        services.AddSingleton<IImageCaptureSettingsStore>(_ => new ImageCaptureSettingsStore());
 
         // Devices (Mock for MVP)
         services.AddSingleton<IBarcodeReader, MockScanner>();

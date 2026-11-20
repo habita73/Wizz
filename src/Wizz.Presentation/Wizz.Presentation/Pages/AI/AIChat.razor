@@ -13,6 +13,8 @@
 @inject IOcrReaderSelection OcrReaderSelection
 @inject OcrDocumentCaptureService OcrCaptureService
 @inject OcrTextAssistService OcrAssist
+@inject IImageEnhancer ImageEnhancer
+@inject Wizz.Application.Abstractions.IImageCaptureSettingsStore ImageCaptureSettings
 @inject Wizz.Application.Abstractions.IModuleGate ModuleGate
 @inject Wizz.Application.UseCases.Store.GetStoreSettingsUseCase StoreSettings
 @inject Wizz.Application.Abstractions.IModelRouter ModelRouter
@@ -196,7 +198,7 @@
                     الصق هنا نصاً مستخرجاً محلياً من صورة أو مستند، أو ارفع صورة لتُقرأ بقرة Windows حين تتوفر لغتها
                     العربية، وبقارئ PP-OCR المحلي بالنموذج العربي بديلًا أخيرًا. النص يُحوَّل إلى مرشّحات، ثم يحكّمها
                     المدمج مقابل منتجات متجرك. لا يُرسل أي شيء للخارج، ولا تُكتب أي بيانات، ولا يتأثر توجيه الأسئلة.
-                    مساعدة النموذج المحلي اختيارية ولا تعمل إلا عند الطلب.
+                    مساعدة النموذج المحلي اختيارية ولا تعمل إلا عند الطلب. تحسين الصورة ومعاينتها اختياريان أيضًا.
                 </p>
                 <textarea class="form-control" rows="3" @bind="captureInput"
                           placeholder="مثال: حليب 12.5&#10;خبز 5" disabled="@capturing"></textarea>
@@ -226,6 +228,63 @@
                         الإعداد الافتراضي، ولا يُرسل شيء، ولا تُكتب بيانات في أي خيار. لا يوجد تبديل تلقائي
                         عند فشل القارئ المختار؛ تظهر رسالة واضحة بدلًا من ذلك.
                     </div>
+                </div>
+
+                <div class="mt-3 border-top pt-3">
+                    <div class="small fw-bold mb-1">إعدادات الصورة ومعاينتها</div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="enhanceImage"
+                               checked="@enhanceEnabled" @onchange="OnEnhanceChanged" disabled="@capturing" />
+                        <label class="form-check-label small" for="enhanceImage">تحسين الصورة محليًا قبل القراءة (اختياري)</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="previewBeforeAnalysis"
+                               checked="@previewBeforeAnalysis" @onchange="OnPreviewChanged" disabled="@capturing" />
+                        <label class="form-check-label small" for="previewBeforeAnalysis">معاينة الصورة قبل التحليل</label>
+                    </div>
+                    @if (enhanceEnabled)
+                    {
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="showEnhancedPreview"
+                                   checked="@showEnhancedPreview" @onchange="OnEnhancedPreviewChanged" disabled="@capturing" />
+                            <label class="form-check-label small" for="showEnhancedPreview">عرض الصورة المحسّنة للمقارنة</label>
+                        </div>
+                    }
+                    <div class="small text-muted mt-1">
+                        التحسين يعمل داخل الجهاز بـOpenCV بلا نماذج ولا اتصال، ولا يغيّر القارئ الافتراضي.
+                        إلغاء المعاينة يذهب إلى النتيجة مباشرة عند اختيار الصورة. تُحفظ هذه الخيارات في ملف محلي.
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(imagePreviewNote))
+                    {
+                        <div class="small text-warning mt-1">@imagePreviewNote</div>
+                    }
+                    @if (originalPreviewUrl is not null)
+                    {
+                        <div class="mt-2">
+                            <div class="small fw-bold mb-1">معاينة الصورة</div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <figure class="mb-0 text-center">
+                                    <img src="@originalPreviewUrl" alt="الصورة الأصلية" class="img-thumbnail" style="max-height: 200px;" />
+                                    <figcaption class="small text-muted">الأصلية</figcaption>
+                                </figure>
+                                @if (enhanceEnabled && showEnhancedPreview && enhancedPreviewUrl is not null)
+                                {
+                                    <figure class="mb-0 text-center">
+                                        <img src="@enhancedPreviewUrl" alt="الصورة المحسّنة" class="img-thumbnail" style="max-height: 200px;" />
+                                        <figcaption class="small text-muted">المحسّنة</figcaption>
+                                    </figure>
+                                }
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm mt-2"
+                                    @onclick="RunImageCaptureAsync" disabled="@capturing">
+                                @if (capturing)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                }
+                                تحليل الصورة
+                            </button>
+                        </div>
+                    }
                 </div>
 
                 <div class="mt-3 border-top pt-3">
@@ -631,6 +690,16 @@
     private bool capturing;
     private string? captureError;
     private IBrowserFile? captureImage;
+    // تحسين ومعاينة اختياريان للصورة — داخل الجهاز، بلا نماذج ولا إرسال
+    private const int PreviewMaxDimension = 800;
+    private bool enhanceEnabled;
+    private bool previewBeforeAnalysis = true;
+    private bool showEnhancedPreview = true;
+    private byte[]? originalImageBytes;
+    private byte[]? enhancedImageBytes;
+    private string? originalPreviewUrl;
+    private string? enhancedPreviewUrl;
+    private string? imagePreviewNote;
     // اختيار القارئ للمقارنة اليدوية؛ الافتراضي هو القرار المعتمد ولا يُحفظ
     private OcrReaderChoice selectedReader = OcrReaderChoice.Default;
     private string? lastReaderName;
@@ -645,6 +714,10 @@
     protected override async Task OnInitializedAsync()
     {
         OcrReaderSelection.Set(OcrReaderChoice.Default);
+        var imageSettings = ImageCaptureSettings.Get();
+        enhanceEnabled = imageSettings.EnhanceEnabled;
+        previewBeforeAnalysis = imageSettings.PreviewBeforeAnalysis;
+        showEnhancedPreview = imageSettings.ShowEnhancedPreview;
         documentReaderEnabled = ModuleGate.IsEnabled(Wizz.Application.Modules.DocumentReaderModule.Id);
         ocrReaderSupported = documentReaderEnabled && OcrReader.IsSupported;
         ocrReaderStatus = !documentReaderEnabled
@@ -1241,18 +1314,103 @@
         _ => "المسار التلقائي"
     };
 
-    /// <summary>يستقبل صورة مختارة محليًا ثم يمرّرها للقارئ والمحكّم دون إرسال أو كتابة.</summary>
+    /// <summary>يستقبل صورة مختارة محليًا، يحضّر معاينتها، ثم يبدأ التحليل حسب التخصيص.</summary>
     private async Task OnCaptureImageSelectedAsync(InputFileChangeEventArgs e)
     {
         captureImage = e.File;
         if (captureImage is null) return;
-        await RunImageCaptureAsync();
+
+        captureError = null;
+        captureResult = null;
+        decisionReport = null;
+        lastReaderName = null;
+        assistSuggestion = null;
+        assistError = null;
+        originalImageBytes = null;
+        enhancedImageBytes = null;
+        originalPreviewUrl = null;
+        enhancedPreviewUrl = null;
+        imagePreviewNote = null;
+
+        try
+        {
+            await using var buffer = new MemoryStream();
+            await using (var input = captureImage.OpenReadStream(OcrDocumentCaptureService.MaxImageBytes))
+            {
+                await input.CopyToAsync(buffer);
+            }
+            originalImageBytes = buffer.ToArray();
+
+            var thumbnail = ImageEnhancer.CreateThumbnail(originalImageBytes, PreviewMaxDimension);
+            originalPreviewUrl = thumbnail is null
+                ? null
+                : $"data:image/jpeg;base64,{Convert.ToBase64String(thumbnail)}";
+            PrepareEnhancedImage();
+        }
+        catch (Exception ex)
+        {
+            originalImageBytes = null;
+            captureError = $"تعذّت قراءة الصورة: {ex.Message}";
+            return;
+        }
+
+        if (!previewBeforeAnalysis || originalPreviewUrl is null)
+        {
+            await RunImageCaptureAsync();
+        }
     }
+
+    /// <summary>يحضّر النسخة المحسّنة ومعاينتها عند تفعيل التحسين، دون قراءة أو كتابة.</summary>
+    private void PrepareEnhancedImage()
+    {
+        enhancedImageBytes = null;
+        enhancedPreviewUrl = null;
+        imagePreviewNote = null;
+        if (!enhanceEnabled || originalImageBytes is null) return;
+
+        enhancedImageBytes = ImageEnhancer.Enhance(originalImageBytes);
+        if (enhancedImageBytes is null)
+        {
+            imagePreviewNote = "تعذّ تحسين الصورة؛ ستُقرأ الأصلية.";
+            return;
+        }
+
+        var thumbnail = ImageEnhancer.CreateThumbnail(enhancedImageBytes, PreviewMaxDimension);
+        enhancedPreviewUrl = thumbnail is null
+            ? null
+            : $"data:image/jpeg;base64,{Convert.ToBase64String(thumbnail)}";
+    }
+
+    private void OnEnhanceChanged(ChangeEventArgs e)
+    {
+        enhanceEnabled = e.Value is true;
+        ImageCaptureSettings.Save(CurrentImageSettings());
+        PrepareEnhancedImage();
+        StateHasChanged();
+    }
+
+    private void OnPreviewChanged(ChangeEventArgs e)
+    {
+        previewBeforeAnalysis = e.Value is true;
+        ImageCaptureSettings.Save(CurrentImageSettings());
+        StateHasChanged();
+    }
+
+    private void OnEnhancedPreviewChanged(ChangeEventArgs e)
+    {
+        showEnhancedPreview = e.Value is true;
+        ImageCaptureSettings.Save(CurrentImageSettings());
+        StateHasChanged();
+    }
+
+    private ImageCaptureSettings CurrentImageSettings() =>
+        new(enhanceEnabled, previewBeforeAnalysis, showEnhancedPreview);
 
     /// <summary>يقرأ الصورة بالقارئ المحلي المفعّل، ثم يعرض حكم المدمج على النص المستخرج فقط.</summary>
     private async Task RunImageCaptureAsync()
     {
-        if (capturing || captureImage is null) return;
+        var bytes = enhanceEnabled ? enhancedImageBytes ?? originalImageBytes : originalImageBytes;
+        if (capturing || bytes is null) return;
 
         capturing = true;
         captureError = null;
@@ -1264,13 +1422,7 @@
 
         try
         {
-            await using var buffer = new MemoryStream();
-            await using (var input = captureImage.OpenReadStream(OcrDocumentCaptureService.MaxImageBytes))
-            {
-                await input.CopyToAsync(buffer);
-            }
-
-            var result = await OcrCaptureService.CaptureAsync(buffer.ToArray());
+            var result = await OcrCaptureService.CaptureAsync(bytes);
             if (!result.ReaderAvailable)
             {
                 captureResult = null;

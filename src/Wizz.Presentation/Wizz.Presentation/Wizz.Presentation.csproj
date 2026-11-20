@@ -12,6 +12,9 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
     <!-- قارئ OCR محلي مضمّن؛ يُحمَّل فقط عند تفعيل وحدة قراءة الوثائق -->
     <PackageReference Include="RapidOcrNet" />
+    <!-- تحسين اختياري للصورة داخل الجهاز قبل القراءة؛ لا نماذج ولا اتصال -->
+    <PackageReference Include="OpenCvSharp4" />
+    <PackageReference Include="OpenCvSharp4.runtime.win" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

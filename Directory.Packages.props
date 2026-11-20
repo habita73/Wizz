@@ -26,6 +26,10 @@
     <!-- التعرّف على النصوص — قارئ محلي مضمّن داخل وحدة قراءة الوثائق -->
     <PackageVersion Include="RapidOcrNet" Version="4.2.0" />
 
+    <!-- تحسين الصورة داخل الجهاز قبل القراءة: مكتبة أصلية محلية بلا نماذج ولا اتصال -->
+    <PackageVersion Include="OpenCvSharp4" Version="4.13.0.20261107" />
+    <PackageVersion Include="OpenCvSharp4.runtime.win" Version="4.13.0.20261107" />
+
     <!-- تحليل الكود -->
     <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" />
     <PackageVersion Include="StyleCop.Analyzers" Version="1.2.0-beta.556" />
