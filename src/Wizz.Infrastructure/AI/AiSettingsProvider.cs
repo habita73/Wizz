@@ -135,12 +135,66 @@ public sealed class AiSettingsProvider : IAiSettingsProvider
         }
     }
 
+    /// <summary>
+    /// اسم نموذج الرؤية المجاني. يُحفظ محليًا مع بقية إعدادات المساعد في <c>ai-settings.json</c>،
+    /// فلا يحتاج المستخدم إلى تعديل ملفات التطبيق. فارغ افتراضيًا = المسار السحابي مغلق.
+    /// </summary>
+    public string? CloudVisionModel
+    {
+        get => _state.CloudVisionModel;
+        set
+        {
+            var normalized = string.IsNullOrWhiteSpace(value) ? "" : value.Trim();
+            lock (_gate)
+            {
+                if (string.Equals(_state.CloudVisionModel, normalized, StringComparison.Ordinal)) return;
+                _state.CloudVisionModel = normalized;
+                Save();
+            }
+        }
+    }
+
+    /// <summary>نموذج المحادثة السحابي المضبوط من الواجهة؛ فارغ = استخدام نموذج ملف التطبيق.</summary>
+    public string? CloudChatModel
+    {
+        get => _state.CloudChatModel;
+        set
+        {
+            var normalized = string.IsNullOrWhiteSpace(value) ? "" : value.Trim();
+            lock (_gate)
+            {
+                if (string.Equals(_state.CloudChatModel, normalized, StringComparison.Ordinal)) return;
+                _state.CloudChatModel = normalized;
+                Save();
+            }
+        }
+    }
+
+    /// <summary>مفتاح قراءة الكتالوج العام في الخلفية؛ مغلق افتراضيًا ولا يرسل أي بيانات مستخدم.</summary>
+    public bool AutoModelCatalogEnabled
+    {
+        get => _state.AutoModelCatalogEnabled;
+        set
+        {
+            lock (_gate)
+            {
+                if (_state.AutoModelCatalogEnabled == value) return;
+                _state.AutoModelCatalogEnabled = value;
+                Save();
+            }
+        }
+    }
+
     public string? GetCloudConfigHash()
     {
         var sb = new StringBuilder();
         sb.Append(_state.CloudEnabled);
         sb.Append(_state.CloudApiKey);
         sb.Append(_state.LocalModelLevel);
+        // اسم النموذج جزء من إعداد المزوّد: بدونه لا يُعاد بناء المزوّد المخزّن مؤقتًا،
+        // فيبقى النموذج القديم (غير المجاني) مستخدمًا بعد اختيار نموذج مجاني من الواجهة.
+        sb.Append(_state.CloudChatModel);
+        sb.Append(_state.CloudVisionModel);
         using var sha = SHA256.Create();
         var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(sb.ToString()));
         return Convert.ToHexString(hash);
@@ -153,7 +207,8 @@ public sealed class AiSettingsProvider : IAiSettingsProvider
         var section = _configuration.GetSection($"AI:CloudProviders:{provider}");
         var baseUrl = section["BaseUrl"];
         if (string.IsNullOrWhiteSpace(baseUrl)) baseUrl = "https://openrouter.ai/api/v1";
-        var model = section["Model"];
+        // النموذج المضبوط من الواجهة يتقدّم على نموذج ملف التطبيق، ويخضع لقاعدة «مجاني فقط» في المزوّد.
+        var model = string.IsNullOrWhiteSpace(_state.CloudChatModel) ? section["Model"] : _state.CloudChatModel;
         if (string.IsNullOrWhiteSpace(model)) model = "qwen/qwen3-32b";
         var name = section["ProviderName"];
         if (string.IsNullOrWhiteSpace(name)) name = "OpenRouter (سحابي مجاني)";
@@ -220,6 +275,12 @@ public sealed class AiSettingsProvider : IAiSettingsProvider
             // شكل جديد
             if (root.TryGetProperty("CloudApiKey", out var cak)) state.CloudApiKey = cak.GetString() ?? "";
             if (root.TryGetProperty("CloudKeyEnabled", out var cke)) state.CloudKeyEnabled = cke.GetBoolean();
+            if (root.TryGetProperty("CloudVisionModel", out var cvm) && cvm.ValueKind != JsonValueKind.Null)
+                state.CloudVisionModel = cvm.GetString() ?? "";
+            if (root.TryGetProperty("CloudChatModel", out var ccm) && ccm.ValueKind != JsonValueKind.Null)
+                state.CloudChatModel = ccm.GetString() ?? "";
+            if (root.TryGetProperty("AutoModelCatalogEnabled", out var amc) && amc.ValueKind == JsonValueKind.True)
+                state.AutoModelCatalogEnabled = true;
 
             // شكل قديم: CloudProviders dictionary
             if (root.TryGetProperty("CloudProviders", out var cps) && cps.ValueKind == JsonValueKind.Object)
@@ -255,4 +316,7 @@ internal sealed class PersistedAiSettings
     public string? PreferredLocalModel { get; set; }
     public string CloudApiKey { get; set; } = "";
     public bool CloudKeyEnabled { get; set; } = false;
+    public string CloudVisionModel { get; set; } = "";
+    public string CloudChatModel { get; set; } = "";
+    public bool AutoModelCatalogEnabled { get; set; } = false;
 }

@@ -46,13 +46,15 @@ public sealed class ModelRouterPriorityTests : IAsyncLifetime
         AutoRoutePriority? priority = null,
         RouteDecisionLog? log = null,
         ILlmProvider? localLlm = null,
-        bool ollamaAvailable = true)
+        bool ollamaAvailable = true,
+        FakeAiSettingsProvider? settings = null,
+        ILlmProviderFactory? factory = null)
     {
-        var settings = new FakeAiSettingsProvider();
+        settings ??= new FakeAiSettingsProvider();
         var device = new FakeDeviceEvaluator(ollamaAvailable);
         var quota = new QuotaTracker(null);
         var fallback = new FallbackPolicy(2);
-        var factory = new FakeProviderFactory();
+        factory ??= new FakeProviderFactory();
 
         return new ModelRouter(
             _assistant,
@@ -196,6 +198,73 @@ public sealed class ModelRouterPriorityTests : IAsyncLifetime
         Assert.Contains("يدوي", log.Recent(1)[0].Reason);
     }
 
+    [Fact]
+    public async Task ForcedCloud_PrecisionQuestion_IsAnsweredLocallyWithoutCloudCall()
+    {
+        var settings = new FakeAiSettingsProvider
+        {
+            IsCloudEnabled = true,
+            CloudSharingEnabled = true,
+            Providers = SyntheticCloudProviders()
+        };
+        var factory = new CountingProviderFactory();
+        var router = CreateRouter(settings: settings, factory: factory);
+
+        var result = await router.RouteAsync(
+            new AiQueryInputDto("ماهي مبيعاتنا الكلية؟", true, true, 10, RouteType.Cloud));
+
+        Assert.Equal(RouteType.BuiltIn, result.RouteType);
+        Assert.Contains("كل الفترات", result.Answer);
+        Assert.Contains("حماية أسئلة الأرقام", result.Decision!.Reason);
+        Assert.Equal(0, factory.Calls);
+    }
+
+    [Fact]
+    public async Task ForcedCloud_FormattingRequest_IsStillDelegatedToModel()
+    {
+        var settings = new FakeAiSettingsProvider
+        {
+            IsCloudEnabled = true,
+            CloudSharingEnabled = true,
+            Providers = SyntheticCloudProviders()
+        };
+        var factory = new CountingProviderFactory();
+        var router = CreateRouter(settings: settings, factory: factory);
+
+        var result = await router.RouteAsync(
+            new AiQueryInputDto("أنشئ تقريرًا عن مبيعاتنا", true, true, 10, RouteType.Cloud));
+
+        Assert.Equal(RouteType.Cloud, result.RouteType);
+        Assert.Equal("تقرير تجريبي", result.Answer);
+        Assert.Equal(1, factory.Calls);
+    }
+
+    [Theory]
+    [InlineData("أنشئ تقريرًا عن مبيعاتنا", true)]
+    [InlineData("رتّب المبيعات في جدول", true)]
+    [InlineData("ماهي مبيعاتنا الكلية؟", false)]
+    public void FormattingIntent_DetectsReportRequests(string question, bool expected)
+        => Assert.Equal(expected, FormattingIntent.IsFormattingRequest(question));
+
+    private static CloudProviderConfig[] SyntheticCloudProviders() =>
+        new[]
+        {
+            new CloudProviderConfig(
+                "test", "مزوّد تجريبي", "https://example.invalid/v1", "synthetic-key", "test-model:free")
+        };
+
+    /// <summary>مزوّد سحابي وهمي يعدّ عدد الإنشاءات ويعيد إجابة ثابتة.</summary>
+    private sealed class CountingProviderFactory : ILlmProviderFactory
+    {
+        public int Calls { get; private set; }
+
+        public ILlmProvider? CreateCloudProvider(CloudProviderConfig config)
+        {
+            Calls++;
+            return new FakeLocalProvider("تقرير تجريبي");
+        }
+    }
+
     /// <summary>مزوّد محلي وهمي يعيد إجابة ثابتة.</summary>
     private sealed class FakeLocalProvider : ILlmProvider
     {
@@ -267,7 +336,9 @@ public sealed class ModelRouterPriorityTests : IAsyncLifetime
 
         public string? GetCloudConfigHash() => "test-hash";
 
-        public IEnumerable<CloudProviderConfig>? GetCloudProvidersConfig() => null;
+        public CloudProviderConfig[]? Providers { get; set; }
+
+        public IEnumerable<CloudProviderConfig>? GetCloudProvidersConfig() => Providers;
     }
 
     private sealed class FakeProviderFactory : ILlmProviderFactory

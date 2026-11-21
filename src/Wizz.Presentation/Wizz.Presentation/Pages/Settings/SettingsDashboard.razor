@@ -10,6 +10,7 @@
 @using Wizz.Application.AI.Privacy
 @inject Wizz.Application.Abstractions.IDeviceCapabilityEvaluator DeviceEvaluator
 @inject Wizz.Application.Abstractions.IModelRouter ModelRouter
+@inject Wizz.Application.AI.IFreeModelCatalogService ModelCatalog
 @inject Wizz.Presentation.Pages.AI.AiMemoryStore MemoryStore
 @inject CurrentUser CurrentUser
 @inject SafeAudit Audit
@@ -453,12 +454,16 @@
                     <div class="form-text">@ApprovedPrivacyWording.Text</div>
                 </div>
 
+                <details class="mt-3 border-top pt-3">
+                    <summary class="small text-muted" style="cursor: pointer;">إعدادات السحابة (متقدم — اختياري)</summary>
+                    <div class="mt-3">
                 @if (aiCloudEnabled)
                 {
                     <div class="mb-3">
                         <label class="form-label">مفتاح API (اختياري - للصق من OpenRouter)</label>
                         <div class="input-group">
-                            <input type="password" class="form-control" @bind="cloudApiKey" placeholder="sk-or-... (اختياري)" />
+                            <input type="password" class="form-control" @bind="cloudApiKey" @bind:event="oninput"
+                                   autocomplete="off" spellcheck="false" placeholder="sk-or-... (اختياري)" />
                             <span class="input-group-text">
                                 <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
                                     <WizzIcon Icon="link" Size="14" /> احصل على مفتاح مجاني
@@ -467,11 +472,117 @@
                         </div>
                         <div class="form-text">
                             انسخ المفتاح من OpenRouter (يبدأ بـ <code>sk-or-...</code>) والصقه هنا.
+                            يُقرأ الحقل مباشرةً أثناء الكتابة أو اللصق، ولا يُحفظ إلا بضغط «حفظ الإعدادات».
                             <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer">مجاني، لا بطاقة بنكية</a>.
                         </div>
                     </div>
-                }
 
+                    <div class="mb-3">
+                        <label class="form-label">اسم نموذج الرؤية المجاني (لاستخراج النص من الصورة)</label>
+                        <input class="form-control" list="freeVisionModels" @bind="cloudVisionModel"
+                               placeholder="اختر من القائمة أو الصق اسم نموذج ينتهي بـ :free" />
+                        <datalist id="freeVisionModels">
+                            <option value="nvidia/nemotron-3.5-super-vl:free"></option>
+                            <option value="google/gemma-4-31b-it:free"></option>
+                            <option value="google/gemma-4-26b-a4b-it:free"></option>
+                            <option value="inclusionai/ling-3.2-flash:free"></option>
+                            <option value="particle-ai/particle-1:free"></option>
+                            <option value="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"></option>
+                            <option value="dots-studio/dots-3-note-preview:free"></option>
+                        </datalist>
+                        <div class="form-text">
+                            الأسماء في القائمة مأخوذة من كتالوج OpenRouter في ٢٠٢٦-١١-٢٠ وكانت تقبل صورًا وسعرها صفر.
+                            يلزم أن ينتهي الاسم بـ <code>:free</code>؛ وأي اسم آخر يُرفض قبل إرسال أي صورة، التزامًا بقاعدة «مجاني فقط / صفر تكلفة».
+                            <a href="https://openrouter.ai/models" target="_blank" rel="noopener noreferrer">راجع التوفر الحالي</a>
+                            قبل الاستخدام؛ دقة العربية على وصل حقيقية ما زالت تحتاج تجربتك.
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(cloudVisionModel)
+                             && !cloudVisionModel.Trim().EndsWith(":free", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <div class="small text-danger mt-1">الاسم الحالي غير مقبول؛ أضف اللاحقة <code>:free</code> بعد اختيار نموذج مجاني فعلي.</div>
+                        }
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">اسم نموذج المحادثة المجاني (عند طلب السحابة)</label>
+                        <input class="form-control" list="freeChatModels" @bind="cloudChatModel"
+                               placeholder="اتركه فارغًا لاستخدام إعداد الملف، أو اختر نموذجًا مجانيًا" />
+                        <datalist id="freeChatModels">
+                            <option value="baidu/ernie-5.5-flash-preview:free"></option>
+                            <option value="liquid/lfm-3-1.7b:free"></option>
+                            <option value="recursive/flint-v1.0:free"></option>
+                            <option value="nvidia/nemotron-3.5-lightning:free"></option>
+                            <option value="nvidia/nemotron-3-ultra-550b-a55b:free"></option>
+                        </datalist>
+                        <div class="form-text">
+                            النموذج الافتراضي في ملف التطبيق (<code>qwen/qwen3-32b</code>) ليس مجانيًا، لذلك يُمنع الآن قبل أي إرسال.
+                            اختر اسمًا من القائمة ينتهي بـ <code>:free</code>؛ واترك الحقل فارغًا إن أردت الإعداد القديم.
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(cloudChatModel)
+                             && !cloudChatModel.Trim().EndsWith(":free", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <div class="small text-danger mt-1">اسم المحادثة غير مقبول؛ يلزم أن ينتهي بـ <code>:free</code>.</div>
+                        }
+                    </div>
+
+                    <div class="mb-3 border-top pt-3" id="auto-model-catalog">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="autoModelCatalog" @bind="autoModelCatalogEnabled" />
+                            <label class="form-check-label" for="autoModelCatalog">
+                                اقتراح تلقائي للنماذج من الكتالوج العام (اختياري)
+                            </label>
+                        </div>
+                        <div class="form-text">
+                            <strong>مغلق افتراضيًا</strong> — عند التفعيل تقرأ الخدمة بيانات عامة (أسماء النماذج، السعر، هل يقبل صورة)
+                            من <code>/models</code> على فترات متباعدة. <strong>لا يُرسل سؤالك ولا صورك ولا مفتاح API</strong>،
+                            ولا يُغيّر قارئ النص، ولا يختار المسار عنك. النتائج <strong>اقتراحات للعرض فقط</strong>؛ عليك نسخ الاسم
+                            في الحقل أعلاه ثم الحفظ، وتبقى الموافقة على كل إرسال سحابي مطلوبة كما هي.
+                        </div>
+                        <div class="d-flex gap-2 align-items-center mt-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    @onclick="RefreshCatalogAsync" disabled="@refreshingCatalog">
+                                @(refreshingCatalog ? "جارٍ التحديث…" : "تحديث الاقتراحات الآن")
+                            </button>
+                            @if (catalogSnapshot is not null)
+                            {
+                                <span class="small text-muted">آخر قراءة: @catalogSnapshot.FetchedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
+                            }
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(catalogStatus))
+                        {
+                            <div class="small @(catalogSnapshot?.HasError == true ? "text-danger" : "text-success") mt-1">@catalogStatus</div>
+                        }
+                        @if (catalogSnapshot is not null && (!catalogSnapshot.HasError || catalogSnapshot.ChatCandidates.Count > 0 || catalogSnapshot.VisionCandidates.Count > 0))
+                        {
+                            <div class="small mt-2">
+                                @if (catalogSnapshot.SuggestedChatModel is not null)
+                                {
+                                    <div class="mb-1">
+                                        للمحادثة: <code>@catalogSnapshot.SuggestedChatModel</code>
+                                        <button type="button" class="btn btn-link btn-sm p-0" @onclick="() => UseCatalogSuggestion(asVision: false)">انسخ إلى الحقل</button>
+                                    </div>
+                                }
+                                @if (catalogSnapshot.SuggestedVisionModel is not null)
+                                {
+                                    <div class="mb-1">
+                                        للرؤية: <code>@catalogSnapshot.SuggestedVisionModel</code>
+                                        <button type="button" class="btn btn-link btn-sm p-0" @onclick="() => UseCatalogSuggestion(asVision: true)">انسخ إلى الحقل</button>
+                                    </div>
+                                }
+                                <div class="text-muted">
+                                    الترتيب مبني على بيانات الكتالوج فقط؛ دقة العربية على وصل حقيقي ما زالت تحتاج تجربتك.
+                                    <a href="@catalogSnapshot.Source" target="_blank" rel="noopener noreferrer">المصدر</a>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                    </div>
+                </details>
+
+                <details class="mt-3 border-top pt-3">
+                    <summary class="small text-muted" style="cursor: pointer;">النموذج المحلي (متقدم — اختياري)</summary>
+                    <div class="mt-3">
                 <div class="mb-3">
                     <label class="form-label">مستوى المساعد المحلي حسب جهازك</label>
                     <select class="form-select form-select-sm" @bind="localModelLevel">
@@ -557,30 +668,12 @@
                         متصل بـ Ollama — @localModels.Count نموذج مثبّت.
                     </div>
                 }
+                    </div>
+                </details>
 
                 <div class="alert alert-info">
                     <strong>مهم:</strong> البيع والمخزون والمال تعمل دائماً حتى لو كان المساعد الذكي غير متاح.
                     @ApprovedPrivacyWording.Text
-                </div>
-
-                <div class="card card-body bg-light mt-3 border">
-                    <h6 class="mb-2"><WizzIcon Icon="key" Size="16" /> للحصول على مفتاح مجاني (اختياري):</h6>
-                    <div class="mb-2">
-                        <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-sm">
-                            <WizzIcon Icon="globe" Size="14" /> فتح OpenRouter (مجاني)
-                        </a>
-                    </div>
-                    <div class="small text-muted">
-                        <ol class="mb-0 ps-3">
-                            <li>اضغط الزر أعلاه ← يسجّل دخول بحساب Google أو GitHub (مجاني، لا بطاقة بنكية)</li>
-                            <li>من القائمة الشخصية (أعلى اليمين) اختر <strong>Keys</strong></li>
-                            <li>اضغط <strong>Create Key</strong> ← انسخ المفتاح (يبدأ بـ <code>sk-or-...</code>)</li>
-                            <li>الصقه هنا ← احفظ ← المساعد يصبح أقوى للأسئلة المعقدة</li>
-                        </ol>
-                        <div class="text-success small mt-1">
-                            <WizzIcon Icon="check-circle" Size="14" /> مجاني تماماً — لا بطاقة بنكية — نماذج عربية مجانية متاحة (Qwen، Gemma، Llama...)
-                        </div>
-                    </div>
                 </div>
 
                 <div class="alert alert-secondary py-2 small mt-3">
@@ -603,6 +696,9 @@
                     </div>
                 </div>
 
+                <details class="mt-3 border-top pt-3">
+                    <summary class="small text-muted" style="cursor: pointer;">تفضيلات المساعد (متقدم — اختياري)</summary>
+                    <div class="mt-3">
                 <hr />
 
                 <h6 class="mb-2 d-flex align-items-center gap-2"><WizzIcon Icon="brain" Size="16" /><span>تفضيلات المساعد</span></h6>
@@ -651,13 +747,13 @@
                     </div>
                 </div>
 
-                <div class="d-flex gap-2 mb-3">
-                    <button class="btn btn-outline-primary btn-sm flex-fill" @onclick="SaveAiPreferences"><WizzIcon Icon="save" Size="14" /> حفظ التفضيلات</button>
-                    <button class="btn btn-outline-secondary btn-sm flex-fill" @onclick="ResetAiPreferences"><WizzIcon Icon="refresh" Size="14" /> الافتراضي</button>
-                </div>
-
                 <RoutePriorityEditor />
+                    </div>
+                </details>
 
+                <details class="mt-3 border-top pt-3">
+                    <summary class="small text-muted" style="cursor: pointer;">اختبارات الاتصال (متقدم — اختياري)</summary>
+                    <div class="mt-3">
                 <div class="d-flex gap-2 mb-3">
                     <button class="btn btn-outline-secondary btn-sm flex-fill" @onclick="TestOllamaAsync" disabled="@testingOllama">
                         @(testingOllama ? "جارٍ الاختبار…" : "اختبار Ollama")
@@ -671,10 +767,16 @@
                 }
                 @if (!string.IsNullOrWhiteSpace(cloudTestResult))
                 {
-                    <div class="alert alert-info py-2 small">@cloudTestResult</div>
+                    <div class="alert @(cloudTestOk == true ? "alert-success" : cloudTestOk == false ? "alert-warning" : "alert-info") py-2 small">@cloudTestResult</div>
                 }
+                    </div>
+                </details>
 
-                <button class="btn btn-primary w-100" @onclick="SaveAiSettings">حفظ الإعدادات</button>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary" @onclick="SaveAiSettings">حفظ الإعدادات</button>
+                    <button class="btn btn-outline-secondary" @onclick="ResetAiPreferences"
+                            title="إعادة تفضيلات المساعد إلى القيم الافتراضية">الافتراضي</button>
+                </div>
             </div>
         </div>
     </div>
@@ -814,6 +916,12 @@
     private bool aiCloudSharingEnabled = false;
     private string localModelLevel = "light";
     private string cloudApiKey = "";
+    private string cloudVisionModel = "";
+    private string cloudChatModel = "";
+    private bool autoModelCatalogEnabled = false;
+    private Wizz.Application.AI.FreeModelCatalogSnapshot? catalogSnapshot;
+    private string catalogStatus = "";
+    private bool refreshingCatalog;
     private DeviceCapabilityAssessment? deviceAssessment;
     private bool loadingDevice;
     private string routerStatusSummary = "جارٍ التقييم…";
@@ -821,6 +929,7 @@
     private bool loadingAiStatus = false;
     private bool testingOllama = false;
     private bool testingCloud = false;
+    private bool? cloudTestOk;
     private string ollamaTestResult = "";
     private string cloudTestResult = "";
 
@@ -991,8 +1100,8 @@
         }
     }
 
-    /// <summary>يحفظ تفضيلات المساعد محلياً.</summary>
-    private async Task SaveAiPreferences()
+    /// <summary>يحفظ تفضيلات المساعد مع باقي الإعدادات بزر واحد؛ يعيد سبب الفشل إن وُجد.</summary>
+    private async Task<string?> TryPersistPreferencesAsync()
     {
         try
         {
@@ -1004,11 +1113,11 @@
             MemoryStore.Preferences.SetRememberContext(rememberContext);
             MemoryStore.Preferences.SetAllowInternetAccess(allowInternetAccess);
             await MemoryStore.SaveAsync();
-            await JS.InvokeVoidAsync("alert", "تم حفظ تفضيلات المساعد");
+            return null;
         }
         catch (Exception ex)
         {
-            await JS.InvokeVoidAsync("alert", $"تعذّر حفظ التفضيلات: {ex.Message}");
+            return $"تعذّر حفظ التفضيلات: {ex.Message}";
         }
     }
 
@@ -1035,6 +1144,10 @@
         aiCloudEnabled = AiSettings.IsCloudEnabled;
         aiCloudSharingEnabled = AiSettings.CloudSharingEnabled;
         cloudApiKey = AiSettings.GetCloudApiKey() ?? "";
+        cloudVisionModel = AiSettings.CloudVisionModel ?? "";
+        cloudChatModel = AiSettings.CloudChatModel ?? "";
+        autoModelCatalogEnabled = AiSettings.AutoModelCatalogEnabled;
+        catalogSnapshot = ModelCatalog.Cached;
         localModelLevel = AiSettings.LocalModelLevel;
         loadingDevice = true;
         loadingAiStatus = true;
@@ -1141,8 +1254,12 @@
         {
             AiSettings.SetCloudApiKey(cloudApiKey);
         }
+        AiSettings.CloudVisionModel = cloudVisionModel;
+        AiSettings.CloudChatModel = cloudChatModel;
+        AiSettings.AutoModelCatalogEnabled = autoModelCatalogEnabled;
         AiSettings.LocalModelLevel = localModelLevel;
         DeviceEvaluator.InvalidateCache();
+        var preferenceWarning = await TryPersistPreferencesAsync();
 
         await Audit.LogAsync(new AuditEntry(
             AuditAction.AiSettingsUpdated,
@@ -1154,7 +1271,8 @@
             $"سحابي: {aiCloudEnabled} — المستوى المحلي: {localModelLevel} — مفتاح مُحدَّث: {!string.IsNullOrWhiteSpace(cloudApiKey)}"));
 
         await RefreshRouterStatusAsync();
-        await JS.InvokeVoidAsync("alert", "تم حفظ إعدادات المساعد الذكي");
+        await JS.InvokeVoidAsync("alert", "تم حفظ إعدادات المساعد الذكي"
+            + (preferenceWarning is null ? "" : "\n" + preferenceWarning));
     }
 
     private async Task TestOllamaAsync()
@@ -1181,19 +1299,53 @@
         }
     }
 
+    private async Task RefreshCatalogAsync()
+    {
+        refreshingCatalog = true;
+        StateHasChanged();
+        try
+        {
+            catalogSnapshot = await ModelCatalog.RefreshAsync();
+            catalogStatus = catalogSnapshot?.HasError == true
+                ? $"تعذّر تحديث الكتالوج: {catalogSnapshot.LastError}. عُرضت آخر قراءة محفوظة إن وُجدت."
+                : $"تم تحديث الاقتراحات: {catalogSnapshot?.ChatCandidates.Count ?? 0} للمحادثة، {catalogSnapshot?.VisionCandidates.Count ?? 0} للرؤية.";
+        }
+        catch (Exception ex)
+        {
+            catalogStatus = $"تعذّر تحديث الكتالوج: {ex.Message}";
+        }
+        finally
+        {
+            refreshingCatalog = false;
+            StateHasChanged();
+        }
+    }
+
+    private void UseCatalogSuggestion(bool asVision)
+    {
+        var name = asVision ? catalogSnapshot?.SuggestedVisionModel : catalogSnapshot?.SuggestedChatModel;
+        if (string.IsNullOrWhiteSpace(name)) return;
+        if (asVision) cloudVisionModel = name!;
+        else cloudChatModel = name!;
+        catalogStatus = "نُسخ الاسم إلى الحقل. اضغط «حفظ الإعدادات» لتثبيته، ولا شيء يُطبَّق تلقائيًا.";
+    }
+
     private async Task TestCloudAsync()
     {
         testingCloud = true;
         cloudTestResult = "";
+        cloudTestOk = null;
         StateHasChanged();
         try
         {
             var (success, message) = await ModelRouter.TestCloudConnectionAsync();
             cloudTestResult = message;
+            cloudTestOk = success;
         }
         catch (Exception ex)
         {
             cloudTestResult = $"خطأ: {ex.Message}";
+            cloudTestOk = false;
         }
         finally
         {

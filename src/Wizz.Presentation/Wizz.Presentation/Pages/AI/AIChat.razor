@@ -13,6 +13,7 @@
 @inject IOcrReaderSelection OcrReaderSelection
 @inject OcrDocumentCaptureService OcrCaptureService
 @inject OcrTextAssistService OcrAssist
+@inject IModelDocumentExtractor ModelExtractor
 @inject IImageEnhancer ImageEnhancer
 @inject Wizz.Application.Abstractions.IImageCaptureSettingsStore ImageCaptureSettings
 @inject Wizz.Application.Abstractions.IModuleGate ModuleGate
@@ -23,11 +24,12 @@
 @inject AiRoutePriorityStore PriorityStore
 @inject RouteDecisionLog DecisionLog
 @inject IJSRuntime JS
+@inject Microsoft.AspNetCore.Components.NavigationManager Nav
+@inject OcrDraftHandoff DraftHandoff
+@inject IOcrAliasStore OcrAliases
+@inject IOcrEvaluationService OcrEvaluator
 
-<h2 class="d-flex align-items-center gap-2"><WizzIcon Icon="brain" Size="24" /><span>مساعد Wizz الذكي</span></h2>
-<p class="text-muted">
-    يعمل المساعد المدمج دائماً وبسرعة وبدون إنترنت. عند توفر نموذج محلي أو سحابي مجاني، يمكن للموجه اختيار الأنسب لسؤالك.
-</p>
+<h2 class="d-flex align-items-center gap-2 mb-3"><WizzIcon Icon="brain" Size="24" /><span>مساعد Wizz الذكي</span></h2>
 
 <div class="row">
     <div class="col-lg-8">
@@ -54,14 +56,7 @@
                                 <path d="M2 17l10 5 10-5"/>
                                 <path d="M2 12l10 5 10-5"/>
                             </svg>
-                            <p class="mt-3 mb-1">مرحباً! أنا مساعد Wizz.</p>
-                            <p class="small">اسألني عن مبيعاتك، ديونك، أو منتجاتك — سأجيب من بيانات متجرك مباشرة.</p>
-                            <div class="mt-3 d-flex flex-wrap justify-content-center gap-2">
-                                @foreach (var q in quickQuestions.Take(4))
-                                {
-                                    <button class="btn btn-sm btn-outline-primary" @onclick="@(() => SendQuickQuestion(q))">@q</button>
-                                }
-                            </div>
+                            <p class="mt-3 mb-0">مرحباً! اسألني عن مبيعاتك أو ديونك أو منتجاتك.</p>
                         </div>
                     }
                     else
@@ -133,35 +128,17 @@
                         </button>
                     </div>
                 </div>
-                <div class="form-text small">
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                        <span class="badge bg-light text-dark border" title="الجهة التي سترد على الأسئلة القادمة">
-                            الرد من: @CurrentRouteLabel
-                        </span>
-                        @if (routeMode == "auto")
-                        {
-                            <span class="text-muted" title="ترتيب الأولوية المحفوظ في الإعدادات — يُطبَّق بعد استبعاد غير المتاح">
-                                الأولوية: @PriorityOrderText
-                            </span>
-                        }
-                        <span class="text-muted" title="حماية أسئلة الأرقام: المبيعات والديون والأسعار والأعداد يجيب عنها المدمج دائماً لضمان دقة الرقم">
-                            أسئلة الأرقام للمدمج
-                        </span>
-                        <span class="text-muted" title="@ChatKeymap.Hint">
-                            @ChatKeymap.Hint
-                        </span>
-                    </div>
+                <div class="form-text small d-flex flex-wrap align-items-center gap-2 mt-1">
+                    <span class="badge bg-light text-dark border" title="الجهة التي سترد على الأسئلة القادمة">الرد من: @CurrentRouteLabel</span>
+                    @if (routeMode == "auto")
+                    {
+                        <span class="text-muted" title="ترتيب الأولوية المحفوظ">الأولوية: @PriorityOrderText</span>
+                    }
+                    <span class="text-muted" title="المبيعات والديون والأسعار للمدمج دائماً"><WizzIcon Icon="shield" Size="13" /></span>
+                    <span class="text-muted" title="@ChatKeymap.Hint"><WizzIcon Icon="keyboard" Size="14" /></span>
                     @if (routeStatus.BuiltInAvailable && routeStatus.RouteCount == 1)
                     {
-                        <span class="text-danger">المساعد المدمج فقط متاح حالياً.</span>
-                    }
-                    else
-                    {
-                        <span>
-                            المساعد المدمج يجيب فوراً من بيانات متجرك.
-                            <span class="text-muted ms-1"
-                                  title="الأسئلة الحرة (شرح، توصيات، صياغة نصوص) تحتاج نموذجاً محلياً أو سحابياً — بدّل الجهة من محدد الجهة داخل صندوق الإدخال، أو فعّل السحابة من الإعدادات."><WizzIcon Icon="help" Size="14" /></span>
-                        </span>
+                        <span class="text-danger"><WizzIcon Icon="info" Size="13" /> المدمج فقط</span>
                     }
                 </div>
 
@@ -189,18 +166,16 @@
         @if (documentReaderEnabled)
         {
         <div class="card mt-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 d-inline-flex align-items-center gap-2"><WizzIcon Icon="sparkles" Size="16" /><span>تحكيم نص مستند</span></h6>
-                <span class="badge bg-light text-dark border" title="النتائج مرشّحات للعرض فقط، ولا تُكتب في قاعدة البيانات">بدون كتابة</span>
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h6 class="mb-0 d-inline-flex align-items-center gap-2"><WizzIcon Icon="image" Size="16" /><span>ماسح المستندات</span></h6>
+                <span class="badge bg-warning text-dark" title="للمراجعة البشرية فقط">مراجعة فقط</span>
             </div>
             <div class="card-body">
-                <p class="small text-muted mb-2">
-                    الصق هنا نصاً مستخرجاً محلياً من صورة أو مستند، أو ارفع صورة لتُقرأ بقرة Windows حين تتوفر لغتها
-                    العربية، وبقارئ PP-OCR المحلي بالنموذج العربي بديلًا أخيرًا. النص يُحوَّل إلى مرشّحات، ثم يحكّمها
-                    المدمج مقابل منتجات متجرك. لا يُرسل أي شيء للخارج، ولا تُكتب أي بيانات، ولا يتأثر توجيه الأسئلة.
-                    مساعدة النموذج المحلي اختيارية ولا تعمل إلا عند الطلب. تحسين الصورة ومعاينتها اختياريان أيضًا.
-                </p>
-                <textarea class="form-control" rows="3" @bind="captureInput"
+                <div class="alert alert-light border small py-2 mb-3">
+                    <WizzIcon Icon="eye" Size="13" /> للمراجعة فقط — عربي مطبوع — لا كتابة ولا إرسال.
+                </div>
+                <label class="small fw-bold mb-1" for="captureInput">ألصق النص أو ارفع صورة أدناه</label>
+                <textarea id="captureInput" class="form-control" rows="3" @bind="captureInput"
                           placeholder="مثال: حليب 12.5&#10;خبز 5" disabled="@capturing"></textarea>
                 <button type="button" class="btn btn-outline-primary btn-sm mt-2" @onclick="RunCaptureAsync"
                         disabled="@(capturing || string.IsNullOrWhiteSpace(captureInput))">
@@ -212,24 +187,72 @@
                 </button>
 
                 <div class="mt-3 border-top pt-3">
-                    <div class="small fw-bold mb-1">قراءة صورة محليًا</div>
+                    <div class="small fw-bold mb-2 d-flex align-items-center gap-2">
+                        <WizzIcon Icon="file" Size="14" /> قراءة الورقة
+                    </div>
                     <InputFile OnChange="OnCaptureImageSelectedAsync" accept="image/png,image/jpeg,image/webp"
                                class="form-control form-control-sm" disabled="@capturing" />
-                    <div class="small mt-1 @(ocrReaderSupported ? "text-success" : "text-muted")">@ocrReaderStatus</div>
-                    <label class="small fw-bold mt-2 mb-1" for="ocrReaderChoice">القارئ المستخدم لهذه الصورة</label>
-                    <select id="ocrReaderChoice" class="form-select form-select-sm"
-                            value="@((int)selectedReader)" @onchange="OnReaderChoiceChanged" disabled="@capturing">
-                        <option value="@((int)OcrReaderChoice.Default)">تلقائي — Windows أساسًا (الإعداد المعتمد)</option>
-                        <option value="@((int)OcrReaderChoice.Windows)">Windows OCR مباشرة</option>
-                        <option value="@((int)OcrReaderChoice.RapidOcr)">القارئ المضمّن (PP-OCR عربي) مباشرة</option>
-                    </select>
-                    <div class="small text-muted mt-1">
-                        للمقارنة فقط: اختر قارئًا ثم ارفع الصورة نفسها لمقارنة الناتج. لا يغيّر هذا الاختيار
-                        الإعداد الافتراضي، ولا يُرسل شيء، ولا تُكتب بيانات في أي خيار. لا يوجد تبديل تلقائي
-                        عند فشل القارئ المختار؛ تظهر رسالة واضحة بدلًا من ذلك.
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-2 mb-2">
+                        <label class="small mb-0" for="readingRoute">الطريقة:</label>
+                        <select id="readingRoute" class="form-select form-select-sm w-auto"
+                                value="@((int)readingRoute)" @onchange="OnReadingRouteChanged"
+                                disabled="@(capturing || extractingWithModel)">
+                            <option value="@((int)ReadingRoute.WindowsOcr)">قارئ Windows (المحلي الافتراضي)</option>
+                            <option value="@((int)ReadingRoute.EmbeddedOcr)">القارئ المضمّن (PP-OCR عربي) — للمقارنة</option>
+                            <option value="@((int)ReadingRoute.LocalModel)">نموذج محلي (Ollama — بلا إرسال)</option>
+                            <option value="@((int)ReadingRoute.CloudModel)">سحابي مجاني (بعد تأكيدك)</option>
+                        </select>
+                        <button type="button" class="btn btn-outline-primary btn-sm"
+                                @onclick="RunReadingAsync"
+                                disabled="@(capturing || extractingWithModel || CurrentImageBytes is null)">
+                            @if (capturing || extractingWithModel)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            }
+                            اقرأ الورقة
+                        </button>
                     </div>
+                    <div class="small text-muted mb-2">
+                        القارئ المضمّن للمقارنة اليدوية فقط، بلا إرسال. المسار المحلي لا يُخرج الصورة من الجهاز
+                        (يحتاج نموذج رؤية مثبّتًا عبر <code>ollama pull llava</code>)؛ والمسار السحابي يرسل الصورة
+                        بعد تأكيدك، ويسمح بالنماذج المجانية فقط. لا يعمل أي مسار تلقائيًا.
+                    </div>
+
+                    @if (originalPreviewUrl is not null)
+                    {
+                        <div class="mt-2">
+                            <div class="small fw-bold mb-1">معاينة الصورة</div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <figure class="mb-0 text-center">
+                                    <img src="@originalPreviewUrl" alt="الصورة الأصلية" class="img-thumbnail" style="max-height: 200px;" />
+                                    <figcaption class="small text-muted">الأصلية</figcaption>
+                                </figure>
+                                @if (enhanceEnabled && showEnhancedPreview && enhancedPreviewUrl is not null)
+                                {
+                                    <figure class="mb-0 text-center">
+                                        <img src="@enhancedPreviewUrl" alt="الصورة المحسّنة" class="img-thumbnail" style="max-height: 200px;" />
+                                        <figcaption class="small text-muted">المحسّنة</figcaption>
+                                    </figure>
+                                }
+                            </div>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(imagePreviewNote))
+                    {
+                        <div class="small text-warning mt-1">@imagePreviewNote</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(modelExtractError))
+                    {
+                        <div class="alert alert-warning py-2 mt-2 mb-0 small">@modelExtractError</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(modelExtractNote))
+                    {
+                        <div class="small text-muted mt-1">@modelExtractNote</div>
+                    }
                 </div>
 
+                <details class="mt-3 border-top pt-3">
+                    <summary class="small text-muted" style="cursor: pointer;">خيارات متقدمة (اختياري)</summary>
                 <div class="mt-3 border-top pt-3">
                     <div class="small fw-bold mb-1">إعدادات الصورة ومعاينتها</div>
                     <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -258,7 +281,7 @@
                     }
                     <div class="small text-muted mt-1">
                         التحسين يعمل داخل الجهاز بـOpenCV بلا نماذج ولا اتصال، وله ثلاث شِدّات تضبطها من «إعدادات التحسين».
-                        لا يغيّر القارئ الافتراضي. إلغاء المعاينة يذهب إلى النتيجة مباشرة عند اختيار الصورة.
+                        لا يغيّر القارئ الافتراضي، ولا تقرأ الصورة تلقائيًا عند الرفع؛ اضغط «اقرأ الورقة» عند اختيارك.
                         تُحفظ هذه الخيارات تلقائيًا في ملف محلي.
                     </div>
 
@@ -301,44 +324,13 @@
                             </div>
                         </div>
                     }
-                    @if (!string.IsNullOrWhiteSpace(imagePreviewNote))
-                    {
-                        <div class="small text-warning mt-1">@imagePreviewNote</div>
-                    }
-                    @if (originalPreviewUrl is not null)
-                    {
-                        <div class="mt-2">
-                            <div class="small fw-bold mb-1">معاينة الصورة</div>
-                            <div class="d-flex flex-wrap gap-2">
-                                <figure class="mb-0 text-center">
-                                    <img src="@originalPreviewUrl" alt="الصورة الأصلية" class="img-thumbnail" style="max-height: 200px;" />
-                                    <figcaption class="small text-muted">الأصلية</figcaption>
-                                </figure>
-                                @if (enhanceEnabled && showEnhancedPreview && enhancedPreviewUrl is not null)
-                                {
-                                    <figure class="mb-0 text-center">
-                                        <img src="@enhancedPreviewUrl" alt="الصورة المحسّنة" class="img-thumbnail" style="max-height: 200px;" />
-                                        <figcaption class="small text-muted">المحسّنة</figcaption>
-                                    </figure>
-                                }
-                            </div>
-                            <button type="button" class="btn btn-outline-primary btn-sm mt-2"
-                                    @onclick="RunImageCaptureAsync" disabled="@capturing">
-                                @if (capturing)
-                                {
-                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                                }
-                                تحليل الصورة
-                            </button>
-                        </div>
-                    }
                 </div>
 
                 <div class="mt-3 border-top pt-3">
-                    <div class="small fw-bold mb-1">مساعدة النموذج المحلي (اختياري)</div>
+                    <div class="small fw-bold mb-1">تصحيح النص المستخرج محليًا (اختياري)</div>
                     <div class="small text-muted mb-2">
-                        لا تعمل هذه المساعدة تلقائيًا؛ تعمل فقط عند الضغط، وتستخدم النموذج المحلي المثبّت
-                        لتصحيح الحروف والأرقام في النص أعلاه. لا تُنزَّل نماذج، ولا يُرسل شيء للخارج،
+                        يختلف عن قراءة الصورة: يعمل على النص الموجود في المربع أعلاه فقط، ويستخدم نموذج Ollama
+                        المحلي لتصحيح الحروف والأرقام، دون قراءة الصورة. لا تُنزَّل نماذج، ولا يُرسل شيء للخارج،
                         ولا يُغيَّر النص الأصلي؛ يظهر اقتراح تقرّر أنت وحدك اعتماده.
                     </div>
                     <button type="button" class="btn btn-outline-secondary btn-sm"
@@ -365,11 +357,52 @@
                             </button>
                         </div>
                     }
-                </div>
+                    </div>
+
+
+                    <div class="small text-muted mt-3 d-flex align-items-center gap-2">
+                        <span>الأسماء المتعلَّمة محليًا: @learnedAliases.Count</span>
+                        @if (learnedAliases.Count > 0)
+                        {
+                            <button type="button" class="btn btn-link btn-sm p-0" @onclick="ClearAliases">مسح</button>
+                        }
+                    </div>
+                </details>
 
                 @if (!string.IsNullOrWhiteSpace(captureError))
                 {
                     <div class="alert alert-danger py-2 mt-2 mb-0 small">@captureError</div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(lastExtractedText))
+                {
+                    <div class="mt-3 border-top pt-3">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
+                            <div class="small fw-bold">النص المستخرج كما قُرئ (راجعه بالصورة)</div>
+                            <button type="button" class="btn btn-outline-primary btn-sm"
+                                    @onclick="CopyExtractedTextAsync">نسخ النص المستخرج</button>
+                        </div>
+                        <textarea class="form-control" rows="4" readonly dir="rtl">@lastExtractedText</textarea>
+                        <div class="small text-muted mt-1">هذا ما أخرجه القارئ حرفيًا؛ لم تُصحَّح الكلمات أو الأرقام، ولا يُكتب شيء تلقائيًا.</div>
+                        @if (evalResult is not null)
+                        {
+                            <div class="small text-muted mt-1" title="قياس محلي على عينات اصطناعية، يُحدَّث تلقائيًا بعد كل عملية قراءة">
+                                <WizzIcon Icon="chart" Size="13" /> دقة الاستخراج: الاسم @evalResult.NameHits/@evalResult.Total · السعر @evalResult.PriceHits
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(evalError))
+                        {
+                            <div class="small text-warning mt-1"><WizzIcon Icon="info" Size="13" /> @evalError</div>
+                        }
+                        <div class="small fw-bold mt-3">ماذا تريد أن تفعل بهذا النص؟</div>
+                        <div class="d-flex flex-wrap gap-2 mt-1">
+                            <button type="button" class="btn btn-outline-success btn-sm"
+                                    @onclick="SendSaleDraft">فتح شاشة البيع بمسودة</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    @onclick="SendPurchaseDraft">فتح شاشة الشراء بمسودة</button>
+                        </div>
+                        <div class="small text-muted mt-1">المطابقة والتطبيق في الشاشة الهدف بقرارك؛ لا يُحفظ شيء قبل تأكيدك.</div>
+                    </div>
                 }
 
                 @if (captureResult is not null)
@@ -437,7 +470,9 @@
 
                 @if (decisionReport is not null)
                 {
-                    <div class="mt-3 border-top pt-3">
+                    <details class="mt-3 border-top pt-3">
+                        <summary class="small text-muted" style="cursor: pointer;">تفاصيل التقرير (اختياري)</summary>
+                        <div class="mt-3">
                         <div class="small fw-bold mb-2">
                             تقرير القرار
                             <span class="badge bg-light text-dark border" title="ما جاء فيه منقول من حكم المدمج، ولا يزيد عليه دقة">@DecisionReportBuilder.EstimatedLabel</span>
@@ -633,7 +668,8 @@
                             <div class="small text-danger mt-2">تنبيه: راجع يدويًا قبل أي اعتماد.</div>
                         }
                         <div class="small text-muted mt-1">التقرير للعرض المؤقت فقط، ولا يُحتفظ به بعد إغلاق البطاقة.</div>
-                    </div>
+                        </div>
+                    </details>
                 }
             </div>
         </div>
@@ -641,34 +677,6 @@
     </div>
 
     <div class="col-lg-4">
-        <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 d-inline-flex align-items-center gap-2"><WizzIcon Icon="sparkles" Size="16" /><span>أسئلة جاهزة</span></h6>
-                @if (history is not null && history.Count > 0)
-                {
-                    <span class="badge bg-secondary" title="عدد الأسئلة المسجّلة من استخدامك">@history.Count</span>
-                }
-            </div>
-            <div class="card-body">
-                @if (quickQuestions.Count > 0)
-                {
-                    <div class="d-grid gap-2">
-                        @foreach (var q in quickQuestions)
-                        {
-                            <button class="btn btn-outline-primary btn-sm text-start quick-question-side"
-                                    title="إرسال: @q"
-                                    disabled="@sending"
-                                    @onclick="@(() => SendQuickQuestion(q))">@q</button>
-                        }
-                    </div>
-                }
-                else
-                {
-                    <div class="text-muted small">ستظهر هنا أسئلتك الأكثر تكراراً بعد أن تبدأ بطرحها.</div>
-                }
-            </div>
-        </div>
-
         <AiStatusPanel Status="routeStatus"
                        Loading="loadingStatus"
                        OnRefresh="RefreshStatus" />
@@ -713,7 +721,7 @@
             </div>
             <div class="card-body py-2 d-grid gap-2">
                 <button class="btn btn-outline-danger btn-sm" @onclick="ClearChat"><WizzIcon Icon="trash" Size="14" /> مسح المحادثة</button>
-                <button class="btn btn-outline-secondary btn-sm" @onclick="ClearHistory"><WizzIcon Icon="x-circle" Size="14" /> مسح تاريخ الأسئلة الجاهزة</button>
+                <button class="btn btn-outline-secondary btn-sm" @onclick="ClearHistory"><WizzIcon Icon="x-circle" Size="14" /> مسح سجل الأسئلة</button>
                 <button class="btn btn-outline-secondary btn-sm"
                         title="يمسح ما يحفظه المساعد من محادثة سابقة ومن آخر منتج تذكّره — لا يمسح تفضيلاتك (من الإعدادات)"
                         @onclick="ClearMemory"><WizzIcon Icon="brain" Size="14" /> مسح الذاكرة</button>
@@ -761,6 +769,7 @@
     private DecisionReport? decisionReport;
     private bool capturing;
     private string? captureError;
+    private string? lastExtractedText;
     private IBrowserFile? captureImage;
     // تحسين ومعاينة اختياريان للصورة — داخل الجهاز، بلا نماذج ولا إرسال
     private const int PreviewMaxDimension = 800;
@@ -782,12 +791,37 @@
     private bool assisting;
     private string? assistSuggestion;
     private string? assistError;
-    private bool ocrReaderSupported;
-    private string ocrReaderStatus = "";
+    // استخراج النص من الصورة عبر نموذج — إجراء رفاهي اختياري بطلب المستخدم في كل مرة، لا مسارًا روتينيًا.
+    // الصورة والنتيجة تبقى في الجلسة فقط؛ لا كتابة في قاعدة البيانات ولا تطبيق تلقائي.
+    private bool extractingWithModel;
+    private DocumentModelRoute modelRoute = DocumentModelRoute.Local;
+
+    // سؤال واحد يجمع طرق قراءة الصورة؛ الافتراضي هو القارئ المحلي المعتمد، ولا يوجد تبديل تلقائي.
+    private enum ReadingRoute
+    {
+        WindowsOcr = 0,
+        EmbeddedOcr = 1,
+        LocalModel = 2,
+        CloudModel = 3
+    }
+
+    private ReadingRoute readingRoute = ReadingRoute.WindowsOcr;
+
+    /// <summary>الصورة الجاهزة للقراءة: المحسّنة إن كان التحسين مفعّلًا وإلا الأصلية.</summary>
+    private byte[]? CurrentImageBytes => enhanceEnabled
+        ? enhancedImageBytes ?? originalImageBytes
+        : originalImageBytes;
+    private string? modelExtractError;
+    private string? modelExtractNote;
     private bool documentReaderEnabled;
+    // تعلّم أسماء الأصناف من تأكيدات المستخدم فقط، وقياس دقة محلي بلا تدريب نموذج.
+    private IReadOnlyList<OcrAlias> learnedAliases = Array.Empty<OcrAlias>();
+    private OcrEvaluationResult? evalResult;
+    private string? evalError;
 
     protected override async Task OnInitializedAsync()
     {
+        LoadAliases();
         OcrReaderSelection.Set(OcrReaderChoice.Default);
         var imageSettings = ImageCaptureSettings.Get();
         enhanceEnabled = imageSettings.EnhanceEnabled;
@@ -795,12 +829,6 @@
         showEnhancedPreview = imageSettings.ShowEnhancedPreview;
         enhanceLevel = imageSettings.EnhanceLevel;
         documentReaderEnabled = ModuleGate.IsEnabled(Wizz.Application.Modules.DocumentReaderModule.Id);
-        ocrReaderSupported = documentReaderEnabled && OcrReader.IsSupported;
-        ocrReaderStatus = !documentReaderEnabled
-            ? "وحدة قراءة الوثائق معطّلة؛ فعّلها من الإعدادات ← الوحدات الاختيارية."
-            : ocrReaderSupported
-                ? "قارئ الصور المحلي متاح على هذا الجهاز."
-                : "قارئ الصور غير متاح؛ الإدخال اليدوي هو المسار المتاح.";
 
         await LoadStoreNameAsync();
         await LoadRoutePriorityAsync();
@@ -809,6 +837,29 @@
         await LoadHistoryAsync();
         await LoadMemoryAsync();
         RefreshRecentDecisions();
+    }
+
+    private void LoadAliases() => learnedAliases = OcrAliases.GetAll();
+
+    private void ClearAliases()
+    {
+        OcrAliases.Clear();
+        LoadAliases();
+    }
+
+    /// <summary>يقيس دقة الاستخراج على العينات المحلية بعد كل عملية قراءة، بلا زر أو تدخل من المستخدم.</summary>
+    private void MeasureAccuracy()
+    {
+        evalError = null;
+        try
+        {
+            evalResult = OcrEvaluator.Run();
+        }
+        catch (Exception ex)
+        {
+            evalResult = null;
+            evalError = "تعذّر قياس الدقة: " + ex.Message;
+        }
     }
 
     /// <summary>يحمّل اسم المتجر لعرضه في ترويسة طباعة المخرجات (الافتراضي: Wizz).</summary>
@@ -1174,6 +1225,40 @@
         StateHasChanged();
     }
 
+    /// <summary>ينسخ النص كما قرئه القارئ؛ لا يُنسخ المُعاد تركيبه ولا ملخص الحكم.</summary>
+    private async Task CopyExtractedTextAsync()
+    {
+        if (string.IsNullOrWhiteSpace(lastExtractedText)) return;
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", lastExtractedText);
+        }
+        catch
+        {
+            // المتصفح قد يمنع الوصول إلى الحافظة — نتجاهل الخطأ بهدوء.
+        }
+    }
+
+    /// <summary>يسلّم النص والأصناف المقبولة إلى الشاشة الهدف؛ المطابقة والتطبيق بقرار المستخدم هناك.</summary>
+    private void SendDraftToScreen(string target, string route)
+    {
+        if (string.IsNullOrWhiteSpace(lastExtractedText)) return;
+        var acceptedLines = captureResult?.Adjudication.Candidates
+            .Where(c => c.Accepted && !string.IsNullOrWhiteSpace(c.Candidate.ProductName))
+            .Select(c => new OcrDraftLine(
+                c.Candidate.ProductName!,
+                c.Candidate.Price,
+                OcrQuantityParser.Parse(c.Candidate.RawLine, c.Candidate.ProductName, c.Candidate.Price)))
+            .ToArray();
+        DraftHandoff.Set(lastExtractedText, target,
+            acceptedLines is null ? null : OcrDraftLineMerger.Merge(acceptedLines));
+        Nav.NavigateTo(route);
+    }
+
+    private void SendSaleDraft() => SendDraftToScreen(OcrDraftHandoff.SaleTarget, "/sales/new");
+
+    private void SendPurchaseDraft() => SendDraftToScreen(OcrDraftHandoff.PurchaseTarget, "/purchases");
+
     /// <summary>فتح نافذة تصدير/تنزيل المخرج المحدد.</summary>
     private Task OpenExportModal(ChatArtifact artifact)
     {
@@ -1306,8 +1391,11 @@
         if (capturing || string.IsNullOrWhiteSpace(captureInput)) return;
         capturing = true;
         captureError = null;
+        lastExtractedText = null;
         assistSuggestion = null;
         assistError = null;
+        modelExtractError = null;
+        modelExtractNote = null;
         lastReaderName = null;
         StateHasChanged();
 
@@ -1315,7 +1403,9 @@
         {
             captureResult = await CaptureService.CaptureAsync(
                 new DocumentCaptureRequest(captureInput.Trim()));
+            lastExtractedText = captureInput.Trim();
             decisionReport = DecisionReportBuilder.Build(captureInput.Trim(), captureResult.Adjudication);
+            MeasureAccuracy();
         }
         catch (Exception ex)
         {
@@ -1371,14 +1461,81 @@
         StateHasChanged();
     }
 
-    /// <summary>يثبّت اختيار القارئ لهذه الجلسة عند تغيير المستخدم له؛ لا يغيّر الافتراضي المعتمد.</summary>
-    private void OnReaderChoiceChanged(ChangeEventArgs e)
+    /// <summary>يثبّت طريقة القراءة لهذه الجلسة فقط عند تغيير المستخدم لها.</summary>
+    private void OnReadingRouteChanged(ChangeEventArgs e)
     {
         if (int.TryParse(e.Value?.ToString(), out var value) &&
-            Enum.IsDefined(typeof(OcrReaderChoice), value))
+            Enum.IsDefined(typeof(ReadingRoute), value))
         {
-            selectedReader = (OcrReaderChoice)value;
-            OcrReaderSelection.Set(selectedReader);
+            readingRoute = (ReadingRoute)value;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>ينفّذ طريقة القراءة التي اختارها المستخدم صراحةً؛ لا شيء يعمل تلقائيًا.</summary>
+    private async Task RunReadingAsync()
+    {
+        if (readingRoute == ReadingRoute.WindowsOcr || readingRoute == ReadingRoute.EmbeddedOcr)
+        {
+            // القارئ المضمّن اختيار مقارنة صريح لهذه الجلسة فقط، ولا يغيّر الافتراضي المعتمد.
+            selectedReader = readingRoute == ReadingRoute.EmbeddedOcr
+                ? OcrReaderChoice.RapidOcr
+                : OcrReaderChoice.Default;
+            await RunImageCaptureAsync();
+            return;
+        }
+
+        modelRoute = readingRoute == ReadingRoute.CloudModel
+            ? DocumentModelRoute.Cloud
+            : DocumentModelRoute.Local;
+        await RunModelExtractionAsync();
+    }
+
+    /// <summary>
+    /// يستخرج النص من الصورة عبر نموذج بعد ضغط المستخدم في كل مرة. لا يعمل تلقائيًا، ولا يمرّ عبر موجه
+    /// النماذج، ولا يكتب في قاعدة البيانات. الناتج نص للمراجعة فقط؛ لا يُحكَّم ولا يُطبَّق تلقائيًا.
+    /// </summary>
+    private async Task RunModelExtractionAsync()
+    {
+        var bytes = CurrentImageBytes;
+        if (extractingWithModel || capturing || bytes is null) return;
+
+        if (modelRoute == DocumentModelRoute.Cloud)
+        {
+            var confirmed = await JS.InvokeAsync<bool>("confirm",
+                "سيُرسل نموذج سحابي صورة الورقة كاملة لمحاولة استخراج النص. قد تحتوي الصورة على بيانات عملاء، وقد يستغرق الاستدعاء وقتًا. هل تتابع؟");
+            if (!confirmed) return;
+        }
+
+        extractingWithModel = true;
+        modelExtractError = null;
+        modelExtractNote = null;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ModelExtractor.ExtractAsync(bytes, modelRoute);
+            captureInput = result.Text;
+            lastExtractedText = result.Text;
+            captureResult = null;
+            decisionReport = null;
+            captureError = null;
+            lastReaderName = $"نموذج {result.Model}";
+            modelExtractNote = (modelRoute == DocumentModelRoute.Cloud
+                    ? "استُخدم مسار سحابي مجاني؛ "
+                    : "استُخدم نموذج محلي بلا إرسال؛ ")
+                + "النص للمراجعة فقط، ولم يُحكَّم ولم يُطبَّق تلقائيًا."
+                + (result.Notes.Count > 0 ? " " + string.Join(" ", result.Notes) : "");
+            MeasureAccuracy();
+        }
+        catch (Exception ex)
+        {
+            modelExtractError = $"تعذّر استخراج النص بالنموذج: {ex.Message}";
+        }
+        finally
+        {
+            extractingWithModel = false;
+            StateHasChanged();
         }
     }
 
@@ -1402,6 +1559,8 @@
         lastReaderName = null;
         assistSuggestion = null;
         assistError = null;
+        modelExtractError = null;
+        modelExtractNote = null;
         originalImageBytes = null;
         enhancedImageBytes = null;
         originalPreviewUrl = null;
@@ -1430,10 +1589,7 @@
             return;
         }
 
-        if (!previewBeforeAnalysis || originalPreviewUrl is null)
-        {
-            await RunImageCaptureAsync();
-        }
+        // لا قراءة تلقائية عند الرفع؛ المستخدم يختار الطريقة ويضغط «اقرأ الورقة» صراحةً.
     }
 
     /// <summary>يحضّر النسخة المحسّنة ومعاينتها عند تفعيل التحسين، دون قراءة أو كتابة.</summary>
@@ -1494,13 +1650,16 @@
     /// <summary>يقرأ الصورة بالقارئ المحلي المفعّل، ثم يعرض حكم المدمج على النص المستخرج فقط.</summary>
     private async Task RunImageCaptureAsync()
     {
-        var bytes = enhanceEnabled ? enhancedImageBytes ?? originalImageBytes : originalImageBytes;
+        var bytes = CurrentImageBytes;
         if (capturing || bytes is null) return;
 
         capturing = true;
         captureError = null;
+        lastExtractedText = null;
         assistSuggestion = null;
         assistError = null;
+        modelExtractError = null;
+        modelExtractNote = null;
         lastReaderName = null;
         OcrReaderSelection.Set(selectedReader);
         StateHasChanged();
@@ -1517,9 +1676,11 @@
             }
 
             captureInput = result.RecognizedText;
+            lastExtractedText = result.RecognizedText;
             captureResult = result.Adjudication;
             lastReaderName = result.ReaderName;
             decisionReport = DecisionReportBuilder.Build(result.RecognizedText, captureResult.Adjudication);
+            MeasureAccuracy();
             if (string.IsNullOrWhiteSpace(result.RecognizedText))
             {
                 captureError = "لم يستخرج القارئ نصًا من الصورة.";

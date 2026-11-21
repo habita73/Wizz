@@ -1,4 +1,5 @@
 @page "/sales/new"
+@using Wizz.Application.AI.Perception
 @layout MainLayout
 @attribute [Authorize(Policy = PermissionPolicy.CreateSale)]
 @rendermode InteractiveServer
@@ -12,6 +13,8 @@
 @inject Wizz.Application.Abstractions.IPrinter Printer
 @inject Wizz.Application.Abstractions.IBarcodeReader BarcodeReader
 @inject Microsoft.AspNetCore.Components.NavigationManager Nav
+@inject Wizz.Application.AI.Perception.OcrDraftHandoff DraftHandoff
+@inject Wizz.Application.AI.Perception.IOcrAliasStore OcrAliases
 
 <h2 class="d-flex align-items-center gap-2">
     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
@@ -38,6 +41,74 @@
 {
     <div class="alert alert-warning py-2 small mb-3">
         تعذّر استرجاع @draftSkippedCount صنف من المسودة لأن المنتج لم يعد موجوداً. راجع السلة قبل إتمام البيع.
+    </div>
+}
+
+@if (!string.IsNullOrWhiteSpace(ocrDraftText))
+{
+    <div class="alert alert-light border small mb-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
+            <div class="fw-bold">نص من مساعد قراءة المستندات — راجعه قبل التطبيق</div>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClearOcrDraft">إزالة النص</button>
+        </div>
+        <textarea class="form-control" rows="4" readonly dir="rtl">@ocrDraftText</textarea>
+        @if (ocrDraftLines is { Count: > 0 })
+        {
+            <div class="mt-2">
+                <div class="fw-bold">أصناف مقبولة من المحكّم (@ocrDraftLines.Count):</div>
+                <ul class="mb-1">
+                    @foreach (var line in ocrDraftLines)
+                    {
+                        <li>
+                            @line.Name — كمية @line.Quantity.ToString("0.##")
+                            @if (line.Price is { } price)
+                            {
+                                <span class="text-muted">— @price.ToString("0.##") د.ج</span>
+                            }
+                        </li>
+                    }
+                </ul>
+                @if (ocrNeedsMergeDecision && cartItems.Count > 0)
+                {
+                    <div class="alert alert-warning py-2 mb-2">
+                        <div class="fw-bold">السلة تحتوي بالفعل @cartItems.Count صنفًا. ماذا تريد؟</div>
+                        <div class="small text-muted mb-1">
+                            @string.Join("، ", cartItems.Select(i => $"{i.ProductName} × {i.Quantity:0.##}"))
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => ApplyOcrDraftAsync(false)">إضافة إلى السلة الحالية</button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => ApplyOcrDraftAsync(true)">استبدال السلة بالأصناف المقروءة</button>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => ApplyOcrDraftAsync(false)">تطبيق الأصناف المطابقة على السلة</button>
+                }
+            </div>
+        }
+        @if (ocrUnmatchedLines is { Count: > 0 })
+        {
+            <div class="mt-2 small">
+                <div class="fw-bold">أسطر لم تُطابق تامًا (@ocrUnmatchedLines.Count) — اختر إن كان أحدها يقصد صنفًا موجودًا:</div>
+                @foreach (var line in ocrUnmatchedLines)
+                {
+                    <div class="mb-1">
+                        <span>@line.Name (كمية @line.Quantity.ToString("0.##"))</span>
+                        @foreach (var suggestion in ocrNearSuggestions.Where(s => ReferenceEquals(s.Line, line)))
+                        {
+                            <button type="button" class="btn btn-sm btn-outline-secondary ms-1"
+                                    @onclick="() => ApplyNearSuggestion(suggestion)">هل تقصد: @suggestion.Product.Name؟</button>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        @if (!string.IsNullOrWhiteSpace(ocrApplyMessage))
+        {
+            <div class="alert alert-warning py-2 mt-2 mb-0">@ocrApplyMessage</div>
+        }
+        <div class="text-muted mt-1">التطابق التام يُضاف تلقائيًا بالكمية المقروءة وبسعر المتجر؛ الأسماء القريبة تُعرض كاقتراح لا يُطبَّق إلا بضغطك. لا يُحفظ شيء قبل إتمام البيع.</div>
     </div>
 }
 
@@ -316,6 +387,14 @@
     private bool jsReady;
     private bool draftRestored;
     private int draftSkippedCount;
+    // نتيجة قراءة المستندات: النص للمراجعة، والأصناف المقبولة للتطبيق بقرار المستخدم.
+    private string? ocrDraftText;
+    private IReadOnlyList<OcrDraftLine>? ocrDraftLines;
+    private IReadOnlyList<OcrDraftLine>? ocrUnmatchedLines;
+    private IReadOnlyList<OcrNearSuggestion> ocrNearSuggestions = Array.Empty<OcrNearSuggestion>();
+    private bool ocrNeedsMergeDecision;
+    private string? ocrApplyMessage;
+    private sealed record OcrNearSuggestion(OcrDraftLine Line, Wizz.Application.DTOs.ProductDto Product);
 
     private bool isFiltering => !string.IsNullOrWhiteSpace(searchQuery);
 
@@ -332,6 +411,9 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var ocrDraft = DraftHandoff.Take(OcrDraftHandoff.SaleTarget);
+        ocrDraftText = ocrDraft?.Text;
+        ocrDraftLines = ocrDraft?.Lines;
         var store = await StoreRepo.GetAsync();
         inventoryEnabled = store?.InventoryEnabled == true;
 
@@ -466,20 +548,7 @@
 
     private async Task AddToCart(Wizz.Application.DTOs.ProductDto product)
     {
-        var existing = cartItems.FirstOrDefault(c => c.ProductId == product.Id && !c.IsWholesale);
-        if (existing != null)
-        {
-            existing.Quantity += 1;
-            existing.LineTotal = Math.Round(existing.Quantity * existing.UnitPrice, 2, MidpointRounding.AwayFromZero);
-        }
-        else
-        {
-            var item = CreateCartItem(product, 1, isWholesale: false);
-            if (item is not null)
-            {
-                cartItems.Add(item);
-            }
-        }
+        AppendToCart(cartItems, product, 1m);
 
         // نُبقي شبكة المنتجات ظاهرة بعد الإضافة — لا تُفرَّغ ولا تختفي
         justAdded = product.Name;
@@ -491,6 +560,101 @@
 
         // المؤشر يعود للبحث تلقائياً — يسمح بتمرير منتجات متتالية بلا فأرة.
         await FocusSearchAsync();
+    }
+
+    /// <summary>يضيف صنفًا بالكمية المحددة إلى السلة؛ السعر دائمًا من بيانات المنتج الحالية.</summary>
+    private static bool AppendToCart(List<CartItem> cartItems, Wizz.Application.DTOs.ProductDto product, decimal quantity)
+    {
+        var existing = cartItems.FirstOrDefault(c => c.ProductId == product.Id && !c.IsWholesale);
+        if (existing is not null)
+        {
+            existing.Quantity += quantity;
+            existing.LineTotal = Math.Round(existing.Quantity * existing.UnitPrice, 2, MidpointRounding.AwayFromZero);
+            return true;
+        }
+
+        var item = CreateCartItem(product, quantity, isWholesale: false);
+        if (item is null) return false;
+        cartItems.Add(item);
+        return true;
+    }
+
+    /// <summary>يُفرَّغ لوحة القراءة.</summary>
+    private void ClearOcrDraft()
+    {
+        ocrDraftText = null;
+        ocrDraftLines = null;
+        ocrUnmatchedLines = null;
+        ocrNearSuggestions = Array.Empty<OcrNearSuggestion>();
+        ocrNeedsMergeDecision = false;
+        ocrApplyMessage = null;
+    }
+
+    /// <summary>
+    /// يطبّق الأصناف المقبولة بعد مطابقة الاسم التام فقط. إن كانت السلة غير فارغة يطلب قرارًا صريحًا
+    /// قبل الإضافة أو الاستبدال، حتى لا تتراكم الكميات فوق سلة سابقة دون علم المستخدم.
+    /// </summary>
+    private async Task ApplyOcrDraftAsync(bool replaceCart)
+    {
+        if (ocrDraftLines is null || ocrDraftLines.Count == 0) return;
+
+        if (!ocrNeedsMergeDecision && cartItems.Count > 0)
+        {
+            ocrNeedsMergeDecision = true;
+            ocrApplyMessage = "السلة تحتوي أصنافًا بالفعل؛ اختر إضافة أو استبدالًا قبل المتابعة.";
+            StateHasChanged();
+            return;
+        }
+
+        if (replaceCart)
+        {
+            cartItems.Clear();
+        }
+
+        var added = 0;
+        var unmatched = new List<OcrDraftLine>();
+        foreach (var line in ocrDraftLines)
+        {
+            // الاسم المتعلَّم من تأكيد سابق يُحلَّب محليًا قبل المطابقة التامّة؛ لا تدريب نموذج ولا إرسال.
+            var resolvedName = OcrAliases.Resolve(line.Name) ?? line.Name;
+            var product = OcrProductMatcher.Match(resolvedName, allProducts, p => p.Name);
+            if (product is null || !AppendToCart(cartItems, product, line.Quantity))
+            {
+                unmatched.Add(line);
+                continue;
+            }
+            added++;
+        }
+
+        ocrDraftLines = null;
+        ocrNeedsMergeDecision = false;
+        ocrUnmatchedLines = unmatched.Count > 0 ? unmatched : null;
+        ocrNearSuggestions = ocrUnmatchedLines is null
+            ? Array.Empty<OcrNearSuggestion>()
+            : ocrUnmatchedLines
+                .SelectMany(line => OcrProductMatcher.Suggest(OcrAliases.Resolve(line.Name) ?? line.Name, allProducts, p => p.Name)
+                    .Select(product => new OcrNearSuggestion(line, product)))
+                .ToArray();
+        ocrApplyMessage = $"أُضيف {added} صنفًا بالكمية المقروءة وسعر المتجر."
+            + (unmatched.Count > 0 ? $" لم يُطابق {unmatched.Count} سطرًا منتجًا موجودًا؛ راجع الاقتراحات أو أضفه يدويًا." : string.Empty)
+            + " راجع السلة قبل إتمام البيع.";
+        StateHasChanged();
+        await SaveDraftAsync();
+    }
+
+    /// <summary>يضيف اقتراح اسم قريب بعد موافقة المستخدم الصريحة، بالكمية المقروءة.</summary>
+    private async Task ApplyNearSuggestion(OcrNearSuggestion suggestion)
+    {
+        if (AppendToCart(cartItems, suggestion.Product, suggestion.Line.Quantity))
+        {
+            // ضغط المستخدم على «هل تقصد» هو تأكيد صريح، فيُحفظ الاسم محليًا للمرات القادمة فقط.
+            OcrAliases.Remember(suggestion.Line.Name, suggestion.Product.Name);
+            ocrUnmatchedLines = ocrUnmatchedLines?.Where(l => !ReferenceEquals(l, suggestion.Line)).ToArray();
+            ocrNearSuggestions = ocrNearSuggestions.Where(s => !ReferenceEquals(s, suggestion.Line)).ToArray();
+            ocrApplyMessage = $"أُضيف {suggestion.Product.Name} بكمية {suggestion.Line.Quantity:0.##} بعد موافقتك، وتعلّمنا الاسم محليًا للمرة القادمة.";
+        }
+        StateHasChanged();
+        await SaveDraftAsync();
     }
 
     /// <summary>

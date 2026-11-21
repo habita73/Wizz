@@ -39,6 +39,19 @@ public interface ILlmProvider
             return (false, $"تعذّر الاتصال بـ«{ProviderName}»: {ex.Message}");
         }
     }
+
+    /// <summary>
+    /// اختبار تشخيصي يفرّق بين الوصول إلى كتالوج النماذج العامة وصلاحية مفتاح API لدى المزوّد.
+    /// قيمة <c>KeyValid = null</c> تعني أن المزوّد لا يوفّر فحصًا منفصلًا للمفتاح، فتبقى الصلاحية غير محسومة.
+    /// التنفيذ الافتراضي لا يفتح طلبًا إضافيًا، ويبقي نتيجة المفتاح غير محسومة.
+    /// </summary>
+    async Task<(bool CatalogReachable, bool? KeyValid, string Details)> TestConnectionDetailedAsync(CancellationToken ct = default)
+    {
+        var reachable = await IsAvailableAsync(ct);
+        return (reachable, null, reachable
+            ? "الوصول إلى كتالوج النماذج متاح، ولم يتحقق من صلاحية المفتاح."
+            : "كتالوج النماذج غير متاح.");
+    }
 }
 
 /// <summary>أداة AI محددة — تُستدعى من قبل النموذج عبر Function Calling.</summary>

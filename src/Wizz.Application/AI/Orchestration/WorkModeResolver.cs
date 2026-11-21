@@ -49,7 +49,8 @@ public static class WorkModeResolver
         var normalized = TextNormalizer.Normalize(question);
         var precision = builtInAnswer is not null
             && BuiltInAssistant.IsPrecisionAnswer(builtInAnswer)
-            && !BuiltInAssistant.IsAnalytical(question ?? string.Empty);
+            && !BuiltInAssistant.IsAnalytical(question ?? string.Empty)
+            && !FormattingIntent.IsFormattingRequest(question);
 
         if (isManual)
         {

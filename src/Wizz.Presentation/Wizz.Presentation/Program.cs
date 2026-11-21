@@ -132,6 +132,21 @@ builder.Services.AddHttpClient<Wizz.Application.AI.Tools.IWebSearch, Wizz.Infras
     client.DefaultRequestHeaders.UserAgent.ParseAdd("WizzPOS/1.0 (+https://github.com/habita73/wizz)");
 });
 
+// كتالوج النماذج المجانية: GET عام للبيانات الوصفية فقط، بلا مفتاح أو سؤال أو صورة.
+// يُحفظ في ملف محلي بتوقيت قراءته، ولا يُطبِّق أي نموذج تلقائيًا. عامل الخلفية مغلق
+// حتى يفعّله المستخدم، ويكتفي بقراءة الكتالوج على فترات متباعدة عند تفعيله.
+builder.Services.AddHttpClient("FreeModelCatalog", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(12);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("WizzPOS/1.0 (+https://github.com/habita73/wizz)");
+});
+builder.Services.AddSingleton<Wizz.Application.AI.IFreeModelCatalogService>(sp =>
+    new Wizz.Infrastructure.AI.FreeModelCatalogService(
+        sp.GetRequiredService<IHttpClientFactory>().CreateClient("FreeModelCatalog"),
+        sp.GetRequiredService<IConfiguration>(),
+        sp.GetService<ILogger<Wizz.Infrastructure.AI.FreeModelCatalogService>>()));
+builder.Services.AddHostedService<Wizz.Presentation.Services.FreeModelCatalogBackgroundService>();
+
 builder.Services.AddScoped<BuiltInAssistant>(sp => new BuiltInAssistant(
     sp.GetRequiredService<ISaleRepository>(),
     sp.GetRequiredService<IProductRepository>(),
@@ -167,6 +182,32 @@ builder.Services.AddScoped<Wizz.Application.AI.Perception.IOcrTextReader>(sp =>
         });
 });
 builder.Services.AddScoped<Wizz.Application.AI.Perception.OcrDocumentCaptureService>();
+// استخراج النص من صورة الورقة عبر نموذج — إجراء رفاهي لا يُستدعى إلا بضغط المستخدم في كل مرة.
+// المسار المحلي عبر Ollama لا يُرسل الصورة للخارج؛ المسار السحابي محصور بالنماذج المجانية
+// وبمفتاحي السحابة والتشارك، ولا يُبنى أي طلب قبل تحقيقها. لا كتابة في قاعدة البيانات.
+// مهلة العميل نفسها معطَّلة عمدًا: مُستخرِج النص يضبط مهلة كل طلب عبر CancellationToken،
+// فلو بقيت مهلة HttpClient الافتراضية (100 ثانية) لسبقتها وألغت الطلب قبل اكتماله.
+builder.Services.AddHttpClient("ModelExtraction", client =>
+{
+    client.Timeout = Timeout.InfiniteTimeSpan;
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("WizzPOS/1.0 (+https://github.com/habita73/wizz)");
+});
+builder.Services.AddScoped<Wizz.Application.AI.Perception.IModelDocumentExtractor>(sp =>
+    new Wizz.Infrastructure.AI.Perception.ModelDocumentExtractor(
+        sp.GetRequiredService<IAiSettingsProvider>(),
+        sp.GetRequiredService<IConfiguration>(),
+        sp.GetRequiredService<IHttpClientFactory>().CreateClient("ModelExtraction"),
+        sp.GetService<ILogger<Wizz.Infrastructure.AI.Perception.ModelDocumentExtractor>>()));
+// تسليم نص القراءة إلى شاشة البيع أو الشراء كمسودة غير محفوظة — داخل الجلسة فقط، بلا كتابة أو توزيع آلي.
+builder.Services.AddScoped<Wizz.Application.AI.Perception.OcrDraftHandoff>();
+// تعلّم مرادفات الأسماء من تأكيدات المستخدم فقط: ملف محلي بلا قاعدة بيانات ولا إرسال، قابل للحذف.
+builder.Services.AddSingleton<Wizz.Application.AI.Perception.IOcrAliasStore,
+    Wizz.Infrastructure.AI.Perception.OcrAliasStore>();
+// عينات تقييم اصطناعية محلية وقياس للدقة؛ لا تدريب نموذج ولا كتابة في قاعدة البيانات.
+builder.Services.AddSingleton<Wizz.Application.AI.Perception.IOcrEvaluationSampleStore,
+    Wizz.Infrastructure.AI.Perception.OcrEvaluationSampleStore>();
+builder.Services.AddScoped<Wizz.Application.AI.Perception.IOcrEvaluationService,
+    Wizz.Application.AI.Perception.OcrEvaluationService>();
 // تحسين الصورة اختياري داخل الجهاز؛ لا يُستدعى إلا إن فعّله المستخدم في شاشة القراءة.
 builder.Services.AddScoped<Wizz.Application.AI.Perception.IImageEnhancer,
     Wizz.Presentation.Services.OpenCvImageEnhancer>();

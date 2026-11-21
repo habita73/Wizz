@@ -122,6 +122,23 @@ public sealed class ModelRouter : IModelRouter
         // توجيه مُجبر (اختيار يدوي من المستخدم)
         if (input.ForceRoute is { } forced && forced != RouteType.None)
         {
+            // حماية أرقام المتجر تسري حتى مع الاختيار اليدوي للسحابة: السؤال الذي يطلب رقماً
+            // دقيقاً يُجاب محلياً. طلبات التنسيق والتقرير وحدها تُترك للنموذج لأنها مهمة صياغة.
+            if (forced == RouteType.Cloud
+                && builtInAnswer is not null
+                && BuiltInAssistant.IsPrecisionAnswer(builtInAnswer)
+                && !BuiltInAssistant.IsAnalytical(input.Question)
+                && !FormattingIntent.IsFormattingRequest(input.Question))
+            {
+                var protectedDecision = RouteScorer.BuiltInProtected();
+                LogDecision(input.Question, protectedDecision);
+                sw.Stop();
+                return new ModelRouteResult(
+                    builtInAnswer.Text, "المساعد المدمج (بدون نموذج)", "built-in",
+                    RouteType.BuiltIn, true, ReferencedData(builtInAnswer), sw.Elapsed,
+                    IsFallback: false, Decision: protectedDecision);
+            }
+
             var manual = RouteDecision.Manual(forced);
             LogDecision(input.Question, manual);
 
@@ -181,7 +198,9 @@ public sealed class ModelRouter : IModelRouter
                 var builtInFallback2 = await TryBuiltInAsync(input, ct);
                 if (builtInFallback2 is not null)
                     return new ModelRouteResult(builtInFallback2.Text, "المساعد المدمج (بدون نموذج)", "built-in", RouteType.BuiltIn, true, ReferencedData(builtInFallback2), sw.Elapsed, IsFallback: true, Decision: manual);
-                return Fail("تعذّر الحصول على إجابة من السحابة.", RouteType.None, true) with { Decision = manual };
+                // نُظهر سبب الفشل الفعلي بدل رسالة عامة، حتى يعرف المستخدم أين يتدخل (مفتاح، نموذج، اتصال).
+                var cloudDetail = string.IsNullOrWhiteSpace(_lastCloudError) ? "" : $" السبب: {_lastCloudError}";
+                return Fail("تعذّر الحصول على إجابة من السحابة." + cloudDetail, RouteType.None, true) with { Decision = manual };
             }
         }
 
@@ -190,7 +209,8 @@ public sealed class ModelRouter : IModelRouter
         // حتى لو رفع المستخدم النموذج في الترتيب — لأن الأرقام أهم من صياغة النموذج.
         var protectBuiltIn = builtInAnswer is not null
             && BuiltInAssistant.IsPrecisionAnswer(builtInAnswer)
-            && !BuiltInAssistant.IsAnalytical(input.Question);
+            && !BuiltInAssistant.IsAnalytical(input.Question)
+            && !FormattingIntent.IsFormattingRequest(input.Question);
 
         var priorityOrder = _priority ?? AutoRoutePriority.Default;
 
@@ -366,10 +386,16 @@ public sealed class ModelRouter : IModelRouter
         {
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(15));
-            var ok = await first.IsAvailableAsync(cts.Token);
-            if (ok)
-                return (true, $"✅ الاتصال بالسحابة ({first.ProviderName}) ناجح.");
-            return (false, $"❌ السحابة ({first.ProviderName}) لم تستجب. تحقق من المفتاح والاتصال.");
+            var (catalogReachable, keyValid, details) = await first.TestConnectionDetailedAsync(cts.Token);
+            var success = catalogReachable && keyValid != false;
+            var headline = success
+                ? keyValid == true
+                    ? $"✅ الاتصال بالسحابة ({first.ProviderName}) ناجح، والمفتاح صالح."
+                    : $"⚠️ كتالوج {first.ProviderName} متاح، لكن صلاحية المفتاح غير محسومة."
+                : keyValid == false
+                    ? $"❌ المفتاح غير صالح أو غير مُدخل لدى {first.ProviderName}."
+                    : $"❌ تعذّر الاتصال بـ{first.ProviderName}.";
+            return (success, $"{headline}\n{details}\nفحص الاتصال والمفتاح فقط؛ لا يثبت أن النموذج المجاني سيعطي إجابة صحيحة.");
         }
         catch (Exception ex)
         {

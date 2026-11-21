@@ -1,11 +1,13 @@
 namespace Wizz.Infrastructure.AI;
 
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using Microsoft.Extensions.Logging;
 using Wizz.Application.Abstractions;
+using Wizz.Application.AI.Perception;
 using Wizz.Application.AI.Privacy;
 
 /// <summary>
@@ -69,6 +71,97 @@ public sealed class CloudLlmProvider : ILlmProvider, IDisposable
         }
     }
 
+    /// <summary>
+    /// يفحص نقطتين منفصلتين: نقطة الكتالوج العامة، ونقطة فحص المفتاح لدى المزوّد.
+    /// لا تُرسل أي بيانات متجر؛ يُرسل المفتاح فقط إلى مزوّده عند ضغط زر الاختبار يدويًا.
+    /// </summary>
+    public async Task<(bool CatalogReachable, bool? KeyValid, string Details)> TestConnectionDetailedAsync(CancellationToken ct = default)
+    {
+        var key = await ProbeApiKeyAsync(ct);
+        var catalog = await ProbeCatalogAsync(ct);
+        return (catalog.Reachable, key.Valid, $"{catalog.Message} {key.Message}".Trim());
+    }
+
+    private async Task<(bool Reachable, string Message)> ProbeCatalogAsync(CancellationToken ct)
+    {
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(5));
+            using var response = await _httpClient.GetAsync(
+                $"{_baseUrl}/models",
+                HttpCompletionOption.ResponseHeadersRead,
+                cts.Token);
+            return response.IsSuccessStatusCode
+                ? (true, "الوصول إلى كتالوج النماذج العامة متاح (وهذا وحده لا يثبت صلاحية المفتاح).")
+                : (false, $"كتالوج النماذج أعاد الحالة {(int)response.StatusCode}.");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "فشل الوصول إلى كتالوج النماذج: {BaseUrl}", _baseUrl);
+            return (false, $"كتالوج النماذج غير متاح: {ex.Message}");
+        }
+    }
+
+    private async Task<(bool? Valid, string Message)> ProbeApiKeyAsync(CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(_apiKey))
+            return (false, "لم يُدخل مفتاح API، فلا يمكن تأكيد صلاحيته.");
+
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(5));
+            using var response = await _httpClient.GetAsync(
+                $"{_baseUrl}/auth/key",
+                HttpCompletionOption.ResponseHeadersRead,
+                cts.Token);
+
+            if (response.IsSuccessStatusCode)
+                return (true, "المفتاح صالح لدى المزوّد.");
+
+            if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            {
+                var error = await ReadProviderErrorAsync(response, ct);
+                return (false, $"المزوّد رفض المفتاح ({(int)response.StatusCode}){(error is null ? "." : $" — {error}")} راجع نسخة المفتاح أو أنشئ مفتاحًا جديدًا لدى المزوّد.");
+            }
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+                return (null, "المزوّد لا يوفّر فحصًا منفصلًا للمفتاح، فبقيت الصلاحية غير محسومة.");
+
+            return (null, $"تعذّر فحص المفتاح (الحالة {(int)response.StatusCode})، فبقيت الصلاحية غير محسومة.");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "فشل فحص مفتاح المزوّد: {BaseUrl}", _baseUrl);
+            return (null, $"تعذّر فحص المفتاح: {ex.Message}");
+        }
+    }
+
+    private static async Task<string?> ReadProviderErrorAsync(HttpResponseMessage response, CancellationToken ct)
+    {
+        try
+        {
+            var body = await response.Content.ReadAsStringAsync(ct);
+            if (string.IsNullOrWhiteSpace(body)) return null;
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("error", out var error)
+                && error.ValueKind == JsonValueKind.Object
+                && error.TryGetProperty("message", out var message)
+                && message.ValueKind == JsonValueKind.String)
+            {
+                var text = message.GetString();
+                if (!string.IsNullOrWhiteSpace(text))
+                    return text.Length > 160 ? text[..160] + "…" : text;
+            }
+        }
+        catch
+        {
+            // جسم الخطأ لا يكون JSON دائمًا؛ الاكتفاء بالحالة أوضح من إظهار نص خام.
+        }
+        return null;
+    }
+
     public async Task<string> CompleteAsync(string prompt, CancellationToken ct = default)
     {
         var messages = new[]
@@ -103,12 +196,20 @@ public sealed class CloudLlmProvider : ILlmProvider, IDisposable
     {
         // في المزود السحابي، تغيير النموذج يتطلب إعادة إنشاء العميل مع المفتاح الجديد
         // نضع النموذج الجديد للاستخدام المستقبلي
-        _model = modelName; // ملاحظة: هذا 단순، يمكن تحسينه لاحقًا
+        _model = modelName; // ملاحظة: هذا تبسيط، يمكن تحسينه لاحقًا
         return Task.CompletedTask;
     }
 
     private async Task<string> SendRequestAsync(ChatCompletionRequest request, CancellationToken ct)
     {
+        // قاعدة «مجاني فقط / صفر تكلفة» مطبَّقة هنا أيضًا قبل فتح أي اتصال، كما في استخراج الصورة.
+        if (!FreeCloudModelGuard.IsFree(request.Model))
+        {
+            _logger?.LogWarning("تم منع طلب سحابي بنموذج غير مجاني: {Model}", request.Model);
+            throw new InvalidOperationException(
+                "نموذج المحادثة السحابي غير مجاني. اضبط اسمًا ينتهي بـ :free من الإعدادات ← المساعد الذكي قبل استخدام السحابة.");
+        }
+
         // دفاع إضافي: لا يُرسل أي طلب قبل التأكد من خلوّ كل رسائله من البيانات المحظورة.
         // الموجّه ينقّح السؤال أولاً، وهنا فحص نهائي مستقل قبل فتح الاتصال.
         if (!CloudPromptGuard.IsSafeToSend(request.Messages.Select(m => m.Content).ToArray()))
