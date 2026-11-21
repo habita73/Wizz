@@ -7,6 +7,10 @@
 @inject Wizz.Application.UseCases.Sales.GetCashReportUseCase GetCashReport
 @inject Wizz.Application.UseCases.StockDocuments.GetPurchaseReportUseCase GetPurchaseReport
 @inject Services.CurrentUser CurrentUser
+@inject Wizz.Application.Reports.ReportExportService Exporter
+@inject GetStoreSettingsUseCase GetStoreSettings
+@inject IJSRuntime JS
+@using System.Globalization
 
 <h2 class="d-flex align-items-center gap-2">
     <WizzIcon Icon="chart" Size="24" />
@@ -34,6 +38,21 @@
         <button class="btn btn-primary w-100" @onclick="GenerateReport">
             <WizzIcon Icon="refresh" Size="16" />
             <span>تحديث</span>
+        </button>
+    </div>
+</div>
+
+<div class="row mb-4 no-print g-2">
+    <div class="col-auto">
+        <button class="btn btn-outline-primary" @onclick="ExportCsv" disabled="@(!HasData)">
+            <WizzIcon Icon="save" Size="16" />
+            <span>تصدير CSV</span>
+        </button>
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-outline-secondary" @onclick="PrintReport" disabled="@(!HasData)">
+            <WizzIcon Icon="printer" Size="16" />
+            <span>طباعة / حفظ PDF</span>
         </button>
     </div>
 </div>
@@ -319,6 +338,13 @@
     private string? cashError;
     private string? purchaseError;
     private bool canViewCosts;
+    private string storeName = "Wizz";
+    private string? storeAddress;
+    private string? storePhone;
+    private string? storeTaxNumber;
+    private string? storeCommercialRegister;
+    private string? storeCurrency;
+    private string? printedBy;
 
     private string ReportTitle => reportType switch
     {
@@ -331,9 +357,28 @@
         _ => "تقرير"
     };
 
+    // التصدير والطباعة متاحان فقط حين توجد بيانات قابلة للعرض.
+    private bool HasData => reportType switch
+    {
+        "cash" => string.IsNullOrWhiteSpace(cashError),
+        "purchases" => string.IsNullOrWhiteSpace(purchaseError),
+        _ => true
+    };
+
     protected override async Task OnInitializedAsync()
     {
         canViewCosts = await CurrentUser.HasPermissionAsync(Wizz.Domain.Permission.ViewPurchaseCosts);
+        var store = await GetStoreSettings.ExecuteAsync();
+        if (store.IsSuccess)
+        {
+            storeName = store.Value.Name;
+            storeAddress = store.Value.Address;
+            storePhone = store.Value.Phone;
+            storeTaxNumber = store.Value.TaxNumber;
+            storeCommercialRegister = store.Value.CommercialRegister;
+            storeCurrency = store.Value.Currency;
+        }
+        printedBy = await CurrentUser.FullNameAsync() ?? await CurrentUser.UsernameAsync();
         await GenerateReport();
     }
 
@@ -418,4 +463,107 @@
         Wizz.Application.DTOs.PaymentMethodDto.Mixed => "مختلط",
         _ => "—"
     };
+
+    // يجمل البيانات المحسوبة المعروضة على الشاشة؛ لا يعيد حساب أي رقم.
+    private IReadOnlyList<Wizz.Application.Reports.ReportTable> BuildTables()
+    {
+        switch (reportType)
+        {
+            case "summary":
+                return new[] { Exporter.BuildSummary(TotalSales, TotalDiscount, TotalPaid, TotalRemaining, SalesCount, paymentBreakdown) };
+            case "daily":
+                return new[] { Exporter.BuildDaily(dailySales) };
+            case "products":
+                return new[] { Exporter.BuildProducts(topProducts) };
+            case "payment":
+                return new[] { Exporter.BuildPayment(paymentBreakdown, TotalSales) };
+            case "cash":
+                return new[] { Exporter.BuildCash(cashReport) };
+            case "purchases":
+                return Exporter.BuildPurchases(purchaseReport, canViewCosts);
+            default:
+                return Array.Empty<Wizz.Application.Reports.ReportTable>();
+        }
+    }
+
+    // مؤشرات شريط التقرير المطبوع — قيمها من البيانات المحسوبة نفسها.
+    private IReadOnlyList<Wizz.Application.Reports.ReportMetric> BuildMetrics()
+    {
+        var currencyText = string.IsNullOrWhiteSpace(storeCurrency) ? "د.ج" : storeCurrency!;
+        string Money(decimal value) => value.ToString("N2", CultureInfo.CurrentCulture) + " " + currencyText;
+        string Count(int value) => value.ToString(CultureInfo.CurrentCulture);
+
+        return reportType switch
+        {
+            "summary" => new[]
+            {
+                new Wizz.Application.Reports.ReportMetric("إجمالي المبيعات", Money(TotalSales)),
+                new Wizz.Application.Reports.ReportMetric("المدفوع", Money(TotalPaid)),
+                new Wizz.Application.Reports.ReportMetric("المتبقي", Money(TotalRemaining)),
+                new Wizz.Application.Reports.ReportMetric("عدد العمليات", Count(SalesCount))
+            },
+            "daily" => new[]
+            {
+                new Wizz.Application.Reports.ReportMetric("عدد الأيام", Count(dailySales.Count)),
+                new Wizz.Application.Reports.ReportMetric("إجمالي المبيعات", Money(dailySales.Sum(d => d.Total))),
+                new Wizz.Application.Reports.ReportMetric("متوسط اليوم", Money(dailySales.Count > 0 ? dailySales.Sum(d => d.Total) / dailySales.Count : 0m))
+            },
+            "products" => new[]
+            {
+                new Wizz.Application.Reports.ReportMetric("عدد الأصناف", Count(topProducts.Count)),
+                new Wizz.Application.Reports.ReportMetric("إجمالي المبيعات", Money(topProducts.Sum(p => p.TotalSales))),
+                new Wizz.Application.Reports.ReportMetric("الأكثر مبيعًا", topProducts.Count > 0 ? topProducts[0].Name : "—")
+            },
+            "payment" => new[]
+            {
+                new Wizz.Application.Reports.ReportMetric("طرق الدفع", Count(paymentBreakdown.Count)),
+                new Wizz.Application.Reports.ReportMetric("إجمالي المبيعات", Money(TotalSales)),
+                new Wizz.Application.Reports.ReportMetric("النقدي", Money(paymentBreakdown.Where(p => p.Method == Wizz.Application.DTOs.PaymentMethodDto.Cash).Sum(p => p.Amount)))
+            },
+            "cash" => new[]
+            {
+                new Wizz.Application.Reports.ReportMetric("ورديات مفتوحة", Count(cashReport.OpenShiftCount)),
+                new Wizz.Application.Reports.ReportMetric("ورديات مغلقة", Count(cashReport.ClosedShiftCount)),
+                new Wizz.Application.Reports.ReportMetric("النقد المتوقع", Money(cashReport.Rows.Sum(r => r.ExpectedCash)))
+            },
+            "purchases" => new[]
+            {
+                new Wizz.Application.Reports.ReportMetric("مستندات نشطة", Count(purchaseReport.DocumentCount)),
+                new Wizz.Application.Reports.ReportMetric("مستندات ملغاة", Count(purchaseReport.VoidedDocumentCount)),
+                new Wizz.Application.Reports.ReportMetric("إجمالي الشراء", canViewCosts ? Money(purchaseReport.TotalPurchase) : "مخفي لعدم الصلاحية")
+            },
+            _ => Array.Empty<Wizz.Application.Reports.ReportMetric>()
+        };
+    }
+
+    private async Task ExportCsv()
+    {
+        var tables = BuildTables();
+        if (tables.Count == 0) return;
+
+        var from = DateOnly.FromDateTime(fromDate.Date);
+        var to = DateOnly.FromDateTime(toDate.Date);
+        var bytes = Exporter.BuildCsv(storeName, ReportTitle, from, to, tables);
+        var fileName = Exporter.BuildFileName(reportType, from, to);
+        await JS.InvokeVoidAsync("wizzDownloadBase64", Convert.ToBase64String(bytes), fileName, "text/csv");
+    }
+
+    private async Task PrintReport()
+    {
+        var tables = BuildTables();
+        if (tables.Count == 0) return;
+
+        var from = DateOnly.FromDateTime(fromDate.Date);
+        var to = DateOnly.FromDateTime(toDate.Date);
+        var info = new Wizz.Application.Reports.ReportPrintInfo(
+            Address: storeAddress,
+            Phone: storePhone,
+            TaxNumber: storeTaxNumber,
+            CommercialRegister: storeCommercialRegister,
+            PrintedBy: printedBy,
+            Currency: storeCurrency,
+            Metrics: BuildMetrics());
+        var html = Exporter.BuildPrintHtml(storeName, ReportTitle, from, to, tables, info);
+        await JS.InvokeVoidAsync("wizzPrint", html);
+    }
 }

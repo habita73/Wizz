@@ -94,7 +94,8 @@ public sealed class CreateSaleUseCase
 
             sale = new Sale(store.Id, cashierId, items, input.Discount, input.Paid,
                 (PaymentMethod)input.PaymentMethod, input.IsCreditSale, input.DueDate,
-                inventoryApplied: store.InventoryEnabled);
+                inventoryApplied: store.InventoryEnabled,
+                customerName: input.IsCreditSale ? input.CustomerName : null);
 
             if (shiftId.HasValue)
                 sale.AttachToShift(shiftId.Value);
@@ -140,5 +141,5 @@ public sealed class CreateSaleUseCase
             i.Quantity, i.UnitPrice, i.LineTotal, i.IsWholesalePrice)).ToList(),
         sale.Subtotal, sale.Discount, sale.Total, sale.Paid, sale.Remaining,
         (PaymentMethodDto)sale.PaymentMethod, sale.IsCreditSale, sale.DueDate,
-        sale.CashierId, null);
+        sale.CashierId, null, sale.CustomerName);
 }

@@ -34,9 +34,11 @@ window.wizzOpenHtml = function (html) {
 window.wizzPrint = function (html) {
     const frame = document.createElement('iframe');
     frame.style.position = 'fixed';
-    frame.style.right = '-10000px';
-    frame.style.width = '0';
-    frame.style.height = '0';
+    frame.style.left = '-10000px';
+    frame.style.top = '0';
+    frame.style.width = '794px';
+    frame.style.height = '1200px';
+    frame.style.border = '0';
     frame.setAttribute('aria-hidden', 'true');
     document.body.appendChild(frame);
     const doc = frame.contentWindow.document;
@@ -46,6 +48,19 @@ window.wizzPrint = function (html) {
 
     const doPrint = function () {
         try {
+            const root = doc.documentElement;
+            const width = parseInt(root.getAttribute('data-page-width-px'), 10);
+            const height = parseInt(root.getAttribute('data-page-height-px'), 10);
+            if (Number.isFinite(width) && width > 0) frame.style.width = width + 'px';
+
+            // ترقيم الصفحات يظهر فقط حين يتجاوز المحتوى صفحة واحدة.
+            const content = doc.getElementById('wizz-content');
+            const contentHeight = content ? content.scrollHeight : 0;
+            if (content && Number.isFinite(height) && contentHeight <= height + 24) {
+                const numbering = doc.getElementById('wizz-page-number');
+                if (numbering) numbering.remove();
+            }
+
             frame.contentWindow.focus();
             frame.contentWindow.print();
         } finally {
@@ -53,7 +68,7 @@ window.wizzPrint = function (html) {
         }
     };
 
-    // ننتظر تحميل الصور قبل الطباعة إن وُجدت.
+    // ننتظر تحميل المحتوى وتخطيطه قبل قياس عدد الصفحات.
     setTimeout(doPrint, 300);
 };
 

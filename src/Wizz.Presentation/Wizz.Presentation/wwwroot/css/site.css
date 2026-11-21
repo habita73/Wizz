@@ -2584,20 +2584,37 @@ html[data-motion="reduce"] *::after {
   scroll-behavior: auto !important;
 }
 
-/* أهداف لمس كبيرة: تكبير الأزرار والحقول لتناسب الأصابع والشاشات اللمسية. */
+/* أهداف لمس كبيرة: تكبير الهدف في الاتجاهين (العرض والارتفاع) لا الارتفاع وحده،
+   حتى تبقى مساحة الإصبع كافية وألا يُخطئ المستخدم الهدف عند اللمس. */
 html[data-targets="large"] .btn,
 html[data-targets="large"] .form-control,
 html[data-targets="large"] .form-select,
 html[data-targets="large"] .wizz-qs-option,
 html[data-targets="large"] .wizz-settings-toggle {
+  min-width: 2.75rem;
   min-height: 2.75rem;
+  padding-inline: 0.75rem;
+  font-size: 0.95rem;
 }
 
 html[data-targets="large"] .btn-sm {
-  min-height: 2.25rem;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding-inline: 0.6rem;
+}
+
+html[data-targets="large"] .wizz-qs-option {
+  min-width: 3.5rem;
+  padding-block: 0.7rem;
+}
+
+html[data-targets="large"] .form-check-input {
+  width: 1.75rem;
+  height: 1.75rem;
 }
 
 html[data-targets="large"] .sidebar .nav-link {
+  min-height: 2.75rem;
   padding-top: 0.55rem;
   padding-bottom: 0.55rem;
 }

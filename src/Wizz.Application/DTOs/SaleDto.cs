@@ -30,7 +30,8 @@ public sealed record SaleDto(
     bool IsCreditSale,
     DateTime? DueDate,
     Guid? CashierId,
-    string? CashierName
+    string? CashierName,
+    string? CustomerName = null
 );
 
 /// <summary>إدخال سطر بيع جديد أو معدل.</summary>
@@ -49,7 +50,8 @@ public sealed record SaleInputDto(
     decimal Paid,
     PaymentMethodDto PaymentMethod,
     bool IsCreditSale,
-    DateTime? DueDate
+    DateTime? DueDate,
+    string? CustomerName = null
 );
 
 /// <summary>ملخص بيع للقوائم والتقارير.</summary>

@@ -9,6 +9,7 @@ public sealed class WizzDbContext : DbContext
     public DbSet<UnitOfMeasure> UnitsOfMeasure => Set<UnitOfMeasure>();
     public DbSet<Sale> Sales => Set<Sale>();
     public DbSet<SaleItem> SaleItems => Set<SaleItem>();
+    public DbSet<DebtPayment> DebtPayments => Set<DebtPayment>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<StockDocument> StockDocuments => Set<StockDocument>();
     public DbSet<StockDocumentLine> StockDocumentLines => Set<StockDocumentLine>();
@@ -61,6 +62,7 @@ public sealed class WizzDbContext : DbContext
             b.Property(s => s.InventoryApplied).HasDefaultValue(true);
             b.Property(s => s.CancelReason).HasMaxLength(500);
             b.Property(s => s.ModificationReason).HasMaxLength(500);
+            b.Property(s => s.CustomerName).HasMaxLength(200);
             b.HasIndex(s => s.SaleDate);
             b.HasIndex(s => s.Status);
             b.HasIndex(s => s.CashierId);
@@ -78,6 +80,20 @@ public sealed class WizzDbContext : DbContext
             b.Property(i => i.Quantity).HasColumnType("decimal(18,4)");
             b.Property(i => i.UnitPrice).HasColumnType("decimal(18,2)");
             b.Property(i => i.LineTotal).HasColumnType("decimal(18,2)");
+        });
+
+        modelBuilder.Entity<DebtPayment>(b =>
+        {
+            b.HasKey(p => p.Id);
+            b.Property(p => p.Amount).HasColumnType("decimal(18,2)");
+            b.Property(p => p.Method).HasConversion<int>();
+            b.Property(p => p.Note).HasMaxLength(200);
+            b.HasIndex(p => p.SaleId);
+            b.HasIndex(p => p.PaidAt);
+            b.HasOne<Sale>()
+                .WithMany()
+                .HasForeignKey(p => p.SaleId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Store>(b =>

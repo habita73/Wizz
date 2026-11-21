@@ -34,6 +34,12 @@ public sealed class Sale
     public DateTime? DueDate { get; private set; }
 
     /// <summary>
+    /// اسم زبون اختياري للبيع الآجل. لا يُطلب في البيع العاجل على المنضدة؛
+    /// الغرض فقط تمييزه في قائمة الديون عندما يتوفر الاسم، وإلا يبقى البيع مرتبطًا برقمه.
+    /// </summary>
+    public string? CustomerName { get; private set; }
+
+    /// <summary>
     /// هل خُصم مخزون هذا البيع فعليًا؟ عند تعطيل تتبع المخزون يكون false،
     /// ولذلك لا يعيد الإلغاء أو التعديل كمية لم تُخصم أصلًا.
     /// </summary>
@@ -44,7 +50,7 @@ public sealed class Sale
 
     private Sale() { }
 
-    public Sale(Guid storeId, Guid? cashierId, IEnumerable<SaleItem> items, decimal discount, decimal paid, PaymentMethod paymentMethod, bool isCreditSale = false, DateTime? dueDate = null, bool inventoryApplied = true)
+    public Sale(Guid storeId, Guid? cashierId, IEnumerable<SaleItem> items, decimal discount, decimal paid, PaymentMethod paymentMethod, bool isCreditSale = false, DateTime? dueDate = null, bool inventoryApplied = true, string? customerName = null)
     {
         if (items == null || !items.Any()) throw new ArgumentException("يجب أن يتضمن البيع سطراً واحداً على الأقل", nameof(items));
 
@@ -59,6 +65,7 @@ public sealed class Sale
         IsCreditSale = isCreditSale;
         DueDate = dueDate;
         InventoryApplied = inventoryApplied;
+        CustomerName = NormalizeCustomerName(customerName);
 
         foreach (var item in items)
         {
@@ -69,9 +76,20 @@ public sealed class Sale
         Recalculate();
     }
 
-    public static Sale CreateCreditSale(Guid storeId, Guid? cashierId, IEnumerable<SaleItem> items, decimal discount, DateTime dueDate, bool inventoryApplied = true)
+    public static Sale CreateCreditSale(Guid storeId, Guid? cashierId, IEnumerable<SaleItem> items, decimal discount, DateTime dueDate, bool inventoryApplied = true, string? customerName = null)
     {
-        return new Sale(storeId, cashierId, items, discount, 0m, PaymentMethod.Credit, true, dueDate, inventoryApplied);
+        return new Sale(storeId, cashierId, items, discount, 0m, PaymentMethod.Credit, true, dueDate, inventoryApplied, customerName);
+    }
+
+    /// <summary>تعديل اسم الزبون اختياريًا دون لمس المبالغ أو حالة البيع.</summary>
+    public void SetCustomerName(string? customerName)
+        => CustomerName = NormalizeCustomerName(customerName);
+
+    private static string? NormalizeCustomerName(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        var trimmed = value.Trim();
+        return trimmed.Length <= 200 ? trimmed : trimmed[..200];
     }
 
     public void ApplyPayment(decimal amount, PaymentMethod method)

@@ -70,6 +70,23 @@ public sealed class SaleRepository : ISaleRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<DebtPayment>> GetPaymentsAsync(Guid saleId, CancellationToken ct = default)
+        => await _db.DebtPayments
+            .AsNoTracking()
+            .Where(p => p.SaleId == saleId)
+            .OrderByDescending(p => p.PaidAt)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<DebtPayment>> GetPaymentsAsync(DateTime from, DateTime to, CancellationToken ct = default)
+        => await _db.DebtPayments
+            .AsNoTracking()
+            .Where(p => p.PaidAt >= from && p.PaidAt <= to)
+            .OrderByDescending(p => p.PaidAt)
+            .ToListAsync(ct);
+
+    public async Task AddPaymentAsync(DebtPayment payment, CancellationToken ct = default)
+        => await _db.DebtPayments.AddAsync(payment, ct);
+
     public async Task AddAsync(Sale sale, CancellationToken ct = default)
     {
         await _db.Sales.AddAsync(sale, ct);

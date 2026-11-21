@@ -5,6 +5,9 @@
 @inject Wizz.Application.Abstractions.ISaleRepository SaleRepo
 @inject Wizz.Application.Abstractions.IPrinter Printer
 @inject Wizz.Application.UseCases.Receipt.GenerateReceiptUseCase GenerateReceiptUseCase
+@inject Wizz.Application.UseCases.Sales.RecordDebtPaymentUseCase RecordDebtPaymentUseCase
+@inject Wizz.Application.Abstractions.IAuditLogger Audit
+@inject CurrentUser CurrentUser
 @inject IJSRuntime JS
 
 @* صفحة الديون: كل فاتورة غير مسددة، مع تبويب للفواتير المتأخرة عن تاريخ استحقاقها. *@
@@ -75,7 +78,7 @@
     </div>
 
     <div class="input-group" style="max-width: 320px;">
-        <input type="search" class="form-control" placeholder="رقم الفاتورة…"
+        <input type="search" class="form-control" placeholder="رقم الفاتورة أو اسم الزبون…"
                @bind="searchTerm" @bind:event="oninput" @bind:after="ApplyFilter" />
         @if (!string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -109,6 +112,7 @@ else
             <thead class="table-dark">
                 <tr>
                     <th>الفاتورة</th>
+                    <th>الزبون</th>
                     <th>تاريخ البيع</th>
                     <th>تاريخ الاستحقاق</th>
                     <th class="text-end">الإجمالي</th>
@@ -123,6 +127,16 @@ else
                 {
                     <tr class="@(IsOverdue(sale) ? "table-danger" : "")">
                         <td class="font-monospace">@SaleNumber(sale)</td>
+                        <td>
+                            @if (string.IsNullOrWhiteSpace(sale.CustomerName))
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                            else
+                            {
+                                <span>@sale.CustomerName</span>
+                            }
+                        </td>
                         <td>@sale.SaleDate.ToLocalTime().ToString("yyyy-MM-dd")</td>
                         <td>@(sale.DueDate is null ? "—" : sale.DueDate.Value.ToLocalTime().ToString("yyyy-MM-dd"))</td>
                         <td class="text-end">@sale.Total.ToString("N2") د.ج</td>
@@ -131,6 +145,10 @@ else
                         <td>@StatusBadge(sale)</td>
                         <td class="text-end">
                             <div class="btn-group btn-group-sm">
+                                <button class="btn btn-success" @onclick="() => OpenCollect(sale)" title="تسديد">
+                                    <WizzIcon Icon="check-circle" Size="16" Title="تسديد" />
+                                    <span>تسديد</span>
+                                </button>
                                 <button class="btn btn-outline-primary" @onclick="() => ViewReceipt(sale.Id)" title="عرض الإيصال">
                                     <WizzIcon Icon="eye" Size="16" Title="عرض الإيصال" />
                                 </button>
@@ -143,6 +161,79 @@ else
                 }
             </tbody>
         </table>
+    </div>
+}
+
+@if (collectingSale != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">تسديد دين — @SaleNumber(collectingSale)</h5>
+                    <button type="button" class="btn-close" aria-label="إغلاق" @onclick="CloseCollect" disabled="@savingPayment"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-between small text-muted mb-1">
+                        <span>الزبون: @(string.IsNullOrWhiteSpace(collectingSale.CustomerName) ? "غير محدد" : collectingSale.CustomerName)</span>
+                        <span>المتبقي: @collectingSale.Remaining.ToString("N2") د.ج</span>
+                    </div>
+
+                    @if (paymentHistory.Count > 0)
+                    {
+                        <div class="mb-3">
+                            <div class="small fw-bold mb-1">تسديدات سابقة (@paymentHistory.Count)</div>
+                            <div class="list-group list-group-flush" style="max-height: 150px; overflow-y: auto;">
+                                @foreach (var payment in paymentHistory)
+                                {
+                                    <div class="list-group-item d-flex justify-content-between small px-2 py-1">
+                                        <span>@payment.PaidAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm") — @GetPaymentMethodText((Wizz.Application.DTOs.PaymentMethodDto)payment.Method)</span>
+                                        <span class="fw-bold">@payment.Amount.ToString("N2") د.ج</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label">مبلغ التسديد</label>
+                        <input type="number" class="form-control form-control-lg" step="0.01" min="0.01"
+                               max="@collectingSale.Remaining" @bind="collectAmount" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">وسيلة التحصيل</label>
+                        <select class="form-select" @bind="collectMethod">
+                            <option value="0">نقدي</option>
+                            <option value="1">بطاقة</option>
+                            <option value="3">محمول</option>
+                        </select>
+                        @if (collectMethod == 0)
+                        {
+                            <div class="form-text">سيُسجَّل إيداع في الصندوق إن كانت هناك وردية مفتوحة.</div>
+                        }
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">ملاحظة <span class="text-muted fw-normal">(اختياري)</span></label>
+                        <input type="text" class="form-control" maxlength="200" @bind="collectNote" />
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(collectError))
+                    {
+                        <div class="alert alert-danger py-2 small mb-0">@collectError</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseCollect" disabled="@savingPayment">إلغاء</button>
+                    <button class="btn btn-success" @onclick="ConfirmCollectAsync" disabled="@savingPayment">
+                        @if (savingPayment)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        تأكيد التسديد
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 }
 
@@ -215,6 +306,15 @@ else
     private string searchTerm = "";
     private Wizz.Application.DTOs.ReceiptDto? receipt;
 
+    // تسديد الديون
+    private Wizz.Domain.Sale? collectingSale;
+    private decimal collectAmount;
+    private int collectMethod;
+    private string? collectNote;
+    private string? collectError;
+    private bool savingPayment;
+    private IReadOnlyList<Wizz.Domain.DebtPayment> paymentHistory = Array.Empty<Wizz.Domain.DebtPayment>();
+
     private decimal TotalRemaining => allOutstanding.Sum(s => s.Remaining);
     private int DebtCount => allOutstanding.Count;
     private decimal OverdueRemaining => allOutstanding.Where(IsOverdue).Sum(s => s.Remaining);
@@ -251,7 +351,9 @@ else
         var term = searchTerm.Trim();
         if (term.Length > 0)
         {
-            query = query.Where(s => SaleNumber(s).Contains(term, StringComparison.OrdinalIgnoreCase));
+            query = query.Where(s =>
+                SaleNumber(s).Contains(term, StringComparison.OrdinalIgnoreCase)
+                || (s.CustomerName != null && s.CustomerName.Contains(term, StringComparison.OrdinalIgnoreCase)));
         }
 
         visibleSales = query
@@ -351,5 +453,64 @@ else
         await JS.InvokeVoidAsync("alert", printed
             ? $"تم إرسال الإيصال إلى: {Printer.DeviceName}"
             : "تعذرت الطباعة. تحقق من الطابعة.");
+    }
+
+    private async Task OpenCollect(Wizz.Domain.Sale sale)
+    {
+        collectingSale = sale;
+        collectAmount = sale.Remaining;
+        collectMethod = 0;
+        collectNote = null;
+        collectError = null;
+        paymentHistory = await SaleRepo.GetPaymentsAsync(sale.Id);
+    }
+
+    private void CloseCollect()
+    {
+        collectingSale = null;
+        paymentHistory = Array.Empty<Wizz.Domain.DebtPayment>();
+        collectError = null;
+    }
+
+    private async Task ConfirmCollectAsync()
+    {
+        if (collectingSale == null) return;
+
+        collectError = null;
+        savingPayment = true;
+        try
+        {
+            var saleId = collectingSale.Id;
+            var saleNumber = SaleNumber(collectingSale);
+            var input = new Wizz.Application.DTOs.DebtPaymentInputDto(
+                saleId, collectAmount, (Wizz.Application.DTOs.PaymentMethodDto)collectMethod, collectNote);
+
+            var userId = await CurrentUser.IdAsync();
+            var result = await RecordDebtPaymentUseCase.ExecuteAsync(input, userId, userId);
+            if (!result.IsSuccess)
+            {
+                collectError = string.Join(" | ", result.Errors);
+                return;
+            }
+
+            await Audit.LogAsync(new Wizz.Application.Abstractions.AuditEntry(
+                Wizz.Domain.AuditAction.DebtPaymentRecorded,
+                Wizz.Domain.AuditOutcome.Success,
+                userId,
+                await CurrentUser.UsernameAsync(),
+                "Sale",
+                saleId.ToString(),
+                $"تحصيل {result.Value.Amount:N2} د.ج — فاتورة {saleNumber} — المتبقي {result.Value.RemainingAfter:N2} د.ج"));
+
+            collectingSale = null;
+            paymentHistory = Array.Empty<Wizz.Domain.DebtPayment>();
+            await LoadAsync();
+            await JS.InvokeVoidAsync("alert",
+                $"تم التسديد — المتبقي الآن {result.Value.RemainingAfter:N2} د.ج");
+        }
+        finally
+        {
+            savingPayment = false;
+        }
     }
 }

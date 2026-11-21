@@ -177,6 +177,43 @@ namespace Wizz.Infrastructure.Data.Migrations
                     b.ToTable("CashierShifts");
                 });
 
+            modelBuilder.Entity("Wizz.Domain.DebtPayment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("Method")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("PaidAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("RecordedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("SaleId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PaidAt");
+
+                    b.HasIndex("SaleId");
+
+                    b.ToTable("DebtPayments");
+                });
+
             modelBuilder.Entity("Wizz.Domain.DeviceRegistration", b =>
                 {
                     b.Property<Guid>("Id")
@@ -311,6 +348,10 @@ namespace Wizz.Infrastructure.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<Guid?>("CashierId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CustomerName")
+                        .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
                     b.Property<decimal>("Discount")
@@ -805,6 +846,15 @@ namespace Wizz.Infrastructure.Data.Migrations
                     b.HasOne("Wizz.Domain.Store", null)
                         .WithMany()
                         .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Wizz.Domain.DebtPayment", b =>
+                {
+                    b.HasOne("Wizz.Domain.Sale", null)
+                        .WithMany()
+                        .HasForeignKey("SaleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

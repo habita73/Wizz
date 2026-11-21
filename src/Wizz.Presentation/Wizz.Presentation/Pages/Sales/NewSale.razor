@@ -10,7 +10,7 @@
 @inject Wizz.Application.Abstractions.IAuditLogger Audit
 @inject Wizz.Application.UseCases.Sales.CreateSaleUseCase CreateSaleUseCase
 @inject Wizz.Application.UseCases.Receipt.GenerateReceiptUseCase GenerateReceiptUseCase
-@inject Wizz.Application.Abstractions.IPrinter Printer
+@inject Wizz.Application.Receipts.ThermalReceiptService ReceiptPrinter
 @inject Wizz.Application.Abstractions.IBarcodeReader BarcodeReader
 @inject Microsoft.AspNetCore.Components.NavigationManager Nav
 @inject Wizz.Application.AI.Perception.OcrDraftHandoff DraftHandoff
@@ -331,6 +331,12 @@
                         <label class="form-label">تاريخ الاستحقاق</label>
                         <input type="date" class="form-control" @bind="dueDate" @bind:after="SaveDraftAsync" @onkeydown="OnFormKeyDown" />
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">اسم الزبون <span class="text-muted fw-normal">(اختياري)</span></label>
+                        <input type="text" class="form-control" maxlength="200" placeholder="يظهر في قائمة الديون إن أُدخل"
+                               @bind="customerName" @bind:event="oninput" @bind:after="SaveDraftAsync" @onkeydown="OnFormKeyDown" />
+                        <div class="form-text">اتركه فارغًا للبيع السريع؛ سيُعرَف الدين برقم الإيصال.</div>
+                    </div>
                 }
 
                 <div class="small text-muted mb-2">
@@ -348,6 +354,16 @@
                         </svg>
                         إتمام البيع (@Total.ToString("N2") د.ج)
                     </button>
+                    <label class="form-check form-switch small mt-2 d-inline-flex align-items-center gap-2">
+                        <input class="form-check-input" type="checkbox" role="switch"
+                               id="receiptAutoPrint"
+                               checked="@autoPrintReceipt"
+                               @onchange="ToggleAutoPrint" />
+                        <span class="form-check-label">طباعة الإيصال تلقائيًا بعد كل بيع</span>
+                    </label>
+                    <div class="small text-muted" aria-live="polite">
+                        حالة الطباعة التلقائية: @(autoPrintReceipt ? "مفعّلة" : "معطلة") — تُحفظ على هذا الجهاز.
+                    </div>
                     @if (lastSaleId != null)
                     {
                         <button class="btn btn-outline-secondary d-inline-flex align-items-center justify-content-center gap-1" @onclick="PrintReceipt">
@@ -355,7 +371,7 @@
                                 <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1" />
                                 <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1" />
                             </svg>
-                            طباعة آخر إيصال
+                            طباعة إيصال آخر بيع
                         </button>
                     }
                 </div>
@@ -375,10 +391,16 @@
     private decimal paidAmount;
     private int paymentMethod;
     private DateTime dueDate = DateTime.Today.AddDays(30);
+    private string? customerName;
     private Guid? cashierId;
     private Guid? lastSaleId;
     private bool savingSale;
     private bool inventoryEnabled;
+
+    // إعداد طباعة الإيصال: حالة تلقائية مخصصة تُحفظ محليًا، وزر يدوي يعيد طباعة آخر بيع.
+    private const string AutoPrintKey = "wizz.receipt.autoprint";
+    private const string LastSaleKey = "wizz.receipt.lastsale";
+    private bool autoPrintReceipt;
 
     // مسودة السلة: تُحفظ في متصفح الكاشير بعد كل تعديل وتُسترجع عند العودة.
     private const string DraftKey = "wizz.cart.draft.v1";
@@ -431,6 +453,7 @@
         // JS متاح بعد أول رسم فقط (لا يعمل في التصيير المسبق على الخادم).
         jsReady = true;
         await RestoreDraftAsync();
+        await RestorePrintPreferencesAsync();
         await FocusSearchAsync();
     }
 
@@ -732,6 +755,7 @@
         paidAmount = 0;
         paymentMethod = 0;
         dueDate = DateTime.Today.AddDays(30);
+        customerName = null;
         justAdded = null;
         searchQuery = "";
         draftRestored = false;
@@ -800,6 +824,7 @@
                 PaidAmount = paidAmount,
                 PaymentMethod = paymentMethod,
                 DueDate = dueDate,
+                CustomerName = customerName,
                 Lines = cartItems.Select(c => new SaleDraftLine
                 {
                     ProductId = c.ProductId,
@@ -910,6 +935,7 @@
             paidAmount = draft.PaidAmount;
             paymentMethod = draft.PaymentMethod is >= 0 and <= 4 ? draft.PaymentMethod : 0;
             dueDate = draft.DueDate == default ? DateTime.Today.AddDays(30) : draft.DueDate;
+            customerName = draft.CustomerName;
             draftSkippedCount = skipped;
             draftRestored = true;
             ApplyFilter();
@@ -919,6 +945,76 @@
         {
             // مسودة غير صالحة (تنسيق قديم أو تالف): نمسحها ونبدأ بسلة فارغة.
             await RemoveDraftAsync();
+        }
+    }
+
+    /// <summary>يستعيد إعداد الطباعة التلقائي وآخر بيع من تفضيلات هذا الجهاز.</summary>
+    private async Task RestorePrintPreferencesAsync()
+    {
+        try
+        {
+            var mode = await JS.InvokeAsync<string?>("localStorage.getItem", AutoPrintKey);
+            autoPrintReceipt = mode == "on";
+
+            var last = await JS.InvokeAsync<string?>("localStorage.getItem", LastSaleKey);
+            if (Guid.TryParse(last, out var id))
+            {
+                lastSaleId = id;
+            }
+        }
+        catch
+        {
+            // التخزين المحلي معطّل: نبقى على الوضع الافتراضي (طباعة يدوية فقط).
+            autoPrintReceipt = false;
+        }
+    }
+
+    private async Task ToggleAutoPrint(ChangeEventArgs args)
+    {
+        autoPrintReceipt = args.Value is bool value
+            ? value
+            : string.Equals(args.Value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", AutoPrintKey, autoPrintReceipt ? "on" : "off");
+        }
+        catch
+        {
+            // الإعداد يبقى ساريًا لهذه الجلسة فقط.
+        }
+    }
+
+    private async Task SaveLastSaleAsync(Guid saleId)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", LastSaleKey, saleId.ToString());
+        }
+        catch
+        {
+            // لا يؤثر فشل الحفظ على البيع نفسه.
+        }
+    }
+
+    /// <summary>يفتح نافذة طباعة الإيصال دون أن يمنع البيع أو يكرره عند الفشل.</summary>
+    private async Task<bool> TryPrintReceiptAsync(Guid saleId)
+    {
+        try
+        {
+            var result = await GenerateReceiptUseCase.ExecuteAsync(saleId);
+            if (!result.IsSuccess)
+            {
+                return false;
+            }
+
+            var html = ReceiptPrinter.BuildHtml(result.Value);
+            await JS.InvokeVoidAsync("wizzPrint", html);
+            return true;
+        }
+        catch
+        {
+            // الطباعة لا تُعيد محاولة البيع؛ تظهر رسالة واضحة للمستخدم بعد اكتمال الحفظ.
+            return false;
         }
     }
 
@@ -971,7 +1067,8 @@
                 cartItems.Select(c => new Wizz.Application.DTOs.SaleLineInputDto(
                     c.ProductId, c.UnitId, c.Quantity, c.IsWholesale)).ToList(),
                 discount, paidAmount, (Wizz.Application.DTOs.PaymentMethodDto)paymentMethod,
-                paymentMethod == 2, paymentMethod == 2 ? dueDate : null);
+                paymentMethod == 2, paymentMethod == 2 ? dueDate : null,
+                paymentMethod == 2 ? customerName : null);
 
             var result = await CreateSaleUseCase.ExecuteAsync(input, cashierId.Value);
             if (!result.IsSuccess)
@@ -981,6 +1078,7 @@
             }
 
             lastSaleId = result.Value.Id;
+            await SaveLastSaleAsync(lastSaleId.Value);
             await Audit.LogAsync(new AuditEntry(
                 AuditAction.SaleCreated,
                 AuditOutcome.Success,
@@ -991,7 +1089,16 @@
                 $"إجمالي البيع {result.Value.Total:N2} د.ج"));
             await ClearCart();
             await LoadInitialProducts();
-            await JS.InvokeVoidAsync("alert", $"تم البيع بنجاح — الإجمالي {result.Value.Total:N2} د.ج");
+
+            var message = $"تم البيع بنجاح — الإجمالي {result.Value.Total:N2} د.ج";
+            if (autoPrintReceipt)
+            {
+                var opened = await TryPrintReceiptAsync(lastSaleId.Value);
+                message += opened
+                    ? "\nتم فتح نافذة طباعة الإيصال."
+                    : "\nتعذّر فتح نافذة الطباعة؛ يمكنك استخدام زر «طباعة إيصال آخر بيع».";
+            }
+            await JS.InvokeVoidAsync("alert", message);
             // بعد إتمام البيع نعود إلى قائمة المبيعات.
             Nav.NavigateTo("/sales/history");
         }
@@ -1005,6 +1112,7 @@
         }
     }
 
+    /// <summary>زر الطباعة اليدوية: يعيد طباعة إيصال آخر بيع بنفس تنسيق الطباعة التلقائية.</summary>
     private async Task PrintReceipt()
     {
         if (lastSaleId is null)
@@ -1015,42 +1123,19 @@
         var result = await GenerateReceiptUseCase.ExecuteAsync(lastSaleId.Value);
         if (!result.IsSuccess)
         {
-            await JS.InvokeVoidAsync("alert", $"تعذر توليد الإيصال: {string.Join(" | ", result.Errors)}");
+            await JS.InvokeVoidAsync("alert", $"تعذّر توليد الإيصال: {string.Join(" | ", result.Errors)}");
             return;
         }
 
-        var receipt = result.Value;
-        var builder = new System.Text.StringBuilder();
-        builder.AppendLine(receipt.Store.Name);
-        builder.AppendLine(receipt.Store.Address ?? "");
-        builder.AppendLine(receipt.Store.Phone ?? "");
-        builder.AppendLine(new string('-', 32));
-        builder.AppendLine($"إيصال رقم: {receipt.SaleNumber}");
-        builder.AppendLine($"التاريخ: {receipt.SaleDate.ToLocalTime():yyyy-MM-dd HH:mm}");
-        builder.AppendLine(new string('-', 32));
-        foreach (var line in receipt.Lines)
+        var html = ReceiptPrinter.BuildHtml(result.Value);
+        try
         {
-            builder.AppendLine($"{line.ProductName}");
-            builder.AppendLine($"  {line.Quantity:0.###} {line.UnitSymbol} × {line.UnitPrice:N2} = {line.LineTotal:N2}");
+            await JS.InvokeVoidAsync("wizzPrint", html);
         }
-
-        builder.AppendLine(new string('-', 32));
-        builder.AppendLine($"المجموع: {receipt.Subtotal:N2}");
-        builder.AppendLine($"الخصم: {receipt.Discount:N2}");
-        builder.AppendLine($"الإجمالي: {receipt.Total:N2}");
-        builder.AppendLine($"المدفوع: {receipt.Paid:N2}");
-        if (receipt.Remaining > 0)
+        catch (Exception ex)
         {
-            builder.AppendLine($"المتبقي: {receipt.Remaining:N2}");
+            await JS.InvokeVoidAsync("alert", $"تعذّر فتح نافذة الطباعة: {ex.Message}");
         }
-
-        builder.AppendLine(new string('-', 32));
-        builder.AppendLine("شكرًا لتعاملكم معنا");
-
-        var printed = await Printer.PrintAsync(builder.ToString());
-        await JS.InvokeVoidAsync("alert", printed
-            ? $"تم إرسال الإيصال إلى: {Printer.DeviceName}"
-            : "تعذرت الطباعة. تحقق من الطابعة.");
     }
 
     private class CartItem

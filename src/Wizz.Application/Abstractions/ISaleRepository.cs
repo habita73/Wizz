@@ -14,6 +14,14 @@ public interface ISaleRepository
 
     /// <summary>كل المبيعات غير الملغاة التي ما زال عليها مبلغ متبقٍ (ديون)، مع خيار حصر المتأخرة فقط.</summary>
     Task<IReadOnlyList<Sale>> GetOutstandingAsync(bool overdueOnly = false, CancellationToken ct = default);
+
+    /// <summary>تسديدات بيع واحد، مرتبة من الأحدث إلى الأقدم.</summary>
+    Task<IReadOnlyList<DebtPayment>> GetPaymentsAsync(Guid saleId, CancellationToken ct = default);
+
+    /// <summary>كل التسديدات ضمن نطاق زمني، للتقارير.</summary>
+    Task<IReadOnlyList<DebtPayment>> GetPaymentsAsync(DateTime from, DateTime to, CancellationToken ct = default);
+
+    Task AddPaymentAsync(DebtPayment payment, CancellationToken ct = default);
     Task AddAsync(Sale sale, CancellationToken ct = default);
     void Update(Sale sale);
     Task<decimal> GetTotalSalesAsync(DateTime from, DateTime to, CancellationToken ct = default);

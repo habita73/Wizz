@@ -6,7 +6,7 @@
 @inject Wizz.Application.Abstractions.IUserRepository UserRepo
 @inject CurrentUser CurrentUser
 @inject SafeAudit Audit
-@inject Wizz.Application.Abstractions.IPrinter Printer
+@inject Wizz.Application.Receipts.ThermalReceiptService ReceiptPrinter
 @inject Wizz.Application.UseCases.Sales.ModifySaleUseCase ModifySaleUseCase
 @inject Wizz.Application.UseCases.Sales.CancelSaleUseCase CancelSaleUseCase
 @inject Wizz.Application.UseCases.Receipt.GenerateReceiptUseCase GenerateReceiptUseCase
@@ -423,26 +423,15 @@ else
             return;
         }
 
-        var r = result.Value;
-        var builder = new System.Text.StringBuilder();
-        builder.AppendLine(r.Store.Name);
-        builder.AppendLine(r.Store.Address ?? string.Empty);
-        builder.AppendLine(new string('-', 32));
-        builder.AppendLine($"إيصال: {r.SaleNumber} — {r.SaleDate.ToLocalTime():yyyy-MM-dd HH:mm}");
-        builder.AppendLine(new string('-', 32));
-        foreach (var line in r.Lines)
+        var html = ReceiptPrinter.BuildHtml(result.Value);
+        try
         {
-            builder.AppendLine(line.ProductName);
-            builder.AppendLine($"  {line.Quantity:0.###} {line.UnitSymbol} × {line.UnitPrice:N2} = {line.LineTotal:N2}");
+            await JS.InvokeVoidAsync("wizzPrint", html);
         }
-
-        builder.AppendLine(new string('-', 32));
-        builder.AppendLine($"الإجمالي: {r.Total:N2} — المدفوع: {r.Paid:N2} — المتبقي: {r.Remaining:N2}");
-
-        var printed = await Printer.PrintAsync(builder.ToString());
-        await JS.InvokeVoidAsync("alert", printed
-            ? $"تم إرسال الإيصال إلى: {Printer.DeviceName}"
-            : "تعذرت الطباعة. تحقق من الطابعة.");
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"تعذّر فتح نافذة الطباعة: {ex.Message}");
+        }
     }
 
     private void OpenModifySale(Guid saleId)

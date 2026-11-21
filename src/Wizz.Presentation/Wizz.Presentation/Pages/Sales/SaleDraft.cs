@@ -24,6 +24,9 @@ public sealed class SaleDraft
     public int PaymentMethod { get; set; }
 
     public DateTime DueDate { get; set; }
+
+    /// <summary>اسم زبون اختياري للبيع الآجل — يُحفظ مع المسودة ولا يُستخدم في البيع العاجل.</summary>
+    public string? CustomerName { get; set; }
 }
 
 /// <summary>سطر في المسودة: المنتج والكمية ونوع السعر فقط.</summary>

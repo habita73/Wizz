@@ -86,6 +86,7 @@ public enum AuditAction
     CashDifferenceRecorded = 28,
     ModuleEnabled = 29,
     ModuleDisabled = 30,
+    DebtPaymentRecorded = 31,
 }
 
 /// <summary>نتيجة الإجراء المسجل.</summary>
