@@ -1,5 +1,6 @@
 namespace Wizz.Application.Abstractions;
 
+using Wizz.Application.DTOs;
 using Wizz.Domain;
 
 /// <summary>عقد مستودع المبيعات.</summary>
@@ -22,6 +23,14 @@ public interface ISaleRepository
     Task<IReadOnlyList<DebtPayment>> GetPaymentsAsync(DateTime from, DateTime to, CancellationToken ct = default);
 
     Task AddPaymentAsync(DebtPayment payment, CancellationToken ct = default);
+
+    /// <summary>
+    /// أسماء الزبائن السابقة المطابقة لما كُتب، بعد توحيد الهجاء، مع عدد المبيعات
+    /// والديون المفتوحة لكل اسم. تُستخدم لقائمة الاقتراحات عند البيع الآجل.
+    /// </summary>
+    Task<IReadOnlyList<CustomerSuggestionDto>> GetCustomerSuggestionsAsync(
+        string? prefix, int limit = 8, CancellationToken ct = default);
+
     Task AddAsync(Sale sale, CancellationToken ct = default);
     void Update(Sale sale);
     Task<decimal> GetTotalSalesAsync(DateTime from, DateTime to, CancellationToken ct = default);

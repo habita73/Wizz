@@ -2,6 +2,7 @@ namespace Wizz.Infrastructure.Repositories;
 
 using Microsoft.EntityFrameworkCore;
 using Wizz.Application.Abstractions;
+using Wizz.Application.DTOs;
 using Wizz.Domain;
 using Wizz.Infrastructure.Data;
 
@@ -86,6 +87,51 @@ public sealed class SaleRepository : ISaleRepository
 
     public async Task AddPaymentAsync(DebtPayment payment, CancellationToken ct = default)
         => await _db.DebtPayments.AddAsync(payment, ct);
+
+    public async Task<IReadOnlyList<CustomerSuggestionDto>> GetCustomerSuggestionsAsync(
+        string? prefix, int limit = 8, CancellationToken ct = default)
+    {
+        // التجميع الأول في SQL، ثم توحيد الهجاء في الذاكرة: المقارنة العربية
+        // (أ/ا، ة/ه، ى/ي) لا يمكن الاعتماد فيها على ترتيب SQLite الافتراضي.
+        var rows = await _db.Sales
+            .AsNoTracking()
+            .Where(s => s.CustomerName != null && s.CustomerName != "" && s.Status != SaleStatus.Cancelled)
+            .GroupBy(s => s.CustomerName!)
+            .Select(g => new
+            {
+                Name = g.Key,
+                SaleCount = g.Count(),
+                OpenDebtCount = g.Count(s => s.Remaining > 0)
+            })
+            .ToListAsync(ct);
+
+        var key = CustomerNameRules.Key(prefix);
+
+        return rows
+            .GroupBy(r => CustomerNameRules.Key(r.Name))
+            .Where(g => g.Key.Length > 0)
+            .Select(g =>
+            {
+                // نعرض الهجاء الأكثر استخدامًا ليصير هو النص المعياري عند الاختيار.
+                var display = g
+                    .OrderByDescending(r => r.SaleCount)
+                    .ThenByDescending(r => r.OpenDebtCount)
+                    .ThenBy(r => r.Name, StringComparer.Ordinal)
+                    .First().Name;
+
+                return new CustomerSuggestionDto(
+                    display,
+                    g.Sum(r => r.SaleCount),
+                    g.Sum(r => r.OpenDebtCount));
+            })
+            .Where(s => key.Length == 0
+                        || CustomerNameRules.Key(s.Name).Contains(key, StringComparison.Ordinal))
+            .OrderByDescending(s => s.OpenDebtCount)
+            .ThenByDescending(s => s.SaleCount)
+            .ThenBy(s => s.Name, StringComparer.Ordinal)
+            .Take(Math.Clamp(limit, 1, 20))
+            .ToList();
+    }
 
     public async Task AddAsync(Sale sale, CancellationToken ct = default)
     {

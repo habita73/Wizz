@@ -6,6 +6,7 @@
 @inject IJSRuntime JS
 @inject Wizz.Application.Abstractions.IProductRepository ProductRepo
 @inject Wizz.Application.Abstractions.IStoreRepository StoreRepo
+@inject Wizz.Application.Abstractions.ISaleRepository SaleRepo
 @inject CurrentUser CurrentUser
 @inject Wizz.Application.Abstractions.IAuditLogger Audit
 @inject Wizz.Application.UseCases.Sales.CreateSaleUseCase CreateSaleUseCase
@@ -333,9 +334,42 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">اسم الزبون <span class="text-muted fw-normal">(اختياري)</span></label>
-                        <input type="text" class="form-control" maxlength="200" placeholder="يظهر في قائمة الديون إن أُدخل"
-                               @bind="customerName" @bind:event="oninput" @bind:after="SaveDraftAsync" @onkeydown="OnFormKeyDown" />
-                        <div class="form-text">اتركه فارغًا للبيع السريع؛ سيُعرَف الدين برقم الإيصال.</div>
+                        <div class="position-relative">
+                            <input type="text" class="form-control" maxlength="200" autocomplete="off"
+                                   placeholder="اكتب أو اختر اسمًا سابقًا"
+                                   @bind="customerName" @bind:event="oninput"
+                                   @bind:after="OnCustomerNameChangedAsync"
+                                   @onfocus="OnCustomerNameFocus"
+                                   @onblur="OnCustomerNameBlur"
+                                   @onkeydown="OnCustomerNameKeyDown" />
+                            @if (showCustomerSuggestions && customerSuggestions.Count > 0)
+                            {
+                                <div class="list-group shadow-sm position-absolute w-100"
+                                     style="z-index: 1050; top: 100%; max-height: 260px; overflow-y: auto;">
+                                    @for (var i = 0; i < customerSuggestions.Count; i++)
+                                    {
+                                        var suggestion = customerSuggestions[i];
+                                        var active = i == customerSuggestionIndex;
+                                        <button type="button"
+                                                class="list-group-item list-group-item-action d-flex justify-content-between align-items-center @(active ? "active" : "")"
+                                                @onmousedown="() => ApplyCustomerSuggestion(suggestion)">
+                                            <span>@suggestion.Name</span>
+                                            <span class="badge @(suggestion.OpenDebtCount > 0 ? "bg-warning text-dark" : "bg-secondary") rounded-pill">
+                                                @if (suggestion.OpenDebtCount > 0)
+                                                {
+                                                    <span>@suggestion.OpenDebtCount دين مفتوح</span>
+                                                }
+                                                else
+                                                {
+                                                    <span>سابق</span>
+                                                }
+                                            </span>
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        </div>
+                        <div class="form-text">اختر اسمًا موجودًا كي تُجمَّع ديون الشخص نفسه في سجل واحد.</div>
                     </div>
                 }
 
@@ -392,6 +426,13 @@
     private int paymentMethod;
     private DateTime dueDate = DateTime.Today.AddDays(30);
     private string? customerName;
+
+    // اقتراحات أسماء الزبائن من الديون والمبيعات السابقة، مع تنقّل بلوحة المفاتيح.
+    private IReadOnlyList<Wizz.Application.DTOs.CustomerSuggestionDto> customerSuggestions =
+        Array.Empty<Wizz.Application.DTOs.CustomerSuggestionDto>();
+    private bool showCustomerSuggestions;
+    private int customerSuggestionIndex = -1;
+
     private Guid? cashierId;
     private Guid? lastSaleId;
     private bool savingSale;
@@ -476,6 +517,99 @@
         if (e.Key == "Enter" && CanCompleteSale && !savingSale)
         {
             await CompleteSale();
+        }
+    }
+
+    /// <summary>بحث الاقتراحات بعد كل حرف مع حفظ المسودة.</summary>
+    private async Task OnCustomerNameChangedAsync()
+    {
+        await SaveDraftAsync();
+        await LoadCustomerSuggestionsAsync();
+    }
+
+    /// <summary>عند التركيز نعرض الأسماء الأكثر تكرارًا حتى لو لم يُكتب شيء بعد.</summary>
+    private async Task OnCustomerNameFocus()
+    {
+        if (!showCustomerSuggestions)
+            await LoadCustomerSuggestionsAsync();
+    }
+
+    private void OnCustomerNameBlur()
+    {
+        showCustomerSuggestions = false;
+        customerSuggestionIndex = -1;
+    }
+
+    private async Task LoadCustomerSuggestionsAsync()
+    {
+        customerSuggestions = await SaleRepo.GetCustomerSuggestionsAsync(customerName, 8);
+        customerSuggestionIndex = customerSuggestions.Count > 0 ? 0 : -1;
+        showCustomerSuggestions = true;
+    }
+
+    private async Task ApplyCustomerSuggestion(Wizz.Application.DTOs.CustomerSuggestionDto suggestion)
+    {
+        customerName = suggestion.Name;
+        showCustomerSuggestions = false;
+        customerSuggestionIndex = -1;
+        await SaveDraftAsync();
+    }
+
+    /// <summary>
+    /// تنقّل بين الاقتراحات بالأسهم، اختيار بالـEnter، وإغلاق بالـEscape.
+    /// Enter هنا لا يُتمّ البيع إلا إذا لم يكن هناك اقتراح محدد.
+    /// </summary>
+    private async Task OnCustomerNameKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "ArrowDown")
+        {
+            if (!showCustomerSuggestions)
+            {
+                await LoadCustomerSuggestionsAsync();
+            }
+            else if (customerSuggestions.Count > 0)
+            {
+                customerSuggestionIndex = (customerSuggestionIndex + 1) % customerSuggestions.Count;
+            }
+            return;
+        }
+
+        if (e.Key == "ArrowUp")
+        {
+            if (customerSuggestions.Count > 0)
+            {
+                customerSuggestionIndex = customerSuggestionIndex <= 0
+                    ? customerSuggestions.Count - 1
+                    : customerSuggestionIndex - 1;
+            }
+            return;
+        }
+
+        if (e.Key == "Enter")
+        {
+            if (showCustomerSuggestions
+                && customerSuggestionIndex >= 0
+                && customerSuggestionIndex < customerSuggestions.Count)
+            {
+                await ApplyCustomerSuggestion(customerSuggestions[customerSuggestionIndex]);
+                return;
+            }
+
+            if (CanCompleteSale && !savingSale)
+                await CompleteSale();
+            return;
+        }
+
+        if (e.Key == "Escape")
+        {
+            showCustomerSuggestions = false;
+            customerSuggestionIndex = -1;
+            return;
+        }
+
+        if (e.Key == "Tab")
+        {
+            showCustomerSuggestions = false;
         }
     }
 
@@ -744,6 +878,12 @@
             paidAmount = Total;
         }
 
+        if (paymentMethod != 2)
+        {
+            showCustomerSuggestions = false;
+            customerSuggestionIndex = -1;
+        }
+
         StateHasChanged();
         await SaveDraftAsync();
     }
@@ -756,6 +896,8 @@
         paymentMethod = 0;
         dueDate = DateTime.Today.AddDays(30);
         customerName = null;
+        showCustomerSuggestions = false;
+        customerSuggestionIndex = -1;
         justAdded = null;
         searchQuery = "";
         draftRestored = false;
