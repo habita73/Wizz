@@ -1,0 +1,401 @@
+@page "/virtual-scanner"
+@layout MainLayout
+@attribute [Authorize(Policy = PermissionPolicy.CreateSale)]
+@rendermode InteractiveServer
+@using Wizz.Application.Devices
+@using Wizz.Application.Receipts
+@inject IJSRuntime JS
+@inject IProductRepository ProductRepo
+@inject GenerateReceiptUseCase GenerateReceiptUseCase
+@inject ThermalReceiptService ReceiptPrinter
+
+<VirtualScannerBridge Role="simulator" OnMessage="OnBridgeMessage" />
+
+<h2 class="d-flex align-items-center gap-2">
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M1 1.5A.5.5 0 0 1 1.5 1H3a.5.5 0 0 1 0 1H2v1a.5.5 0 0 1-1 0zm14 0a.5.5 0 0 0-.5-.5H13a.5.5 0 0 0 0 1h1v1a.5.5 0 0 0 1 0zM1 13.5a.5.5 0 0 0 .5.5H3a.5.5 0 0 0 0-1H2v-1a.5.5 0 0 0-1 0zm14 0a.5.5 0 0 1-.5.5H13a.5.5 0 0 1 0-1h1v-1a.5.5 0 0 1 1 0zM3 4h10v8H3z" />
+        <path d="M4 8V5h1v3zm2-3v3h1V5zm2 0v3h1V5zm2 0v3h1V5zm2 3V5h1v3z" />
+    </svg>
+    محاكي القراءة
+</h2>
+
+<div class="alert alert-info small">
+    أداة اختبار محلية فقط: لا تتصل بأي جهاز، ولا تستخدم QR أو رمزًا حقيقيًا. القراءات تُرسل إلى تبويب
+    «بيع جديد» المفتوح في نفس المتصفح. افتح شاشة البيع أولًا، ثم أرسل القراءات و راجع الإيصال من هنا.
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <a href="/sales/new" target="wizz-pos-tab" rel="noopener" class="btn btn-success btn-lg">
+        فتح شاشة البيع
+    </a>
+    <a href="/sales/history" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-lg">
+        سجل المبيعات
+    </a>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card mb-3">
+            <div class="card-header fw-bold">إرسال قراءة إلى شاشة البيع</div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label">الكمية للقراءة القادمة</label>
+                        <input type="number" min="0.01" step="0.01" class="form-control form-control-lg" @bind="quantityInput" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">عدد قراءات البيع المختلط</label>
+                        <input type="number" min="1" max="10" step="1" class="form-control form-control-lg" @bind="mixCount" />
+                    </div>
+                </div>
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <button type="button" class="btn btn-primary btn-lg" @onclick="SendRandomAsync">
+                        قراءة منتج عشوائي
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-lg" @onclick="SendMixedAsync">
+                        قراءات متعددة (بيع مختلط)
+                    </button>
+                </div>
+                <hr />
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-7">
+                        <label class="form-label">كود يدوي</label>
+                        <input class="form-control form-control-lg" @bind="manualCode" placeholder="مثال: FRUIT-001" />
+                    </div>
+                    <div class="col-md-5">
+                        <button type="button" class="btn btn-warning btn-lg w-100" @onclick="SendManualAsync">
+                            إرسال بالكمية
+                        </button>
+                    </div>
+                </div>
+                <div class="form-text">الكود يدخل إلى شاشة البيع كما لو أنه قُرئ؛ الكمية تُطبَّق على القراءة المرسلة.</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center gap-2">
+                <span class="fw-bold">سجل القراءات</span>
+                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClearLog">مسح السجل</button>
+            </div>
+            <div class="card-body p-0">
+                @if (scanLog.Count == 0)
+                {
+                    <div class="alert alert-light m-3 mb-0">لا توجد قراءات بعد.</div>
+                }
+                else
+                {
+                    <div class="table-responsive" style="max-height: 300px; overflow: auto;">
+                        <table class="table table-sm table-hover mb-0 align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>الوقت</th>
+                                    <th>الكود</th>
+                                    <th>الكمية</th>
+                                    <th>المنتج</th>
+                                    <th>الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var entry in scanLog.AsEnumerable().Reverse())
+                                {
+                                    <tr>
+                                        <td class="small text-muted">@entry.Time</td>
+                                        <td dir="ltr" class="text-end small">@entry.Code</td>
+                                        <td>@entry.Quantity.ToString("0.###")</td>
+                                        <td class="small">@(string.IsNullOrWhiteSpace(entry.ProductName) ? "—" : entry.ProductName)</td>
+                                        <td class="small">@entry.Status</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header fw-bold">مراجعة آخر إيصال</div>
+            <div class="card-body">
+                @if (lastSaleId is null)
+                {
+                    <p class="text-muted mb-2">لا يوجد إيصال محفوظ على هذا المتصفح بعد. أتمّ بيعًا من شاشة البيع ثم اضغط تحديث.</p>
+                }
+                else
+                {
+                    <p class="small mb-2">معرّف آخر بيع: <code dir="ltr">@ShortId(lastSaleId.Value)</code></p>
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <button type="button" class="btn btn-primary btn-lg" @onclick="LoadReceiptAsync">عرض الإيصال</button>
+                        <button type="button" class="btn btn-outline-primary btn-lg" @onclick="PrintReceiptAsync">إعادة طباعة</button>
+                    </div>
+                }
+                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="RefreshLastSaleAsync">تحديث معرّف آخر بيع</button>
+
+                @if (!string.IsNullOrWhiteSpace(receiptMessage))
+                {
+                    <div class="alert alert-warning small mt-3 mb-0">@receiptMessage</div>
+                }
+
+                @if (receipt is not null)
+                {
+                    <div class="border rounded p-3 mt-3">
+                        <div class="text-center mb-2">
+                            <strong>@receipt.Store.Name</strong><br />
+                            <small class="text-muted">@receipt.Store.Address</small><br />
+                            <small class="text-muted">@receipt.Store.Phone</small>
+                        </div>
+                        <div class="d-flex justify-content-between small text-muted">
+                            <span>@receipt.SaleDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
+                            <span dir="ltr">@receipt.SaleNumber</span>
+                        </div>
+                        <hr />
+                        <table class="table table-sm">
+                            <tbody>
+                                @foreach (var line in receipt.Lines)
+                                {
+                                    <tr>
+                                        <td>@line.ProductName</td>
+                                        <td class="text-center">@line.Quantity.ToString("0.###") @line.UnitSymbol</td>
+                                        <td class="text-end">@line.LineTotal.ToString("N2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                        <hr />
+                        <div class="d-flex justify-content-between"><span>المجموع</span><span>@receipt.Subtotal.ToString("N2") د.ج</span></div>
+                        <div class="d-flex justify-content-between text-success"><span>الخصم</span><span>@receipt.Discount.ToString("N2") د.ج</span></div>
+                        <div class="d-flex justify-content-between fw-bold"><span>الإجمالي</span><span>@receipt.Total.ToString("N2") د.ج</span></div>
+                        <div class="d-flex justify-content-between"><span>المدفوع</span><span>@receipt.Paid.ToString("N2") د.ج</span></div>
+                        @if (receipt.Remaining > 0)
+                        {
+                            <div class="d-flex justify-content-between text-danger fw-bold"><span>المتبقي</span><span>@receipt.Remaining.ToString("N2") د.ج</span></div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private const string LastSaleKey = "wizz.receipt.lastsale";
+
+    private readonly List<ScanLogEntry> scanLog = new();
+    private IReadOnlyList<Product> scanProducts = Array.Empty<Product>();
+
+    private string manualCode = "";
+    private decimal quantityInput = 1m;
+    private int mixCount = 3;
+
+    private Guid? lastSaleId;
+    private ReceiptDto? receipt;
+    private string? receiptMessage;
+
+    private sealed class ScanLogEntry
+    {
+        public string Time { get; set; } = "";
+        public string Code { get; set; } = "";
+        public decimal Quantity { get; set; }
+        public string? ProductName { get; set; }
+        public string Status { get; set; } = "أُرسل";
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        scanProducts = (await ProductRepo.GetAllAsync())
+            .Where(p => p.IsActive && !string.IsNullOrWhiteSpace(p.Barcode))
+            .ToList();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        await RefreshLastSaleAsync();
+    }
+
+    private decimal NormalizedQuantity => quantityInput > 0 ? quantityInput : 1m;
+
+    private async Task SendRandomAsync()
+    {
+        if (scanProducts.Count == 0)
+        {
+            return;
+        }
+
+        var product = scanProducts[Random.Shared.Next(scanProducts.Count)];
+        await SendCodeAsync(product.Barcode!, NormalizedQuantity, product.Name);
+    }
+
+    private async Task SendMixedAsync()
+    {
+        if (scanProducts.Count == 0)
+        {
+            return;
+        }
+
+        var pool = scanProducts.ToList();
+        var count = Math.Clamp(mixCount, 1, Math.Min(10, pool.Count));
+        for (var i = 0; i < count; i++)
+        {
+            var index = Random.Shared.Next(pool.Count);
+            var product = pool[index];
+            pool.RemoveAt(index);
+
+            await SendCodeAsync(product.Barcode!, NormalizedQuantity, product.Name);
+            await Task.Delay(180);
+        }
+    }
+
+    private async Task SendManualAsync()
+    {
+        var code = manualCode.Trim();
+        if (code.Length == 0)
+        {
+            return;
+        }
+
+        await SendCodeAsync(code, NormalizedQuantity, null);
+    }
+
+    private async Task SendCodeAsync(string code, decimal quantity, string? productName)
+    {
+        AddLog(code, quantity, productName);
+        try
+        {
+            await JS.InvokeVoidAsync("wizzScanner.publish", new
+            {
+                target = "pos",
+                source = "simulator",
+                type = "scan",
+                code,
+                quantity
+            });
+        }
+        catch
+        {
+            SetLastStatus(code, "تعذّر الإرسال");
+        }
+    }
+
+    private void AddLog(string code, decimal quantity, string? productName)
+    {
+        scanLog.Add(new ScanLogEntry
+        {
+            Time = DateTime.Now.ToString("HH:mm:ss"),
+            Code = code,
+            Quantity = quantity,
+            ProductName = productName
+        });
+
+        if (scanLog.Count > 20)
+        {
+            scanLog.RemoveAt(0);
+        }
+    }
+
+    private void SetLastStatus(string code, string status)
+    {
+        for (var i = scanLog.Count - 1; i >= 0; i--)
+        {
+            if (scanLog[i].Code == code)
+            {
+                scanLog[i].Status = status;
+                break;
+            }
+        }
+    }
+
+    private void ClearLog() => scanLog.Clear();
+
+    private void OnBridgeMessage(string json)
+    {
+        var message = VirtualScanMessage.Parse(json);
+        if (message?.Type != "scan-ack")
+        {
+            return;
+        }
+
+        var entry = scanLog.LastOrDefault(e => e.Code == message.Code && e.Status == "أُرسل");
+        if (entry is null)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(message.ProductName))
+        {
+            entry.ProductName = message.ProductName;
+        }
+        entry.Status = message.Ok ? "أُضيف للسلة" : "الكود غير مطابق";
+        StateHasChanged();
+    }
+
+    private async Task RefreshLastSaleAsync()
+    {
+        try
+        {
+            var last = await JS.InvokeAsync<string?>("localStorage.getItem", LastSaleKey);
+            if (Guid.TryParse(last, out var id) && id != lastSaleId)
+            {
+                lastSaleId = id;
+                receipt = null;
+                receiptMessage = null;
+                StateHasChanged();
+            }
+        }
+        catch
+        {
+            // التخزين المحلي معطّل: تبقى الحالة الحالية.
+        }
+    }
+
+    private async Task LoadReceiptAsync()
+    {
+        receiptMessage = null;
+        if (lastSaleId is null)
+        {
+            return;
+        }
+
+        var result = await GenerateReceiptUseCase.ExecuteAsync(lastSaleId.Value);
+        if (!result.IsSuccess)
+        {
+            receipt = null;
+            receiptMessage = string.Join(" | ", result.Errors);
+            return;
+        }
+
+        receipt = result.Value;
+    }
+
+    private async Task PrintReceiptAsync()
+    {
+        if (lastSaleId is null)
+        {
+            return;
+        }
+
+        var result = await GenerateReceiptUseCase.ExecuteAsync(lastSaleId.Value);
+        if (!result.IsSuccess)
+        {
+            receiptMessage = string.Join(" | ", result.Errors);
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("wizzPrint", ReceiptPrinter.BuildHtml(result.Value));
+            receiptMessage = null;
+        }
+        catch (Exception ex)
+        {
+            receiptMessage = $"تعذّر فتح نافذة الطباعة: {ex.Message}";
+        }
+    }
+
+    private static string ShortId(Guid id) => id.ToString("N")[..8].ToUpperInvariant();
+}

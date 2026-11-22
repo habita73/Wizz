@@ -1,0 +1,57 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@code {
+    /// <summary>دور هذا التبويب: pos لشاشة البيع، simulator لنافذة المحاكاة.</summary>
+    [Parameter] public string Role { get; set; } = "pos";
+
+    /// <summary>يستقبل نص الرسالة كما وصل من المتصفح، ويُفسَّر في الصفحة المستضيفة.</summary>
+    [Parameter] public EventCallback<string> OnMessage { get; set; }
+
+    private DotNetObjectReference<VirtualScannerBridge>? reference;
+    private bool subscribed;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || subscribed)
+        {
+            return;
+        }
+
+        try
+        {
+            reference = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("wizzScanner.subscribe", Role, reference);
+            subscribed = true;
+        }
+        catch
+        {
+            // السكربت غير محمّل بعد: لا نُفشل الصفحة، المحاكي أداة اختيارية.
+            reference?.Dispose();
+            reference = null;
+        }
+    }
+
+    [JSInvokable]
+    public Task Receive(string json) => OnMessage.InvokeAsync(json);
+
+    public async ValueTask DisposeAsync()
+    {
+        if (reference is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("wizzScanner.unsubscribe", Role);
+        }
+        catch
+        {
+            // إغلاق الصفحة لا يجب أن يفشل بسبب اتصال JS.
+        }
+
+        reference.Dispose();
+        reference = null;
+    }
+}
