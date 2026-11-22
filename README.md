@@ -6,7 +6,7 @@
 
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/download/dotnet/10.0)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/habita73/wizz/ci.yml?branch=main&logo=github-actions&logoColor=white)](https://github.com/habita73/wizz/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-298%2F298%20passing-brightgreen?logo=xunit&logoColor=white)](https://github.com/habita73/wizz/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-553%2F553%20passing-brightgreen?logo=xunit&logoColor=white)](https://github.com/habita73/wizz/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-coming%20soon-yellow)](https://github.com/habita73/wizz/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?logo=opensourceinitiative&logoColor=white)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/habita73/wizz?style=social)](https://github.com/habita73/wizz/stargazers)
@@ -93,7 +93,7 @@ Wizz.sln
 │       └── wwwroot (Assets, JS Interop)
 └── tests/
     ├── Wizz.Domain.Tests/        ✅ 24 اختبار للنواة المالية
-    └── Wizz.Integration.Tests/   ✅ 274 اختبار تكامل (بيع، آجل، إيصال، SQLite، نسخ احتياطي، مستندات مخزون، وردية كاشير ومرتجع، صندوق ومشتريات)
+    └── Wizz.Integration.Tests/   ✅ 529 اختبار تكامل (بيع، آجل، إيصال، SQLite، نسخ احتياطي، مستندات مخزون، وردية كاشير ومرتجع، صندوق ومشتريات)
 ```
 
 ### المبادئ المعمارية
@@ -143,7 +143,13 @@ Wizz.sln
 ### 🖨️ الأجهزة (محاكاة للتطوير)
 - `MockScanner`: إدخال باركود نصي
 - `MockPrinter`: معاينة HTML/نص، جاهز لـ ESC/POS الحقيقي
-- الطابعة الحرارية الافتراضية للتجربة على جهاز التطوير: `XP-480B (Virtual)` — تُستخدم كوجهة اختبار في نافذة طباعة المتصفح فقط؛ ليست طابعة حقيقية، ولا دليلًا على توافق العربية/RTL مع طراز فعلي.
+- الطابعة الحرارية الافتراضية للتجربة على جهاز التطوير: `XP-480B (Virtual)` — ليست طابعة حقيقية، ولا دليلًا على توافق العربية/RTL أو قص الورق مع طراز فعلي.
+- **الطباعة المباشرة (Windows فقط):** عند تفعيل «طباعة الإيصال مباشرة بعد كل بيع» أو الضغط على «طباعة مباشرة» في سجل المبيعات/محاكي القراءة، يُرسل الإيصال كنص UTF-8 عبر منفذ RAW إلى الطابعة المحددة بالإعداد `ReceiptPrinter:PrinterName` (الافتراضي `XP-480B (Virtual)`)، بلا مكتبات خارجية ولا خادم طباعة ولا سحابة. الزر القديم «طباعة (نافذة المتصفح)» ما زال متاحًا، لكنه يفتح نافذة طباعة فقط.
+
+**أين أجد المطبوعات؟**
+- آخر مطبوعة وصلت إلى الطابعة الافتراضية: `C:\Users\habit\AppData\Local\Temp\tauri-device-lab\labels\label.prn` — يُستبدل في كل طباعة، ولا يحتفظ بسجل التاريخ.
+- نسخة مؤرشفة لكل إيصال مطبوع مباشرةً: `%LOCALAPPDATA%\Wizz\PrintedReceipts\` أي `C:\Users\habit\AppData\Local\Wizz\PrintedReceipts\`، باسم `receipt-YYYYMMDD-HHmmss-<رقم البيع>.prn`. يمكن تغيير المجلد بالإعداد `ReceiptPrinter:ArchiveDirectory`.
+- ملاحظة تحقق: الطباعة بنص UTF-8 عبر RAW أوصلت الحروف العربية سليمة إلى ملف الطابعة والنسخة المؤرشفة (بايتات UTF-8 متعددة، دون علامات `?`). هذا يثبت مسار الطباعة التجريبي فقط، ولا يُغلق بوابة الجهاز الحقيقي.
 
 ---
 

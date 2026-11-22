@@ -8,6 +8,7 @@
 @inject IProductRepository ProductRepo
 @inject GenerateReceiptUseCase GenerateReceiptUseCase
 @inject ThermalReceiptService ReceiptPrinter
+@inject Wizz.Presentation.Services.DirectReceiptPrinter DirectReceiptPrinter
 
 <VirtualScannerBridge Role="simulator" OnMessage="OnBridgeMessage" />
 
@@ -127,7 +128,8 @@
                     <p class="small mb-2">معرّف آخر بيع: <code dir="ltr">@ShortId(lastSaleId.Value)</code></p>
                     <div class="d-flex flex-wrap gap-2 mb-3">
                         <button type="button" class="btn btn-primary btn-lg" @onclick="LoadReceiptAsync">عرض الإيصال</button>
-                        <button type="button" class="btn btn-outline-primary btn-lg" @onclick="PrintReceiptAsync">إعادة طباعة</button>
+                        <button type="button" class="btn btn-outline-primary btn-lg" @onclick="PrintReceiptAsync">إعادة طباعة (نافذة المتصفح)</button>
+                        <button type="button" class="btn btn-primary btn-lg" @onclick="PrintDirectlyAsync">طباعة مباشرة</button>
                     </div>
                 }
                 <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="RefreshLastSaleAsync">تحديث معرّف آخر بيع</button>
@@ -394,6 +396,33 @@
         catch (Exception ex)
         {
             receiptMessage = $"تعذّر فتح نافذة الطباعة: {ex.Message}";
+        }
+    }
+
+    private async Task PrintDirectlyAsync()
+    {
+        if (lastSaleId is null)
+        {
+            return;
+        }
+
+        var result = await GenerateReceiptUseCase.ExecuteAsync(lastSaleId.Value);
+        if (!result.IsSuccess)
+        {
+            receiptMessage = string.Join(" | ", result.Errors);
+            return;
+        }
+
+        try
+        {
+            var print = await DirectReceiptPrinter.PrintReceiptAsync(result.Value);
+            receiptMessage = print.Success
+                ? $"تمت الطباعة مباشرةً على {DirectReceiptPrinter.PrinterName}."
+                : $"تعذّرت الطباعة المباشرة: {print.Message}";
+        }
+        catch (Exception ex)
+        {
+            receiptMessage = $"تعذّرت الطباعة المباشرة: {ex.Message}";
         }
     }
 

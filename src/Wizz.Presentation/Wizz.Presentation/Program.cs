@@ -127,6 +127,8 @@ builder.Services.AddScoped<InitializeStoreUseCase>();
 builder.Services.AddScoped<GetStoreSettingsUseCase>();
 builder.Services.AddScoped<GenerateReceiptUseCase>();
 builder.Services.AddScoped<Wizz.Application.Receipts.ThermalReceiptService>();
+// الطباعة المباشرة على الطابعة الافتراضية التجريبية (RAW UTF-8) مع أرشفة النسخ.
+builder.Services.AddScoped<DirectReceiptPrinter>();
 builder.Services.AddScoped<BackupDatabaseUseCase>();
 builder.Services.AddScoped<RestoreDatabaseUseCase>();
 builder.Services.AddHttpClient<Wizz.Application.AI.Tools.IWebSearch, Wizz.Infrastructure.AI.WebSearchService>(client =>

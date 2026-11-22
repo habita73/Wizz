@@ -10,6 +10,7 @@
 @inject Wizz.Application.UseCases.Sales.ModifySaleUseCase ModifySaleUseCase
 @inject Wizz.Application.UseCases.Sales.CancelSaleUseCase CancelSaleUseCase
 @inject Wizz.Application.UseCases.Receipt.GenerateReceiptUseCase GenerateReceiptUseCase
+@inject Wizz.Presentation.Services.DirectReceiptPrinter DirectReceiptPrinter
 @inject IJSRuntime JS
 
 <h2 class="d-flex align-items-center gap-2">
@@ -310,7 +311,11 @@ else
                     <button class="btn btn-secondary" @onclick="() => receipt = null">إغلاق</button>
                     <button class="btn btn-primary" @onclick="() => PrintReceipt(receipt.SaleId)">
                         <WizzIcon Icon="printer" Size="16" />
-                        <span>طباعة</span>
+                        <span>طباعة (نافذة المتصفح)</span>
+                    </button>
+                    <button class="btn btn-outline-primary" @onclick="() => PrintReceiptDirectly(receipt.SaleId)">
+                        <WizzIcon Icon="printer" Size="16" />
+                        <span>طباعة مباشرة</span>
                     </button>
                 </div>
             </div>
@@ -431,6 +436,28 @@ else
         catch (Exception ex)
         {
             await JS.InvokeVoidAsync("alert", $"تعذّر فتح نافذة الطباعة: {ex.Message}");
+        }
+    }
+
+    private async Task PrintReceiptDirectly(Guid saleId)
+    {
+        var result = await GenerateReceiptUseCase.ExecuteAsync(saleId);
+        if (!result.IsSuccess)
+        {
+            await JS.InvokeVoidAsync("alert", $"تعذّر توليد الإيصال: {string.Join(" | ", result.Errors)}");
+            return;
+        }
+
+        try
+        {
+            var print = await DirectReceiptPrinter.PrintReceiptAsync(result.Value);
+            await JS.InvokeVoidAsync("alert", print.Success
+                ? $"تمت الطباعة مباشرةً على {DirectReceiptPrinter.PrinterName}."
+                : $"تعذّرت الطباعة المباشرة: {print.Message}");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"تعذّرت الطباعة المباشرة: {ex.Message}");
         }
     }
 

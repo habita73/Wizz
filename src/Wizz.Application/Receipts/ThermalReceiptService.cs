@@ -105,6 +105,71 @@ public sealed class ThermalReceiptService
         return sb.ToString();
     }
 
+    /// <summary>
+    /// يبني إيصالًا نصيًا بترميز UTF-8 للطباعة المباشرة على طابعة تجريبية.
+    /// لا يعيد حساب أي مبلغ؛ كل القيم مأخوذة من <see cref="ReceiptDto"/> كما وصلت.
+    /// يُرسل إلى الطابعة كما هو، فلا يُحوَّل إلى ANSI وبذلك لا تُفقد الحروف العربية.
+    /// </summary>
+    public string BuildText(ReceiptDto receipt)
+    {
+        ArgumentNullException.ThrowIfNull(receipt);
+
+        const string nl = "\r\n";
+        const int width = 32;
+        var rule = new string('-', width);
+        var currency = string.IsNullOrWhiteSpace(receipt.Store.Currency) ? "د.ج" : receipt.Store.Currency.Trim();
+        var sb = new StringBuilder();
+
+        sb.Append(Center(receipt.Store.Name, width)).Append(nl);
+        if (!string.IsNullOrWhiteSpace(receipt.Store.Address))
+            sb.Append(Center(receipt.Store.Address, width)).Append(nl);
+        var contacts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(receipt.Store.Phone)) contacts.Add("هاتف: " + receipt.Store.Phone);
+        if (!string.IsNullOrWhiteSpace(receipt.Store.TaxNumber)) contacts.Add("الرقم الجبائي: " + receipt.Store.TaxNumber);
+        if (!string.IsNullOrWhiteSpace(receipt.Store.CommercialRegister)) contacts.Add("السجل التجاري: " + receipt.Store.CommercialRegister);
+        if (contacts.Count > 0)
+            sb.Append(string.Join(" · ", contacts)).Append(nl);
+        sb.Append(rule).Append(nl);
+
+        sb.Append("رقم البيع: ").Append(receipt.SaleNumber).Append(nl);
+        sb.Append("التاريخ: ").Append(Time(receipt.SaleDate)).Append(nl);
+        if (!string.IsNullOrWhiteSpace(receipt.CashierName))
+            sb.Append("الكاشير: ").Append(receipt.CashierName).Append(nl);
+        sb.Append("طريقة الدفع: ").Append(PaymentLabel(receipt.PaymentMethod)).Append(nl);
+        if (receipt.IsCreditSale && receipt.DueDate is { } due)
+            sb.Append("تاريخ الاستحقاق: ")
+              .Append(due.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)).Append(nl);
+        sb.Append(rule).Append(nl);
+
+        foreach (var line in receipt.Lines)
+        {
+            sb.Append(line.ProductName).Append(nl);
+            sb.Append("   ").Append(Quantity(line)).Append(" × ").Append(Money(line.UnitPrice, currency));
+            sb.Append("   ").Append(Money(line.LineTotal, currency)).Append(nl);
+        }
+        sb.Append(rule).Append(nl);
+
+        sb.Append("المجموع: ").Append(Money(receipt.Subtotal, currency)).Append(nl);
+        sb.Append("الخصم: ").Append(Money(receipt.Discount, currency)).Append(nl);
+        sb.Append("الإجمالي: ").Append(Money(receipt.Total, currency)).Append(nl);
+        sb.Append("المدفوع: ").Append(Money(receipt.Paid, currency)).Append(nl);
+        if (receipt.Remaining > 0)
+            sb.Append("المتبقي: ").Append(Money(receipt.Remaining, currency)).Append(nl);
+        sb.Append(rule).Append(nl);
+
+        if (!string.IsNullOrWhiteSpace(receipt.Notes))
+            sb.Append(receipt.Notes).Append(nl);
+        sb.Append("شكرًا لتعاملكم معنا").Append(nl);
+        sb.Append("وصل بيع — احتفظ به للمراجعة").Append(nl);
+        return sb.ToString();
+    }
+
+    private static string Center(string value, int width)
+    {
+        var padding = Math.Max(0, width - value.Length) / 2;
+        return new string(' ', padding) + value;
+    }
+
     private static string TotalRow(string label, decimal value, string currency)
         => "<div class=\"row\"><span>" + Encode(label) + "</span><span class=\"num\">"
            + Money(value, currency) + "</span></div>";

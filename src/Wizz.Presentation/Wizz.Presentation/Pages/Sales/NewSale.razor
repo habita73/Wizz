@@ -16,6 +16,7 @@
 @inject Microsoft.AspNetCore.Components.NavigationManager Nav
 @inject Wizz.Application.AI.Perception.OcrDraftHandoff DraftHandoff
 @inject Wizz.Application.AI.Perception.IOcrAliasStore OcrAliases
+@inject Wizz.Presentation.Services.DirectReceiptPrinter DirectReceiptPrinter
 
 <h2 class="d-flex align-items-center gap-2">
     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
@@ -399,10 +400,10 @@
                                id="receiptAutoPrint"
                                checked="@autoPrintReceipt"
                                @onchange="ToggleAutoPrint" />
-                        <span class="form-check-label">طباعة الإيصال تلقائيًا بعد كل بيع</span>
+                        <span class="form-check-label">طباعة الإيصال مباشرة بعد كل بيع</span>
                     </label>
                     <div class="small text-muted" aria-live="polite">
-                        حالة الطباعة التلقائية: @(autoPrintReceipt ? "مفعّلة" : "معطلة") — تُحفظ على هذا الجهاز.
+                        حالة الطباعة المباشرة: @(autoPrintReceipt ? "مفعّلة" : "معطلة") — تُحفظ على هذا الجهاز.
                     </div>
                     @if (lastSaleId != null)
                     {
@@ -411,7 +412,14 @@
                                 <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1" />
                                 <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1" />
                             </svg>
-                            طباعة إيصال آخر بيع
+                            طباعة إيصال آخر بيع (نافذة المتصفح)
+                        </button>
+                        <button class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-1" @onclick="PrintLastSaleDirectly">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                                <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1" />
+                                <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1" />
+                            </svg>
+                            طباعة مباشرة (@DirectReceiptPrinter.PrinterName)
                         </button>
                     }
                 </div>
@@ -1217,26 +1225,40 @@
         }
     }
 
-    /// <summary>يفتح نافذة طباعة الإيصال دون أن يمنع البيع أو يكرره عند الفشل.</summary>
-    private async Task<bool> TryPrintReceiptAsync(Guid saleId)
+    /// <summary>
+    /// يرسل الإيصال إلى الطابعة الافتراضية مباشرةً. لا يُعيد محاولة البيع عند الفشل،
+    /// ويعيد رسالة الخطأ ليُخبر المستخدم بها بعد اكتمال الحفظ.
+    /// </summary>
+    private async Task<string?> PrintReceiptDirectlyAsync(Guid saleId)
     {
         try
         {
             var result = await GenerateReceiptUseCase.ExecuteAsync(saleId);
             if (!result.IsSuccess)
             {
-                return false;
+                return string.Join(" | ", result.Errors);
             }
 
-            var html = ReceiptPrinter.BuildHtml(result.Value);
-            await JS.InvokeVoidAsync("wizzPrint", html);
-            return true;
+            var print = await DirectReceiptPrinter.PrintReceiptAsync(result.Value);
+            return print.Success ? null : print.Message;
         }
-        catch
+        catch (Exception ex)
         {
-            // الطباعة لا تُعيد محاولة البيع؛ تظهر رسالة واضحة للمستخدم بعد اكتمال الحفظ.
-            return false;
+            return ex.Message;
         }
+    }
+
+    private async Task PrintLastSaleDirectly()
+    {
+        if (lastSaleId is null)
+        {
+            return;
+        }
+
+        var error = await PrintReceiptDirectlyAsync(lastSaleId.Value);
+        await JS.InvokeVoidAsync("alert", error is null
+            ? "تمت طباعة الإيصال مباشرةً على الطابعة الافتراضية."
+            : $"تعذّرت الطباعة المباشرة: {error}");
     }
 
     private async Task CompleteSale()
@@ -1314,10 +1336,10 @@
             var message = $"تم البيع بنجاح — الإجمالي {result.Value.Total:N2} د.ج";
             if (autoPrintReceipt)
             {
-                var opened = await TryPrintReceiptAsync(lastSaleId.Value);
-                message += opened
-                    ? "\nتم فتح نافذة طباعة الإيصال."
-                    : "\nتعذّر فتح نافذة الطباعة؛ يمكنك استخدام زر «طباعة إيصال آخر بيع».";
+                var printError = await PrintReceiptDirectlyAsync(lastSaleId.Value);
+                message += printError is null
+                    ? "\nتمت طباعة الإيصال مباشرةً على الطابعة الافتراضية."
+                    : $"\nتعذّرت الطباعة المباشرة: {printError}";
             }
             await JS.InvokeVoidAsync("alert", message);
             // بعد إتمام البيع نعود إلى قائمة المبيعات.
@@ -1333,7 +1355,7 @@
         }
     }
 
-    /// <summary>زر الطباعة اليدوية: يعيد طباعة إيصال آخر بيع بنفس تنسيق الطباعة التلقائية.</summary>
+    /// <summary>زر الطباعة اليدوية: يفتح نافذة المتصفح لإيصال آخر بيع.</summary>
     private async Task PrintReceipt()
     {
         if (lastSaleId is null)

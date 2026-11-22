@@ -90,4 +90,31 @@ public sealed class ThermalReceiptServiceTests
         Assert.DoesNotContain("<script>", html);
         Assert.Contains("&lt;script&gt;", html);
     }
+
+    [Fact]
+    public void BuildText_KeepsArabicAndAllAmountsForDirectPrinting()
+    {
+        var text = _sut.BuildText(Receipt(remaining: 150m, isCredit: true));
+
+        Assert.Contains("متجر النور", text);
+        Assert.Contains("رقم البيع: SALE-0042", text);
+        Assert.Contains("أرز بسمتي", text);
+        Assert.Contains("2 كيس × 250.50 د.ج", text);
+        Assert.Contains("501.00 د.ج", text);
+        Assert.Contains("الإجمالي: 900.00 د.ج", text);
+        Assert.Contains("المتبقي: 150.00 د.ج", text);
+        Assert.Contains("آجل", text);
+        Assert.Contains("2026-12-21", text);
+        Assert.Contains("شكرًا لتعاملكم معنا", text);
+    }
+
+    [Fact]
+    public void BuildText_IsPlainTextWithCrlfAndNoHtmlMarkup()
+    {
+        var text = _sut.BuildText(Receipt());
+
+        Assert.DoesNotContain("<", text);
+        Assert.Contains("\r\n", text);
+        Assert.False(text.Contains('\n') && text.Replace("\r\n", string.Empty).Contains('\n'));
+    }
 }
